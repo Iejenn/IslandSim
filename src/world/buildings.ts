@@ -3,13 +3,14 @@
 // her building progress goes up, so you can watch it take shape.
 import {
   BoxGeometry, CylinderGeometry, ExtrudeGeometry, Group, IcosahedronGeometry, Shape, SphereGeometry,
-  type Material, type Mesh, type Object3D, type Scene,
+  type Material, type Mesh, type Object3D, type Scene, ConeGeometry, DodecahedronGeometry,
 } from 'three';
-import { DOCK, FIRE, GARDEN_P, PLOTS, RACK_P, SH, WOODPILE_P, yawTo } from '../sim/island';
+import { BOAT_DOCK, DOCK, FIRE, GARDEN_P, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, WOODPILE_P, yawTo } from '../sim/island';
 import type { ProjectKey, SimState } from '../sim/state';
 import { M, mat, mesh } from './materials';
 
-const soil = mat('#6B4A33'), withered = mat('#8A7A4E'), fruitRed = mat('#D9452B', { roughness: 0.5 }), fruitGold = mat('#E8A33A', { roughness: 0.5 });
+const soil = mat('#6B4A33'), withered = mat('#8A7A4E'), fruitRed = mat('#D9452B', { roughness: 0.5 }), hull = mat('#8A5A34');
+const WATER_Y = 0.12;
 
 export function createBuildings(scene: Scene) {
   /** Adds parts (hidden) and returns them in the order they should appear. */
@@ -73,7 +74,7 @@ export function createBuildings(scene: Scene) {
     return staged(parts);
   })();
 
-  /* walls for the shelter: two sloped side walls, a back wall, and a front with a doorway */
+  /* stone walls for the shelter: two sloped side walls, a back wall, and a front with a doorway */
   const hut = (() => {
     const g = new Group();
     at(g, SH.x, SH.y, SH.z, yawTo(SH, FIRE));
@@ -83,11 +84,66 @@ export function createBuildings(scene: Scene) {
     side.moveTo(-0.72, 0); side.lineTo(0.82, 0); side.lineTo(0.82, 1.32); side.lineTo(-0.72, 2.15); side.lineTo(-0.72, 0);
     const sideGeo = new ExtrudeGeometry(side, { depth: 0.07, bevelEnabled: false });
     sideGeo.rotateY(Math.PI / 2);
-    const parts: Object3D[] = [-1.18, 1.11].map(x => mesh(sideGeo, M.wood, x, 0, 0));
-    parts.push(mesh(new BoxGeometry(2.3, 1.32, 0.07), M.wood, 0, 0.66, -0.82));
-    for (const x of [-0.76, 0.76]) parts.push(mesh(new BoxGeometry(0.7, 2.1, 0.07), M.wood, x, 1.05, 0.72));
+    const parts: Object3D[] = [-1.18, 1.11].map(x => mesh(sideGeo, M.rock, x, 0, 0));
+    parts.push(mesh(new BoxGeometry(2.3, 1.32, 0.07), M.rock, 0, 0.66, -0.82));
+    for (const x of [-0.76, 0.76]) parts.push(mesh(new BoxGeometry(0.7, 2.1, 0.07), M.rock, x, 1.05, 0.72));
     for (const p of parts) { p.visible = false; g.add(p); }
     return parts;
+  })();
+
+  /* stone hearth: a ring of big stones and a low wall around the campfire */
+  const hearth = (() => {
+    const parts: Object3D[] = [];
+    for (let i = 0; i < 12; i++) {
+      const a = i / 12 * Math.PI * 2;
+      const st = mesh(new DodecahedronGeometry(0.17, 0), M.rock, FIRE.x + Math.cos(a) * 0.72, FIRE.y + 0.1, FIRE.z + Math.sin(a) * 0.72);
+      st.scale.set(1.2, 0.8, 1);
+      st.rotation.y = a;
+      parts.push(st);
+    }
+    return staged(parts);
+  })();
+
+  /* lookout tower: four posts, a ladder, a platform and a railing */
+  const lookout = (() => {
+    const g = new Group(), H = LOOKOUT_DECK, parts: Object3D[] = [];
+    at(g, LOOKOUT_P.x, LOOKOUT_P.y, LOOKOUT_P.z, yawTo(LOOKOUT_P, FIRE));
+    scene.add(g);
+    for (const [x, z] of [[-0.6, -0.6], [0.6, -0.6], [0.6, 0.6], [-0.6, 0.6]]) parts.push(mesh(new CylinderGeometry(0.07, 0.09, H + 1, 6), M.log, x, (H + 1) / 2, z));
+    for (let i = 0; i < 6; i++) parts.push(mesh(new BoxGeometry(0.5, 0.04, 0.05), M.wood, 0, 0.35 + i * 0.35, 0.75)); // ladder rungs
+    parts.push(mesh(new BoxGeometry(1.5, 0.08, 1.5), M.wood, 0, H - 0.04, 0)); // platform
+    for (const [x, z, r] of [[0, -0.7, 0], [0.7, 0, Math.PI / 2], [-0.7, 0, Math.PI / 2]]) {
+      const rail = mesh(new BoxGeometry(1.45, 0.05, 0.05), M.wood, x, H + 0.55, z);
+      rail.rotation.y = r;
+      parts.push(rail);
+    }
+    const roof = mesh(new ConeGeometry(1.15, 0.6, 4), M.thatch, 0, H + 1.25, 0);
+    roof.rotation.y = Math.PI / 4;
+    parts.push(roof);
+    for (const p of parts) { p.visible = false; g.add(p); }
+    return parts;
+  })();
+
+  /* canoe: built at the dock; moored there, or carrying her while she paddles */
+  const canoe = (() => {
+    const g = new Group(), parts: Object3D[] = [];
+    const body = mesh(new CylinderGeometry(0.38, 0.38, 2.0, 10, 1, false, Math.PI / 2, Math.PI), hull, 0, 0.2, 0); // half log
+    body.rotation.x = Math.PI / 2;
+    body.scale.set(1, 1, 0.8);
+    parts.push(body);
+    for (const z of [1.1, -1.1]) {
+      const tip = mesh(new ConeGeometry(0.3, 0.45, 6), hull, 0, 0.12, z);
+      tip.rotation.x = z > 0 ? Math.PI / 2 : -Math.PI / 2;
+      tip.scale.set(1, 1, 0.6);
+      parts.push(tip);
+    }
+    parts.push(mesh(new BoxGeometry(0.6, 0.04, 0.22), M.wood, 0, 0.2, -0.25)); // seat
+    const paddle = mesh(new BoxGeometry(0.06, 0.04, 1.3), M.wood, 0.3, 0.28, 0.2);
+    paddle.rotation.y = 0.3;
+    parts.push(paddle);
+    for (const p of parts) { p.visible = false; g.add(p); }
+    scene.add(g);
+    return { g, parts };
   })();
 
   /* woodpile: logs stacked in a little pyramid, one per log in stock */
@@ -130,11 +186,23 @@ export function createBuildings(scene: Scene) {
     const n = started ? Math.max(1, Math.ceil(progress * parts.length)) : 0;
     parts.forEach((p, i) => { p.visible = i < n; });
   };
-  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut };
+  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts };
 
-  /** Mirror sim state onto the models (cheap; called every frame). */
-  return function updateBuildings(S: SimState) {
+  /**
+   * Mirror sim state onto the models (cheap; called every frame).
+   * @param her her body, which the canoe follows while she paddles
+   * @param t real seconds (bobbing)
+   */
+  return function updateBuildings(S: SimState, her: Object3D, t: number) {
     for (const k of Object.keys(PARTS) as ProjectKey[]) showParts(PARTS[k], S.projects[k].started, S.projects[k].progress);
+    if (S.sailing) {
+      canoe.g.position.set(her.position.x, WATER_Y, her.position.z);
+      canoe.g.rotation.y = her.rotation.y;
+    } else {
+      canoe.g.position.set(BOAT_DOCK.x, WATER_Y, BOAT_DOCK.z);
+      canoe.g.rotation.y = Math.atan2(DOCK.dir.x, DOCK.dir.z);
+    }
+    canoe.g.position.y += 0.04 * Math.sin(t * 1.6);
     rack.fish.forEach((f, i) => { f.visible = S.projects.rack.done && i < S.stock.fish; });
     woodpile.forEach((l, i) => { l.visible = i < S.stock.wood; });
     plants.forEach(({ g, leaves, fruits }, i) => {
@@ -144,7 +212,7 @@ export function createBuildings(scene: Scene) {
       const size = p.state === 'withered' ? 0.7 : 0.25 + 0.75 * Math.min(1, p.growth);
       g.scale.setScalar(size);
       leaves.material = (p.state === 'withered' ? withered : M.leaf) as Material;
-      fruits.forEach(f => { f.visible = p.state === 'ripe'; f.material = p.fine ? fruitGold : fruitRed; });
+      fruits.forEach(f => { f.visible = p.state === 'ripe'; });
     });
   };
 }

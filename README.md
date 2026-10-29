@@ -1,11 +1,18 @@
 # Island Sim
 
 A small 3D life sim: a castaway lives on an island and decides for herself
-what to do, based on her needs, personality and memories. Over the days she
-sets herself goals, chops wood, builds (a garden, a drying rack, a dock, walls
-for her shelter), grows food, gets caught in the rain and slowly makes the
-island her home. When she wishes for something, you can make it appear.
-What she might wish for is never listed: it depends on how her life goes.
+what to do, based on her needs, personality and memories. You just watch.
+
+She gathers branches and vines in the forest and stones in the rocky area,
+crafts tools at the campfire (a stone axe to fell trees, a pick to mine
+boulders, a fishing rod, a hammock, a drum…), and builds bigger things on
+site (a garden, a drying rack, a dock, stone walls, a hearth, a lookout, a
+canoe). Felled trees leave stumps until she replants them, and without wood
+the fire dies and she can't cook her catch. What she'll want to make next is
+never listed: it depends on how her life goes.
+
+Progress is saved in the browser (localStorage), so a refresh continues the
+same life. "Start over on a new island" at the bottom of the Diary resets it.
 
 Built with [Vite](https://vite.dev), TypeScript and [three.js](https://threejs.org).
 
@@ -30,7 +37,7 @@ Other scripts:
 - `npm run simulate` runs the sim without graphics for many islands and prints
   how their lives went (deaths, what got built, harvests, favourite activities).
   Use it after changing any numbers to check the balance:
-  `npm run simulate -- 50 30` (50 islands × 30 days), add `nogifts` to never grant wishes.
+  `npm run simulate -- 50 30` (50 islands × 30 days).
 
 ## Project layout
 
@@ -48,25 +55,37 @@ src/
     tasks.ts       what each task consists of (walk, sit, gather …)
     runner.ts      plays out the current task step by step
     skills.ts      XP and level-ups
-    gifts.ts       gifts, when each becomes wishable, and granting
-    projects.ts    things she builds: goals, wood, progress, the dock surface
+    plans.ts       everything she can craft or build: costs, when she wants it, progress
+    resources.ts   forest regrowth, fallen branches, loose stones, fish going off
     garden.ts      garden beds growing, drying out, ripening, rotting
     weather.ts     rain showers
     memory.ts      what she likes/dislikes and the daily diary recap
     thoughts.ts    what she says
+    persist.ts     turning state into saveable JSON and back
   world/           three.js scene: stage (renderer/camera), terrain, water,
-                   sky (lights, day/night), rain, props, buildings, gift models
-  character/       loading the model, playing animations, moving the body
+                   sky (lights, day/night), rain, props, forest & boulders,
+                   buildings, crafted items
+  character/       loading the model, playing animations, moving the body,
+                   tools in her hand
+  save.ts          localStorage save/load and the island's layout seed
   ui/              observer panel, HUD (clock/speed/follow), thought bubble
 scripts/
   simulate.ts      headless balance check (npm run simulate)
 ```
 
 The sim never imports three.js or touches the page. It reports what should
-happen (play an animation, a gift arrived, she spoke, she died) through
+happen (play an animation, she spoke, she died) through
 `hooks` in `sim/state.ts`, and `main.ts` connects those hooks to the 3D
 world and the UI. That keeps the game rules testable and lets you change
 how things look without touching them.
+
+## Testing ideas quickly
+
+Under `npm run dev` (never in the published build) the browser console has:
+
+- `__S` — the whole sim state, e.g. `__S.needs.food = 5`, `__S.projects.dock.done = true`
+- `__give('axe')` — give her a crafted item
+- `__startTask('chop')` — make her start a task now
 
 ## Deploying
 

@@ -4,7 +4,7 @@ const KEY = 'islandsim.save';
 // Bump when a change makes old saves unusable; older saves are then ignored
 // and a new island starts. (Adding fields does NOT need a bump: missing
 // fields are filled with defaults on load.)
-const VERSION = 1;
+const VERSION = 2; // 2: gifts replaced by crafting, forest and rocks
 
 export interface SaveFile { v: number; seed: number; savedAt: number; state: Record<string, unknown> }
 

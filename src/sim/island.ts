@@ -16,8 +16,12 @@ export function dirXZ(a: Pt, b: Pt): Pt {
 }
 
 /* ---------- island shape: one height function drives terrain AND walking ---------- */
+// Overall island size. Everything placed relative to the coast (forest, rocks,
+// beach walks, the fishing spot, dock and canoe route) scales with it; the camp
+// around the fire keeps its fixed positions so her daily walks stay short.
+export const ISLAND_SCALE = 1.35;
 export function islandR(a: number) {
-  return 13.5 + 1.1 * Math.sin(3 * a + 0.5) + 0.6 * Math.sin(5 * a + 2.1) + 0.4 * Math.sin(7 * a);
+  return ISLAND_SCALE * (13.5 + 1.1 * Math.sin(3 * a + 0.5) + 0.6 * Math.sin(5 * a + 2.1) + 0.4 * Math.sin(7 * a));
 }
 export function tAt(x: number, z: number) {
   return Math.hypot(x, z) / islandR(Math.atan2(z, x));
@@ -91,23 +95,16 @@ export const BUSHES = [V(5.2, 2.4), V(3.4, -5.4), V(-4.4, 4.4)].map(raw => {
   return { pos, stand: standNear(pos, 1.0) };
 });
 
-/* trees she chops firewood from */
-export const WOODTREES = [V(6.4, -1.9), V(-1.6, 6.9), V(-6.9, 1.4)].map(raw => {
-  const pos = ground(raw);
-  reserve(pos);
-  return { pos, stand: standNear(pos, 1.15) };
-});
-
 /* fishing spot on the north beach */
 export const FISH_A = Math.PI / 2;
 export const FISH: Spot = { spot: ground(pointAt(FISH_A, 0.9)), face: pointAt(FISH_A, 1.4) };
 reserve(FISH.spot);
 
-/* gift locations */
-export const PIANO_P = ground(V(3.4, -2.6));
+/* where crafted things end up */
+export const DRUM_P = ground(V(2.5, -1.5)); // near the fire, so she drums by firelight
 export const HAMMOCK_P = ground(V(-4.2, -6.0));
-export const BOOKS_P = copy(SEATS[1].p);
-reserve(PIANO_P, HAMMOCK_P);
+export const JOURNAL_P = copy(SEATS[1].p);
+reserve(DRUM_P, HAMMOCK_P);
 
 /* ---------- things she builds herself (spots are reserved up front so decoration stays clear) ---------- */
 export const WOODPILE_P = ground(V(-2.0, 0.6));
@@ -138,9 +135,41 @@ export const BOAT_DOCK = { ...addScaled(DOCK_END, dockPerp, 0.95), y: 0 };
 export const SAIL_ROUTE = [1, 2, 3, 4].map(k => pointAt(FISH_A + k * 0.33, 1.32));
 reserve(DOCK_START, pointAt(FISH_A, 0.74));
 
-export const TELESCOPE_P = ground(pointAt(-1.2, 0.78));
-export const TELESCOPE_STAND = standNear(TELESCOPE_P, 0.75);
-reserve(TELESCOPE_P);
+// lookout tower on the south beach; she climbs up to watch the sea and the stars
+export const LOOKOUT_P = ground(pointAt(-1.2, 0.78));
+export const LOOKOUT_STAND = standNear(LOOKOUT_P, 0.95);
+export const LOOKOUT_DECK = 2.2; // platform height above the ground
+reserve(LOOKOUT_P);
+
+/* ---------- forest (north-west) and rocky area (south-east) ----------
+   Scattered with a fixed seed, after every key spot above is reserved, so
+   each island has the same layout and saves can refer to trees/boulders by index. */
+function seeded(seed: number) {
+  let a = seed | 0;
+  return () => {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function scatter(seed: number, n: number, a0: number, a1: number, t0: number, t1: number, gap: number, keyGap: number) {
+  const r = seeded(seed), out: Pt[] = [];
+  for (let tries = 0; out.length < n && tries < 3000; tries++) {
+    const p = pointAt(a0 + r() * (a1 - a0), t0 + r() * (t1 - t0));
+    if (!clearOf(p, keyGap) || out.some(o => Math.hypot(o.x - p.x, o.z - p.z) < gap)) continue;
+    out.push(ground(p));
+  }
+  return out;
+}
+export const FOREST = scatter(7, 22, 1.7, 3.1, 0.25, 0.64, 1.6, 1.9).map(pos => ({ pos, stand: standNear(pos, 0.95) }));
+reserve(...FOREST.map(t => t.pos));
+export const BOULDERS = scatter(11, 9, -1.45, -0.3, 0.5, 0.86, 1.7, 1.8).map(pos => ({ pos, stand: standNear(pos, 1.0) }));
+reserve(...BOULDERS.map(b => b.pos));
+// where loose stones lie around, in the middle of the rocky area
+export const SCREE_P = scatter(13, 1, -1.3, -0.4, 0.55, 0.8, 0, 1.3)[0];
+export const SCREE_STAND = standNear(SCREE_P, 0.6);
+reserve(SCREE_P);
 
 /* where she wakes up */
 export const START = ground(V(1.4, 2.6));

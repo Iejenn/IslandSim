@@ -1,15 +1,15 @@
-// Observer panel: her name/traits/activity, vitals, needs, skills, gifts and
-// diary tabs, plus the death overlay. Reads sim state; only writes to it via
-// grant() when the player gives a gift.
-import { GIFTS, grant } from '../sim/gifts';
+// Observer panel: her name/traits/activity and goal, then Status (vitals,
+// needs, skills), Camp (what she has and has made) and Diary tabs, plus the
+// death overlay. The player only watches; this never changes sim state.
 import { freePlots, growingPlots, ripePlots } from '../sim/garden';
 import { happiness } from '../sim/needs';
-import { PROJECTS, woodNeeded } from '../sim/projects';
+import { missing, PLANS } from '../sim/plans';
 import { xpNeed } from '../sim/skills';
-import { dayNum, NEEDS, S, SKILLS, TRAITS, type GiftKey, type NeedKey, type SkillKey } from '../sim/state';
+import { dayNum, NEEDS, S, SKILLS, TRAITS, type CraftKey, type NeedKey, type ProjectKey, type Resource, type SkillKey } from '../sim/state';
 
 const $ = (id: string) => document.getElementById(id)!;
 const level = (v: number) => v < 25 ? 'low' : v < 50 ? 'mid' : 'ok';
+const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 
 function setVital(id: string, v: number, word: string) {
   const el = $(id);
@@ -19,47 +19,60 @@ function setVital(id: string, v: number, word: string) {
   el.querySelector<HTMLElement>('i')!.style.width = v + '%';
 }
 
-/** "Goal: build a dock · wood 3/8" — only her current goal, never the full list. */
+/** "Goal: make a fishing rod · fibre 1/2" — only her current goal, never the full list. */
 function renderGoal() {
   const el = $('goal'), k = S.goal;
   el.hidden = !k;
   if (!k) return;
-  const p = S.projects[k], d = PROJECTS[k];
-  const status = p.started ? `${Math.round(p.progress * 100)}% built` : woodNeeded() > 0 ? `wood ${S.stock.wood}/${d.wood}` : 'ready to start';
-  el.innerHTML = `Goal: <b>build ${d.a}</b> · ${status}`;
+  const d = PLANS[k], p = d.kind === 'build' ? S.projects[k as ProjectKey] : S.crafting;
+  const short = (Object.entries(missing()) as [Resource, number][]).filter(([, n]) => n > 0);
+  const status = p.started ? `${Math.round(p.progress * 100)}% ${d.kind === 'build' ? 'built' : 'done'}`
+    : short.length ? short.map(([r]) => `${r} ${Math.min(S.stock[r], d.cost[r] ?? 0)}/${d.cost[r]}`).join(', ') : 'ready to start';
+  el.innerHTML = `Goal: <b>${d.kind === 'craft' ? 'make' : 'build'} ${d.a}</b> · ${status}`;
 }
 
-/** Camp section: only lists things that exist on her island so far. */
+/** Camp tab: only lists things that exist on her island so far, to keep the mystery. */
 function renderCamp() {
-  const rows: [string, string][] = [];
-  const anyProject = Object.values(S.projects).some(p => p.started);
-  if (S.stock.wood > 0 || anyProject) rows.push(['Woodpile', `${S.stock.wood} log${S.stock.wood === 1 ? '' : 's'}`]);
-  if (S.projects.rack.done) rows.push(['Dried fish', String(S.stock.fish)]);
+  const section = (title: string, rows: [string, string][]) => rows.length
+    ? `<h2>${title}</h2>` + rows.map(([a, b]) => `<div class="camp-row"><span>${a}</span><span>${b}</span></div>`).join('') : '';
+  const n = (v: number, one: string, many: string) => `${v} ${v === 1 ? one : many}`;
+
+  const stock: [string, string][] = [];
+  stock.push(['Woodpile', n(S.stock.wood, 'log', 'logs')]);
+  if (S.stock.stone || S.items.pick) stock.push(['Stones', String(S.stock.stone)]);
+  if (S.stock.fibre) stock.push(['Plant fibre', String(S.stock.fibre)]);
+  if (S.stock.saplings) stock.push(['Saplings', String(S.stock.saplings)]);
+  if (S.stock.raw) stock.push(['Fresh fish', `${S.stock.raw} (needs cooking)`]);
+  if (S.projects.rack.done) stock.push(['Dried fish', String(S.stock.fish)]);
+  if (S.projects.garden.done) stock.push(['Seeds', String(S.stock.seeds)]);
+  stock.push(['Campfire', S.fire > 0 ? (S.fire < 20 ? 'burning low' : 'burning') : 'out']);
+
+  const made = (Object.keys(S.items) as CraftKey[]).filter(k => S.items[k]).map(k => [cap(PLANS[k].name), ''] as [string, string]);
+  const built = (Object.keys(S.projects) as ProjectKey[]).filter(k => S.projects[k].done).map(k => [cap(PLANS[k].name), ''] as [string, string]);
   if (S.projects.garden.done) {
-    const seeds = S.stock.seeds + S.stock.fine;
-    rows.push(['Seeds', String(seeds)]);
     const growing = growingPlots().length, ripe = ripePlots().length, dead = S.plots.filter(p => p.state === 'withered').length;
     const parts = [growing && `${growing} growing`, ripe && `${ripe} ripe`, dead && `${dead} withered`].filter(Boolean);
-    rows.push(['Garden', parts.length ? parts.join(' · ') : freePlots().length ? 'empty beds' : '']);
+    const g = built.find(([name]) => name === 'Garden');
+    if (g) g[1] = parts.length ? parts.join(' · ') : freePlots().length ? 'empty beds' : '';
   }
-  const built = (Object.keys(S.projects) as (keyof typeof S.projects)[]).filter(k => S.projects[k].done).map(k => PROJECTS[k].name);
-  if (built.length) rows.push(['Built', built.map(b => b[0].toUpperCase() + b.slice(1)).join(', ')]);
-  $('campTitle').hidden = !rows.length;
-  $('camp').innerHTML = rows.map(([a, b]) => `<div class="camp-row"><span>${a}</span><span>${b}</span></div>`).join('');
+
+  const trees = S.trees.filter(t => t.state === 'tree').length, stumps = S.trees.filter(t => t.state === 'stump').length, saplings = S.trees.filter(t => t.state === 'sapling').length;
+  const island: [string, string][] = [];
+  if (stumps || saplings) island.push(['Forest', [n(trees, 'tree', 'trees'), stumps && n(stumps, 'stump', 'stumps'), saplings && n(saplings, 'young tree', 'young trees')].filter(Boolean).join(' · ')]);
+  const mined = S.boulders.filter(b => b < 8).length;
+  if (mined) island.push(['Boulders', `${S.boulders.filter(b => b > 0).length} left`]);
+
+  $('camp').innerHTML = section('Supplies', stock) + section('Made by hand', made) + section('Built', built) + section('The island', island);
 }
 
-export function createPanel(onGiftGiven: () => void, onNewIsland: () => void) {
+export function createPanel(onNewIsland: () => void) {
   const needsEl = $('needs'), skillsEl = $('skills'), panel = $('panel'), toggle = $('sheetToggle');
   needsEl.innerHTML = Object.entries(NEEDS).map(([k, l]) =>
     `<div class="meter" data-k="${k}" data-level="ok"><span>${l}</span><div class="m-track"><i></i></div><span class="m-val">0</span></div>`).join('');
 
-  $('gifts').addEventListener('click', e => {
-    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-gift]');
-    if (b) { grant(b.dataset.gift as GiftKey); onGiftGiven(); }
-  });
   document.querySelectorAll<HTMLElement>('[data-tab]').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('[data-tab]').forEach(x => x.setAttribute('aria-selected', String(x === b)));
-    ['status', 'gifts', 'diary'].forEach(t => { $('tab-' + t).hidden = t !== b.dataset.tab; });
+    ['status', 'camp', 'diary'].forEach(t => { $('tab-' + t).hidden = t !== b.dataset.tab; });
   }));
 
   // on phones the panel is a bottom sheet that starts collapsed
@@ -105,8 +118,9 @@ export function createPanel(onGiftGiven: () => void, onNewIsland: () => void) {
         el.querySelector('.m-val')!.textContent = String(Math.round(v));
       }
 
-      // gift- and project-based skills only show up once they're part of her life
-      const shown = (Object.keys(SKILLS) as SkillKey[]).filter(k => (k !== 'music' || S.items.piano) && (k !== 'reading' || S.items.books)
+      // skills only show up once they're part of her life
+      const shown = (Object.keys(SKILLS) as SkillKey[]).filter(k => (k !== 'music' || S.items.drum) && (k !== 'writing' || S.items.journal)
+        && (k !== 'crafting' || S.stats.crafted > 0 || S.crafting.started)
         && (k !== 'building' || Object.values(S.projects).some(p => p.started)) && (k !== 'gardening' || S.projects.garden.done));
       skillsEl.innerHTML = shown.map(k => {
         const s = S.skills[k], p = s.lvl >= 10 ? 100 : s.xp / xpNeed(s.lvl) * 100;
@@ -114,20 +128,6 @@ export function createPanel(onGiftGiven: () => void, onNewIsland: () => void) {
       }).join('');
 
       renderCamp();
-      if (S.giftsDirty) {
-        S.giftsDirty = false;
-        // Only show what she has asked for (or already received), so players
-        // never see the full list of what could be unlocked.
-        const known = (Object.entries(GIFTS) as [GiftKey, (typeof GIFTS)[GiftKey]][]).filter(([k]) => S.wishes.includes(k) || S.items[k]);
-        $('gifts').innerHTML = known.length
-          ? known.map(([k, g]) =>
-            `<div class="gift"><b>${g.name}</b>${S.wishes.includes(k) ? `<span class="wish">She wishes for this</span>` : ''}<p>${g.desc}</p>
-      <button data-gift="${k}" ${S.items[k] || S.dead ? 'disabled' : ''}>${S.items[k] ? 'Given' : 'Give'}</button></div>`).join('')
-          : `<p class="hint">She hasn’t asked for anything yet. Listen to her thoughts.</p>`;
-        const wb = $('wishBadge');
-        wb.hidden = !S.wishes.length;
-        wb.textContent = String(S.wishes.length);
-      }
       if (S.diaryDirty) {
         S.diaryDirty = false;
         $('diary').innerHTML = S.diary.map(d => `<li><time>${d.t}</time><span>${d.text}</span></li>`).join('');

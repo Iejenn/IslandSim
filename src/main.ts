@@ -5,9 +5,8 @@ import './style.css';
 import { Raycaster, Vector2, Vector3 } from 'three';
 import { createAnimator } from './character/animation';
 import { loadCharacter } from './character/model';
-import { createHeldRod } from './character/heldRod';
+import { createHeldTools, type HeldTool } from './character/heldTools';
 import { createBody } from './character/movement';
-import { grant } from './sim/gifts';
 import { updateNeeds } from './sim/needs';
 import { runTask, settleHeight } from './sim/runner';
 import { hooks, hour, initState, log, say } from './sim/state';
@@ -16,7 +15,8 @@ import { createBubble } from './ui/bubble';
 import { createHud } from './ui/hud';
 import { createPanel } from './ui/panel';
 import { createBuildings } from './world/buildings';
-import { createGiftModels } from './world/giftModels';
+import { createCrafted } from './world/crafted';
+import { createForest } from './world/forest';
 import { createProps } from './world/props';
 import { createRain } from './world/rain';
 import { createSky } from './world/sky';
@@ -25,7 +25,7 @@ import { createTerrain } from './world/terrain';
 import { createWater } from './world/water';
 import { clearSave, newSeed, readSave, withSeed, writeSave } from './save';
 import { snapshot } from './sim/persist';
-import type { GiftKey } from './sim/state';
+import type { CraftKey } from './sim/state';
 
 /* ---------- saved game? ---------- */
 const save = readSave();
@@ -37,25 +37,31 @@ const { animateWater, updateSky, props } = withSeed(seed, () => {
   createTerrain(scene);
   return { animateWater: createWater(scene), updateSky: createSky(scene), props: createProps(scene) };
 });
-const giftModels = createGiftModels(scene);
+const updateForest = createForest(scene);
+const updateCrafted = createCrafted(scene);
 const updateBuildings = createBuildings(scene);
 const updateRain = createRain(scene);
 
 /* ---------- sim + her ---------- */
 const S = initState(save?.state);
-if (save) giftModels.restore(Object.keys(S.items) as GiftKey[]);
 // Dev only (stripped from the production build): poke at the state from the
-// browser console, e.g. __S.needs.food = 5 or __S.projects.dock.done = true.
-if (import.meta.env.DEV) Object.assign(window, { __S: S, __grant: grant, __startTask: (id: string) => { const t = T[id](); if (t) startTask(t); }, __camera: camera, __controls: controls });
+// browser console, e.g. __S.needs.food = 5, __S.projects.dock.done = true, __give('axe').
+if (import.meta.env.DEV) {
+  Object.assign(window, {
+    __S: S, __camera: camera, __controls: controls,
+    __give: (k: CraftKey) => { S.items[k] = true; },
+    __startTask: (id: string) => { const t = T[id](); if (t) startTask(t); },
+  });
+}
 const body = createBody(scene);
-const heldRod = createHeldRod(scene);
+const heldTools = createHeldTools(scene);
 let ready = false;
 let animator: ReturnType<typeof createAnimator> | null = null;
 
 /* ---------- UI ---------- */
 const hud = createHud();
 const bubble = createBubble(body.her, camera);
-const panel = createPanel(renderUI, newIsland);
+const panel = createPanel(newIsland);
 function renderUI() {
   hud.render();
   panel.render();
@@ -78,7 +84,6 @@ addEventListener('pagehide', saveNow);
 /* ---------- sim → presentation ---------- */
 hooks.play = (anim, forceOnce) => animator?.play(anim, forceOnce);
 hooks.onSay = () => bubble.show();
-hooks.onGift = k => giftModels.build(k);
 hooks.onDeath = () => {
   clearSave(); // her story is over; a refresh starts a new island
   setTimeout(() => panel.showDeath(), 2600);
@@ -103,7 +108,7 @@ function loadModel() {
   const loading = document.getElementById('loading')!;
   loadCharacter().then(gltf => {
     body.attach(gltf.scene);
-    heldRod.attach(gltf.scene);
+    heldTools.attach(gltf.scene);
     animator = createAnimator(gltf.scene, gltf.animations);
     animator.play('idle');
     ready = true;
@@ -135,13 +140,14 @@ function frame(now: number) {
   }
   animator?.mixer.update(S.dead ? dt : dt * animScale);
   if (ready) { settleHeight(); body.update(dt); }
-  // she takes the rod along for the whole fishing trip
-  const holdingRod = ready && !!S.items.rod && S.task?.id === 'fish';
-  heldRod.update(holdingRod, body.her, clockT);
-  giftModels.setRodHeld(holdingRod);
-  giftModels.update(dt, clockT, S, body.her);
+  // she carries the right tool for the whole task (rod for fishing, axe for chopping, pick for mining)
+  const id = S.task?.id;
+  const held: HeldTool | null = !ready ? null : id === 'fish' && S.items.rod ? 'rod' : id === 'chop' && S.items.axe ? 'axe' : id === 'mine' && S.items.pick ? 'pick' : null;
+  heldTools.update(held, body.her, clockT);
+  updateCrafted(S, held);
+  updateForest(S);
   props.syncBerries(S.berries);
-  updateBuildings(S);
+  updateBuildings(S, body.her, clockT);
   const rain = updateRain(dt, S.weather.raining, controls.target);
   animateWater(clockT);
   updateSky(clockT, hour(), S.fire, props.campfire, rain);

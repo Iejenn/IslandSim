@@ -2,6 +2,11 @@
 // ("walk"); config/animations.ts maps them to the model's clip names.
 import { AnimationMixer, LoopOnce, LoopRepeat, type AnimationAction, type AnimationClip, type Object3D } from 'three';
 import { ANIM, ONE_SHOT_CLIPS, type AnimKey } from '../config/animations';
+import { ISLAND_SCALE } from '../sim/island';
+
+// She walks faster on the bigger island (see sim/runner.ts); play her steps
+// faster to match, so her feet don't slide.
+const STRIDE: Partial<Record<AnimKey, number>> = { walk: ISLAND_SCALE, walkCarry: ISLAND_SCALE, run: ISLAND_SCALE };
 
 export function createAnimator(model: Object3D, animations: AnimationClip[]) {
   const mixer = new AnimationMixer(model);
@@ -18,7 +23,7 @@ export function createAnimator(model: Object3D, animations: AnimationClip[]) {
     a.setLoop(once ? LoopOnce : LoopRepeat, Infinity);
     a.clampWhenFinished = once;
     a.setEffectiveWeight(1);
-    a.setEffectiveTimeScale(1);
+    a.setEffectiveTimeScale(STRIDE[key] ?? 1);
     a.fadeIn(0.3).play();
     if (current && current !== a) current.fadeOut(0.3);
     current = a;

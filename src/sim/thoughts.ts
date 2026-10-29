@@ -12,8 +12,16 @@ export const TH = {
   relax: ['The fire makes this place feel like home.', 'I could watch these flames for hours.'],
   explore: ['What’s around that bend?', 'Maybe something washed up on the beach.', 'Footprints in the sand. Only mine.'],
   talk: ['Talking to the seagulls again. They’re good listeners.', 'I wrote my name in the sand. Hello, world.', 'Is anyone out there?'],
-  read: ['One more chapter.', 'These pages take me far away from here.'],
-  chop: ['Swing, chop, swing, chop.', 'Every log is a step closer.', 'My arms are going to feel this tomorrow.'],
+  chop: ['Swing, chop, swing, chop.', 'Timber!', 'My arms are going to feel this tomorrow.'],
+  sticks: ['Every stick counts.', 'The forest floor is full of firewood.', 'No axe, no problem. Mostly.'],
+  replant: ['One tree out, one tree in.', 'Grow tall, little one.', 'Somebody has to look after this forest.'],
+  fibre: ['These vines make good string.', 'Pull, twist, pull, twist.'],
+  stones: ['Good flat ones, these.', 'Rocks. The one thing this island has plenty of.'],
+  mine: ['Crack!', 'Stone by stone.', 'This boulder is tougher than me. Almost.'],
+  craft: ['Measure, cut, tie.', 'I’m getting good with my hands.', 'Nobody taught me this. I’m figuring it out.'],
+  cook: ['Smells amazing.', 'Grilled fish, island style.', 'Careful… don’t burn it.'],
+  write: ['Chapter seven: the storm.', 'One day someone will read these.', 'Carving words takes patience.'],
+  watch: ['Nothing but blue, all the way round.', 'I can see the whole island from here.', 'Keep watching. Something might come.'],
   build: ['Measure twice, cut once. Or just cut.', 'It’s actually starting to look like something.', 'Nobody taught me this. I’m figuring it out.'],
   plant: ['Grow, little ones.', 'A seed is just a promise.', 'Dirt under my nails again. Good dirt.'],
   water: ['Drink up, plants.', 'Back and forth to the spring. Worth it.'],
@@ -35,12 +43,4 @@ const LOW: Record<NeedKey, string> = {
 /** A thought for this activity, unless the related need is low enough to complain about. */
 export function thoughtFor(id: keyof typeof TH, need?: NeedKey) {
   return need && S.needs[need] < 25 ? LOW[need] : pick(TH[id]);
-}
-
-export function pianoThought() {
-  const l = S.skills.music.lvl;
-  return l < 2 ? pick(['These keys don’t listen to me yet.', 'Is that… a scale? Sort of.'])
-    : l < 5 ? pick(['I can almost play a whole tune.', 'Left hand, right hand, together…'])
-    : l < 8 ? pick(['My fingers remember the melody now.', 'This one is for the waves.'])
-    : pick(['The ocean is my audience.', 'I’ve never played this well in my life.']);
 }

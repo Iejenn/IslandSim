@@ -5,7 +5,7 @@ import {
   BoxGeometry, CatmullRomCurve3, ConeGeometry, CylinderGeometry, DodecahedronGeometry, Group, IcosahedronGeometry,
   PointLight, SphereGeometry, TubeGeometry, Vector3, type Mesh, type Scene,
 } from 'three';
-import { BUSHES, FIRE, FISH_A, SEATS, SH, SP, V, WOODTREES, clearOf, ground, pointAt, reserve, yawTo, type Pt } from '../sim/island';
+import { BUSHES, FIRE, FISH_A, SEATS, SH, SP, V, clearOf, ground, pointAt, yawTo, type Pt } from '../sim/island';
 import { rand } from '../sim/util';
 import { flameMat, flameMat2, M, mesh } from './materials';
 import { FIRE_LIGHT_SCALE, type Campfire } from './sky';
@@ -33,16 +33,6 @@ export function createProps(scene: Scene) {
     g.add(top);
     g.position.copy(v3(ground({ ...p })));
     g.rotation.y = rand(0, Math.PI * 2);
-    g.scale.setScalar(s);
-    scene.add(g);
-  }
-  function tree(p: Pt, s = 1) {
-    const g = new Group();
-    g.add(mesh(new CylinderGeometry(0.12, 0.18, 1.6, 6), M.trunk, 0, 0.8, 0));
-    g.add(mesh(new IcosahedronGeometry(1.1, 0), M.leaf, 0, 2.2, 0));
-    g.add(mesh(new IcosahedronGeometry(0.75, 0), M.leaf2, 0.5, 2.7, 0.2));
-    g.position.copy(v3(ground({ ...p })));
-    g.rotation.y = rand(0, 6.3);
     g.scale.setScalar(s);
     scene.add(g);
   }
@@ -136,21 +126,14 @@ export function createProps(scene: Scene) {
     return meshes;
   });
 
-  /* trees she chops firewood from */
-  for (const w of WOODTREES) tree(w.pos, 1.15);
-
-  /* decoration: palms on the beach ring, trees and rocks inland, kept clear of key spots */
-  for (let i = 0; i < 14; i++) {
-    const a = i / 14 * Math.PI * 2 + rand(-0.15, 0.15);
+  /* decoration: palms on the beach ring and small rocks inland, kept clear of key spots (the forest lives in forest.ts) */
+  for (let i = 0; i < 20; i++) {
+    const a = i / 20 * Math.PI * 2 + rand(-0.12, 0.12);
     if (Math.abs(((a - FISH_A + Math.PI * 3) % (Math.PI * 2)) - Math.PI) < 0.35) continue; // keep the fishing spot open
     const p = pointAt(a, rand(0.7, 0.84));
     if (clearOf(p, 2)) palm(p, rand(0.85, 1.15));
   }
-  for (let n = 0, tries = 0; n < 6 && tries < 80; tries++) {
-    const p = pointAt(rand(0, 6.3), rand(0.3, 0.58));
-    if (clearOf(p, 2.6)) { tree(p, rand(0.8, 1.1)); reserve(p); n++; }
-  }
-  for (let n = 0, tries = 0; n < 12 && tries < 120; tries++) {
+  for (let n = 0, tries = 0; n < 16 && tries < 160; tries++) {
     const p = pointAt(rand(0, 6.3), rand(0.45, 0.95));
     if (clearOf(p, 1.6)) { rock(p, rand(0.2, 0.5)); n++; }
   }
