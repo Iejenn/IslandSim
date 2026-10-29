@@ -79,9 +79,14 @@ export function createPanel(onGiftGiven: () => void) {
 
       if (S.giftsDirty) {
         S.giftsDirty = false;
-        $('gifts').innerHTML = (Object.entries(GIFTS) as [GiftKey, (typeof GIFTS)[GiftKey]][]).map(([k, g]) =>
-          `<div class="gift"><b>${g.name}</b>${S.wishes.includes(k) ? `<span class="wish">She wishes for this</span>` : ''}<p>${g.desc}</p>
-      <button data-gift="${k}" ${S.items[k] || S.dead ? 'disabled' : ''}>${S.items[k] ? 'Given' : 'Give'}</button></div>`).join('');
+        // Only show what she has asked for (or already received), so players
+        // never see the full list of what could be unlocked.
+        const known = (Object.entries(GIFTS) as [GiftKey, (typeof GIFTS)[GiftKey]][]).filter(([k]) => S.wishes.includes(k) || S.items[k]);
+        $('gifts').innerHTML = known.length
+          ? known.map(([k, g]) =>
+            `<div class="gift"><b>${g.name}</b>${S.wishes.includes(k) ? `<span class="wish">She wishes for this</span>` : ''}<p>${g.desc}</p>
+      <button data-gift="${k}" ${S.items[k] || S.dead ? 'disabled' : ''}>${S.items[k] ? 'Given' : 'Give'}</button></div>`).join('')
+          : `<p class="hint">She hasn’t asked for anything yet. Listen to her thoughts.</p>`;
         const wb = $('wishBadge');
         wb.hidden = !S.wishes.length;
         wb.textContent = String(S.wishes.length);
