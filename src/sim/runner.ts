@@ -2,7 +2,7 @@
 // fast-forward moves her at the right speed; character/movement.ts only
 // mirrors the result onto the 3D model.
 import { decide } from './decide';
-import { DOCK_START, ground, ISLAND_SCALE, V, type Pt } from './island';
+import { DOCK_START, ground, PACE, V, type Pt } from './island';
 import { onDock, surfaceY } from './plans';
 import { hooks, S, type Step } from './state';
 import { endTask } from './tasks';
@@ -10,7 +10,7 @@ import { clamp } from './util';
 
 // units per game minute; scaled with the island so a bigger island doesn't
 // mean she spends her whole day walking
-const WALK = 0.4 * ISLAND_SCALE, RUN = 0.75 * ISLAND_SCALE, ROW = 0.9 * ISLAND_SCALE;
+const WALK = 0.4 * PACE, RUN = 0.75 * PACE, ROW = 0.9 * PACE;
 const BOAT_FLOOR_Y = 0.24; // her feet when sitting in the boat on the water
 
 /** Path from a to b that detours around the campfire instead of walking through it. */

@@ -19,9 +19,22 @@ export function dirXZ(a: Pt, b: Pt): Pt {
 // Overall island size. Everything placed relative to the coast (forest, rocks,
 // beach walks, the fishing spot, dock and canoe route) scales with it; the camp
 // around the fire keeps its fixed positions so her daily walks stay short.
-export const ISLAND_SCALE = 1.35;
+export const ISLAND_SCALE = 1.45;
+// Two broad lobes stick out of the main island: the forest to the west and
+// the rocky area to the east, so each has room of its own.
+export const FOREST_A = 2.4, ROCKS_A = -0.875; // directions (radians) of the lobes
+// How much faster she moves than on the original island, so the longer walks
+// out to the lobes don't eat her whole day.
+export const PACE = ISLAND_SCALE * 1.15;
+const lobe = (a: number, centre: number, width: number, size: number) => {
+  const d = Math.atan2(Math.sin(a - centre), Math.cos(a - centre)); // shortest angle difference
+  return size * Math.exp(-(d * d) / (2 * width * width));
+};
 export function islandR(a: number) {
-  return ISLAND_SCALE * (13.5 + 1.1 * Math.sin(3 * a + 0.5) + 0.6 * Math.sin(5 * a + 2.1) + 0.4 * Math.sin(7 * a));
+  const lobes = lobe(a, FOREST_A, 0.4, 14) + lobe(a, ROCKS_A, 0.36, 11);
+  // a big smooth bump makes a squarish headland; ragged it up so the coast looks natural
+  const ragged = (lobes / 12) * (1.6 * Math.sin(7 * a + 1.3) + 1.0 * Math.sin(11 * a + 0.4) + 0.7 * Math.sin(17 * a + 2.2));
+  return ISLAND_SCALE * (13.5 + 1.1 * Math.sin(3 * a + 0.5) + 0.6 * Math.sin(5 * a + 2.1) + 0.4 * Math.sin(7 * a)) + lobes + ragged;
 }
 export function tAt(x: number, z: number) {
   return Math.hypot(x, z) / islandR(Math.atan2(z, x));
@@ -162,12 +175,12 @@ function scatter(seed: number, n: number, a0: number, a1: number, t0: number, t1
   }
   return out;
 }
-export const FOREST = scatter(7, 22, 1.7, 3.1, 0.25, 0.64, 1.6, 1.9).map(pos => ({ pos, stand: standNear(pos, 0.95) }));
+export const FOREST = scatter(7, 22, FOREST_A - 0.5, FOREST_A + 0.5, 0.34, 0.66, 2.7, 1.9).map(pos => ({ pos, stand: standNear(pos, 0.95) }));
 reserve(...FOREST.map(t => t.pos));
-export const BOULDERS = scatter(11, 9, -1.45, -0.3, 0.5, 0.86, 1.7, 1.8).map(pos => ({ pos, stand: standNear(pos, 1.0) }));
+export const BOULDERS = scatter(11, 9, ROCKS_A - 0.42, ROCKS_A + 0.42, 0.45, 0.85, 2.5, 1.8).map(pos => ({ pos, stand: standNear(pos, 1.0) }));
 reserve(...BOULDERS.map(b => b.pos));
 // where loose stones lie around, in the middle of the rocky area
-export const SCREE_P = scatter(13, 1, -1.3, -0.4, 0.55, 0.8, 0, 1.3)[0];
+export const SCREE_P = scatter(13, 1, ROCKS_A - 0.35, ROCKS_A + 0.35, 0.5, 0.75, 0, 1.6)[0];
 export const SCREE_STAND = standNear(SCREE_P, 0.6);
 reserve(SCREE_P);
 

@@ -4,7 +4,7 @@ import { BOULDERS, FOREST, height, tAt } from '../sim/island';
 import { smooth } from '../sim/util';
 
 export function createTerrain(scene: Scene) {
-  const g = new PlaneGeometry(84, 84, 128, 128); // big enough for the island plus its shallow shelf
+  const g = new PlaneGeometry(140, 140, 220, 220); // big enough for the island (lobes included) plus its shallow shelf
   g.rotateX(-Math.PI / 2);
   const pa = g.attributes.position, cols: number[] = [];
   const g1 = new Color('#62A65A'), g2 = new Color('#4B8D4D'), sand = new Color('#EAD7A4'), wet = new Color('#C8AD78'), deep = new Color('#2C7E86');

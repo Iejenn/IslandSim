@@ -18,7 +18,7 @@ export function createSky(scene: Scene) {
   sun.castShadow = true;
   // shadows have to cover the whole island; a bigger map keeps them crisp at this size
   sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 100 });
+  Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 120 });
   sun.shadow.bias = -0.0006;
   scene.add(sun, sun.target);
   const moon = new DirectionalLight('#9DB8FF', 0);
@@ -59,8 +59,8 @@ export function createSky(scene: Scene) {
     (scene.background as Color).copy(sky);
     const fog = scene.fog as Fog;
     fog.color.copy(sky);
-    fog.near = 85 - 55 * rain;
-    fog.far = 200 - 105 * rain;
+    fog.near = 120 - 75 * rain;
+    fog.far = 260 - 140 * rain;
     hemi.intensity = (0.18 + 0.45 * day) * LEGACY;
     moon.intensity = 0.35 * (1 - day) * LEGACY;
     (stars.material as PointsMaterial).opacity = clamp(-e * 3, 0, 1) * 0.9 * (1 - rain); // clouds hide the stars
