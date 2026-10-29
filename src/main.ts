@@ -6,9 +6,11 @@ import { Raycaster, Vector2, Vector3 } from 'three';
 import { createAnimator } from './character/animation';
 import { loadCharacter } from './character/model';
 import { createBody } from './character/movement';
+import { grant } from './sim/gifts';
 import { updateNeeds } from './sim/needs';
 import { runTask, settleHeight } from './sim/runner';
 import { hooks, hour, initState, log, say } from './sim/state';
+import { startTask, T } from './sim/tasks';
 import { createBubble } from './ui/bubble';
 import { createHud } from './ui/hud';
 import { createPanel } from './ui/panel';
@@ -33,6 +35,9 @@ const updateRain = createRain(scene);
 
 /* ---------- sim + her ---------- */
 const S = initState();
+// Dev only (stripped from the production build): poke at the state from the
+// browser console, e.g. __S.needs.food = 5 or __S.projects.dock.done = true.
+if (import.meta.env.DEV) Object.assign(window, { __S: S, __grant: grant, __startTask: (id: string) => { const t = T[id](); if (t) startTask(t); } });
 const body = createBody(scene);
 let ready = false;
 let animator: ReturnType<typeof createAnimator> | null = null;
