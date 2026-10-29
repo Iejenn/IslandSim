@@ -108,5 +108,38 @@ export const HAMMOCK_P = ground(V(-4.2, -6.0));
 export const BOOKS_P = copy(SEATS[1].p);
 reserve(PIANO_P, HAMMOCK_P);
 
+/* ---------- things she builds herself (spots are reserved up front so decoration stays clear) ---------- */
+export const WOODPILE_P = ground(V(-2.0, 0.6));
+export const RACK_P = ground(V(4.0, 0.0));
+export const GARDEN_P = ground(V(2.6, 5.0));
+// 2×2 beds around the garden centre
+export const PLOTS = [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]].map(([dx, dz]) => ground(V(GARDEN_P.x + dx, GARDEN_P.z + dz)));
+export const GARDEN_STAND = standNear(GARDEN_P, 1.6);
+reserve(WOODPILE_P, RACK_P, GARDEN_P, ...PLOTS);
+
+// The dock runs straight out to sea from the fishing spot.
+const dockDir = { x: Math.cos(FISH_A), y: 0, z: Math.sin(FISH_A) };
+const dockPerp = { x: -dockDir.z, y: 0, z: dockDir.x };
+const fishR = islandR(FISH_A);
+export const DOCK = {
+  dir: dockDir,
+  from: fishR * 0.84, // distance from the island centre where the deck starts…
+  to: fishR * 1.14, // …and ends
+  deckY: 0.38,
+  halfWidth: 0.55,
+};
+export const DOCK_START = { ...pointAt(FISH_A, 0.84), y: DOCK.deckY };
+export const DOCK_END = { ...addScaled(V(0, 0), dockDir, DOCK.to - 0.35), y: DOCK.deckY };
+export const DOCK_FACE = pointAt(FISH_A, 1.6);
+// where the boat is moored, alongside the end of the dock
+export const BOAT_DOCK = { ...addScaled(DOCK_END, dockPerp, 0.95), y: 0 };
+/** Boat trip: a loop around part of the coast, then back to the mooring. */
+export const SAIL_ROUTE = [1, 2, 3, 4].map(k => pointAt(FISH_A + k * 0.33, 1.32));
+reserve(DOCK_START, pointAt(FISH_A, 0.74));
+
+export const TELESCOPE_P = ground(pointAt(-1.2, 0.78));
+export const TELESCOPE_STAND = standNear(TELESCOPE_P, 0.75);
+reserve(TELESCOPE_P);
+
 /* where she wakes up */
 export const START = ground(V(1.4, 2.6));

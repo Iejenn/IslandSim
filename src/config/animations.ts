@@ -4,6 +4,9 @@ export const ANIM = {
   idle: 'Idle',
   walk: 'Walk',
   walkCarry: 'Walk_Carry',
+  run: 'Run', // hurrying when a need is critical
+  chop: 'SwordSlash', // the sword swing reads as an axe swing
+  hammer: 'Punch', // short repeated strikes read as hammering
   sitDown: 'SitDown',
   standUp: 'StandUp',
   gather: 'PickUp',

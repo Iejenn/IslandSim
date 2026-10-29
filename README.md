@@ -1,7 +1,11 @@
 # Island Sim
 
-A small 3D life sim: a castaway lives on an island, decides for herself what
-to do based on her needs and personality, and you can drop gifts from the sky.
+A small 3D life sim: a castaway lives on an island and decides for herself
+what to do, based on her needs, personality and memories. Over the days she
+sets herself goals, chops wood, builds (a garden, a drying rack, a dock, walls
+for her shelter), grows food, gets caught in the rain and slowly makes the
+island her home. When she wishes for something, you can make it appear.
+What she might wish for is never listed: it depends on how her life goes.
 
 Built with [Vite](https://vite.dev), TypeScript and [three.js](https://threejs.org).
 
@@ -23,6 +27,10 @@ Other scripts:
 
 - `npm run build` type-checks and builds the site into `dist/`
 - `npm run preview` serves the built `dist/` folder locally
+- `npm run simulate` runs the sim without graphics for many islands and prints
+  how their lives went (deaths, what got built, harvests, favourite activities).
+  Use it after changing any numbers to check the balance:
+  `npm run simulate -- 50 30` (50 islands × 30 days), add `nogifts` to never grant wishes.
 
 ## Project layout
 
@@ -40,12 +48,18 @@ src/
     tasks.ts       what each task consists of (walk, sit, gather …)
     runner.ts      plays out the current task step by step
     skills.ts      XP and level-ups
-    gifts.ts       gifts, wishes and granting
+    gifts.ts       gifts, when each becomes wishable, and granting
+    projects.ts    things she builds: goals, wood, progress, the dock surface
+    garden.ts      garden beds growing, drying out, ripening, rotting
+    weather.ts     rain showers
+    memory.ts      what she likes/dislikes and the daily diary recap
     thoughts.ts    what she says
   world/           three.js scene: stage (renderer/camera), terrain, water,
-                   sky (lights, day/night), props, gift models
+                   sky (lights, day/night), rain, props, buildings, gift models
   character/       loading the model, playing animations, moving the body
   ui/              observer panel, HUD (clock/speed/follow), thought bubble
+scripts/
+  simulate.ts      headless balance check (npm run simulate)
 ```
 
 The sim never imports three.js or touches the page. It reports what should

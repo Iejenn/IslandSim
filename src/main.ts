@@ -12,8 +12,10 @@ import { hooks, hour, initState, log, say } from './sim/state';
 import { createBubble } from './ui/bubble';
 import { createHud } from './ui/hud';
 import { createPanel } from './ui/panel';
+import { createBuildings } from './world/buildings';
 import { createGiftModels } from './world/giftModels';
 import { createProps } from './world/props';
+import { createRain } from './world/rain';
 import { createSky } from './world/sky';
 import { createStage } from './world/stage';
 import { createTerrain } from './world/terrain';
@@ -26,6 +28,8 @@ const animateWater = createWater(scene);
 const updateSky = createSky(scene);
 const props = createProps(scene);
 const giftModels = createGiftModels(scene);
+const updateBuildings = createBuildings(scene);
+const updateRain = createRain(scene);
 
 /* ---------- sim + her ---------- */
 const S = initState();
@@ -95,10 +99,12 @@ function frame(now: number) {
   }
   animator?.mixer.update(S.dead ? dt : dt * animScale);
   if (ready) { settleHeight(); body.update(dt); }
-  giftModels.update(dt);
+  giftModels.update(dt, clockT, S, body.her);
   props.syncBerries(S.berries);
+  updateBuildings(S);
+  const rain = updateRain(dt, S.weather.raining, controls.target);
   animateWater(clockT);
-  updateSky(clockT, hour(), S.fire, props.campfire);
+  updateSky(clockT, hour(), S.fire, props.campfire, rain);
   if (hud.following && ready) {
     tmpV.copy(body.her.position);
     tmpV.y += 1;

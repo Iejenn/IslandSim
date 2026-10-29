@@ -25,7 +25,7 @@ export function createHud() {
     get following() { return following; },
     render() {
       $('clock').textContent = `Day ${dayNum()}, ${clock()}`;
-      $('phase').textContent = PHASES(hour());
+      $('phase').textContent = PHASES(hour()) + (S.weather.raining ? ' · Rain' : '');
     },
   };
 }

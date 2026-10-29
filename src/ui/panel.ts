@@ -2,7 +2,9 @@
 // diary tabs, plus the death overlay. Reads sim state; only writes to it via
 // grant() when the player gives a gift.
 import { GIFTS, grant } from '../sim/gifts';
+import { freePlots, growingPlots, ripePlots } from '../sim/garden';
 import { happiness } from '../sim/needs';
+import { PROJECTS, woodNeeded } from '../sim/projects';
 import { xpNeed } from '../sim/skills';
 import { dayNum, NEEDS, S, SKILLS, TRAITS, type GiftKey, type NeedKey, type SkillKey } from '../sim/state';
 
@@ -15,6 +17,35 @@ function setVital(id: string, v: number, word: string) {
   el.querySelector('.num')!.textContent = String(Math.round(v));
   el.querySelector('.word')!.textContent = word;
   el.querySelector<HTMLElement>('i')!.style.width = v + '%';
+}
+
+/** "Goal: build a dock · wood 3/8" — only her current goal, never the full list. */
+function renderGoal() {
+  const el = $('goal'), k = S.goal;
+  el.hidden = !k;
+  if (!k) return;
+  const p = S.projects[k], d = PROJECTS[k];
+  const status = p.started ? `${Math.round(p.progress * 100)}% built` : woodNeeded() > 0 ? `wood ${S.stock.wood}/${d.wood}` : 'ready to start';
+  el.innerHTML = `Goal: <b>build ${d.a}</b> · ${status}`;
+}
+
+/** Camp section: only lists things that exist on her island so far. */
+function renderCamp() {
+  const rows: [string, string][] = [];
+  const anyProject = Object.values(S.projects).some(p => p.started);
+  if (S.stock.wood > 0 || anyProject) rows.push(['Woodpile', `${S.stock.wood} log${S.stock.wood === 1 ? '' : 's'}`]);
+  if (S.projects.rack.done) rows.push(['Dried fish', String(S.stock.fish)]);
+  if (S.projects.garden.done) {
+    const seeds = S.stock.seeds + S.stock.fine;
+    rows.push(['Seeds', String(seeds)]);
+    const growing = growingPlots().length, ripe = ripePlots().length, dead = S.plots.filter(p => p.state === 'withered').length;
+    const parts = [growing && `${growing} growing`, ripe && `${ripe} ripe`, dead && `${dead} withered`].filter(Boolean);
+    rows.push(['Garden', parts.length ? parts.join(' · ') : freePlots().length ? 'empty beds' : '']);
+  }
+  const built = (Object.keys(S.projects) as (keyof typeof S.projects)[]).filter(k => S.projects[k].done).map(k => PROJECTS[k].name);
+  if (built.length) rows.push(['Built', built.map(b => b[0].toUpperCase() + b.slice(1)).join(', ')]);
+  $('campTitle').hidden = !rows.length;
+  $('camp').innerHTML = rows.map(([a, b]) => `<div class="camp-row"><span>${a}</span><span>${b}</span></div>`).join('');
 }
 
 export function createPanel(onGiftGiven: () => void) {
@@ -58,6 +89,7 @@ export function createPanel(onGiftGiven: () => void) {
       $('name').textContent = S.name;
       if (!$('traits').childElementCount) $('traits').innerHTML = S.traits.map(t => `<li>${TRAITS[t]}</li>`).join('');
       $('doing').innerHTML = `<strong>${S.activity}</strong>`;
+      renderGoal();
       $('thought').textContent = S.thought ? `“${S.thought}”` : '';
 
       const hp = S.health, hap = happiness();
@@ -70,13 +102,15 @@ export function createPanel(onGiftGiven: () => void) {
         el.querySelector('.m-val')!.textContent = String(Math.round(v));
       }
 
-      // piano and reading skills only show up once she has the gift
-      const shown = (Object.keys(SKILLS) as SkillKey[]).filter(k => (k !== 'music' || S.items.piano) && (k !== 'reading' || S.items.books));
+      // gift- and project-based skills only show up once they're part of her life
+      const shown = (Object.keys(SKILLS) as SkillKey[]).filter(k => (k !== 'music' || S.items.piano) && (k !== 'reading' || S.items.books)
+        && (k !== 'building' || Object.values(S.projects).some(p => p.started)) && (k !== 'gardening' || S.projects.garden.done));
       skillsEl.innerHTML = shown.map(k => {
         const s = S.skills[k], p = s.lvl >= 10 ? 100 : s.xp / xpNeed(s.lvl) * 100;
         return `<div class="skill"><span>${SKILLS[k]}</span><div class="m-track"><i style="width:${p}%"></i></div><span class="lvl">Lv ${s.lvl}</span></div>`;
       }).join('');
 
+      renderCamp();
       if (S.giftsDirty) {
         S.giftsDirty = false;
         // Only show what she has asked for (or already received), so players
