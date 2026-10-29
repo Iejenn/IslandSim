@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Island Sim</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="scene" aria-label="3D view of the island"></div>
+<div id="bubble" class="bubble" aria-hidden="true"></div>
+<div id="loading">Washing ashore…</div>
+
+<div class="hud">
+  <div class="pill clock" aria-live="off"><b id="clock">Day 1, 07:00</b><span id="phase">Morning</span></div>
+  <div class="pill" role="group" aria-label="Time speed">
+    <button data-speed="0" aria-pressed="false">Pause</button>
+    <button data-speed="1" aria-pressed="true">1×</button>
+    <button data-speed="3" aria-pressed="false">3×</button>
+    <button data-speed="10" aria-pressed="false">10×</button>
+  </div>
+  <div class="pill"><button id="follow" aria-pressed="false">Follow her</button></div>
+</div>
+
+<aside class="panel" id="panel" aria-label="Observer panel">
+  <div class="who">
+    <div class="who-main">
+      <h1 id="name">…</h1>
+      <ul class="traits" id="traits"></ul>
+      <p class="doing" id="doing">Waking up</p>
+    </div>
+    <button class="sheet-toggle" id="sheetToggle" aria-expanded="true">Hide</button>
+  </div>
+  <p class="thought" id="thought"></p>
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-tab="status">Status</button>
+    <button role="tab" aria-selected="false" data-tab="gifts">Gifts<span class="badge" id="wishBadge" hidden>0</span></button>
+    <button role="tab" aria-selected="false" data-tab="diary">Diary</button>
+  </div>
+  <div class="body">
+    <section id="tab-status">
+      <div class="vitals">
+        <div class="vital" id="v-health" data-level="ok"><div class="num">100</div><div class="word">Healthy</div><div class="m-track"><i></i></div></div>
+        <div class="vital" id="v-happy" data-level="ok"><div class="num">70</div><div class="word">Okay</div><div class="m-track"><i></i></div></div>
+      </div>
+      <h2>Needs</h2>
+      <div id="needs"></div>
+      <h2>Skills</h2>
+      <div id="skills"></div>
+    </section>
+    <section id="tab-gifts" hidden>
+      <p class="hint">Anything you give appears on the island. She decides what to do with it.</p>
+      <div id="gifts"></div>
+    </section>
+    <section id="tab-diary" hidden>
+      <ol class="diary" id="diary"></ol>
+    </section>
+  </div>
+</aside>
+
+<div class="overlay" id="death" hidden>
+  <div class="card">
+    <h2 id="deathTitle">She didn’t make it</h2>
+    <p id="deathText"></p>
+    <button id="restart">Start a new island</button>
+  </div>
+</div>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
