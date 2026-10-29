@@ -55,18 +55,19 @@ export function maybeWish(force: boolean) {
 }
 
 export function grant(k: GiftKey) {
-  if (S.items[k] || S.dead) return;
-  const wished = S.wishes.includes(k);
+  // Gifts are a reply to her wishes: the rule lives here in the sim, not
+  // just in the UI, so nothing can hand her an item she never asked for.
+  if (S.items[k] || S.dead || !S.wishes.includes(k)) return;
   S.items[k] = true;
   S.wishes = S.wishes.filter(w => w !== k);
   const spot = giftSpot(k);
   if (spot) S.spots[k] = spot;
   hooks.onGift(k);
-  S.mood = Math.min(40, S.mood + (wished ? 25 : 12));
+  S.mood = Math.min(40, S.mood + 25);
   feed('company', 15);
   if (CURIOUS_TASK[k]) S.curious.push(k);
   say(GIFTS[k].got);
-  log(GIFTS[k].log + (wished ? ' It’s exactly what she wished for.' : ''));
+  log(GIFTS[k].log + ' It’s exactly what she wished for.');
   S.giftsDirty = true;
   if (S.task && INTERRUPTIBLE.has(S.task.id) && S.task.id !== 'sleep') interrupt();
 }
