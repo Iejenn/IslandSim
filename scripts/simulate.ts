@@ -7,17 +7,22 @@ import { updateNeeds } from '../src/sim/needs';
 import { runTask, settleHeight } from '../src/sim/runner';
 import { comfort } from '../src/sim/plans';
 import { initState } from '../src/sim/state';
+import { strongest } from '../src/sim/taste';
 
 const [runs = 20, days = 20] = process.argv.slice(2, 4).map(Number);
 const DT = 0.1, SPEED = 10, DM = DT * 4 * SPEED; // same per-frame step as the game at 10× (capped dt)
 
 const rows: string[] = [];
+// variety between islands: what each made first, its first three things, and everything it made
+const firsts: Record<string, number> = {}, openings = new Set<string>(), camps: Set<string>[] = [];
+let dreams = 0, dreamsMet = 0;
 const totals = { lodge: 0, fence: 0, coop: 0, penned: 0, eggs: 0, wool: 0, lodgeFurniture: 0, died: 0, built: 0, crafted: 0, furniture: 0, felled: 0, standing: 0, meals: 0, stews: 0, fireOutHours: 0, dogFriend: 0, storms: 0, repairs: 0, broken: 0, comfort: 0 };
 const FURNITURE = ['chair', 'table', 'bed', 'shelf', 'rocker'], LODGE_FURNITURE = ['realbed', 'sofa', 'kitchen'], WOOL_ITEMS = ['blanket', 'sweater'];
 for (let r = 0; r < runs; r++) {
   const S = initState();
   const made: string[] = [];
   let fireOutMin = 0;
+  const dream = S.dream, passion = strongest(S.taste);
   while (!S.dead && S.min < 420 + days * 1440) {
     S.min += DM;
     updateNeeds(DM);
@@ -27,10 +32,14 @@ for (let r = 0; r < runs; r++) {
     for (const [k, p] of Object.entries(S.projects)) if (p.done && !made.includes(k)) made.push(k);
     for (const k of Object.keys(S.items)) if (!made.includes(k)) made.push(k);
   }
+  firsts[made[0] ?? '-'] = (firsts[made[0] ?? '-'] ?? 0) + 1;
+  openings.add(made.slice(0, 3).join(' > '));
+  camps.push(new Set(made));
+  if (dream) { dreams++; if (made.includes(dream)) dreamsMet++; }
   const day = Math.floor(S.min / 1440) + 1, built = Object.values(S.projects).filter(p => p.done).length;
   const standing = S.trees.filter(t => t.state === 'tree').length;
   const likes = Object.entries(S.likes).sort((a, b) => b[1]! - a[1]!).slice(0, 2).map(([k, v]) => `${k} ${v!.toFixed(2)}`).join(', ');
-  rows.push(`${S.name.padEnd(6)} ${S.traits.join('+').padEnd(22)} ${S.dead ? `DIED day ${day}` : `alive d${day}`}  made: ${made.join(' ') || '-'}  ` +
+  rows.push(`${S.name.padEnd(6)} ${S.traits.join('+').padEnd(22)} ${passion.padEnd(9)} dream ${(dream ?? '-').padEnd(9)} ${S.dead ? `DIED day ${day}` : `alive d${day}`}  made: ${made.join(' ') || '-'}  ` +
     `trees ${standing}/${S.trees.length} (felled ${S.stats.treesFelled})  meals ${S.stats.meals}  fire out ${(fireOutMin / 60).toFixed(0)}h  dog ${S.dog.state}  comfort ${comfort()}  likes: ${likes}`);
   if (S.dead) totals.died++;
   totals.built += built;
@@ -56,7 +65,15 @@ for (let r = 0; r < runs; r++) {
 }
 const avg = (v: number) => (v / runs).toFixed(1);
 console.log(rows.join('\n'));
-console.log(`\n${runs} islands × ${days} days: ${totals.died} died · avg ${avg(totals.built)}/10 built · ${avg(totals.crafted - totals.furniture)}/8 tools & things · ${avg(totals.furniture)}/5 furniture · ` +
+console.log(`\n${runs} islands × ${days} days: ${totals.died} died · avg ${avg(totals.built)}/13 built · ${avg(totals.crafted - totals.furniture)}/9 tools & things · ${avg(totals.furniture)}/5 furniture · ` +
   `${avg(totals.felled)} trees felled, ${avg(totals.standing)} trees standing · ${avg(totals.meals)} cooked meals (${totals.stews} islands had stew) · fire out ${avg(totals.fireOutHours)}h\n` +
   `dog befriended on ${totals.dogFriend}/${runs} · ${avg(totals.storms)} storms, ${avg(totals.repairs)} repairs, ${avg(totals.broken)} still broken at the end · home comfort ${avg(totals.comfort)}/16\n` +
   `fence on ${totals.fence}/${runs}, coop on ${totals.coop}/${runs}, lodge on ${totals.lodge}/${runs} · ${avg(totals.penned)}/7 animals home · ${avg(totals.eggs)} eggs, sheared ${avg(totals.wool)}× · ${avg(totals.lodgeFurniture)}/3 lodge furniture`);
+// how different two finished camps are: 0 = made exactly the same things, 1 = nothing in common
+let diff = 0, pairs = 0;
+for (let i = 0; i < camps.length; i++) for (let j = i + 1; j < camps.length; j++) {
+  const a = camps[i], b = camps[j], both = [...a].filter(k => b.has(k)).length, any = new Set([...a, ...b]).size;
+  diff += any ? 1 - both / any : 0; pairs++;
+}
+console.log(`variety: first made ${Object.entries(firsts).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ')} · ` +
+  `${openings.size}/${runs} different first-three openings · camps differ ${(diff / Math.max(1, pairs) * 100).toFixed(0)}% on average · dream came true on ${dreamsMet}/${dreams}`);

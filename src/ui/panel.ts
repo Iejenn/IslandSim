@@ -48,6 +48,8 @@ function renderCamp() {
   if (S.stock.eggs || S.projects.coop.done) stock.push(['Eggs', String(S.stock.eggs)]);
   if (S.stock.wool || S.stats.shorn) stock.push(['Wool', String(S.stock.wool)]);
   if (S.projects.rack.done) stock.push(['Dried fish', String(S.stock.fish)]);
+  if (S.projects.trap.done) stock.push(['Fish trap', S.trapFish >= 1 ? n(Math.floor(S.trapFish), 'fish waiting', 'fish waiting') : 'empty']);
+  if (S.projects.barrel.done) stock.push(['Rain barrel', S.barrel >= 1 ? n(Math.floor(S.barrel), 'drink', 'drinks') + ' of rainwater' : 'empty']);
   if (S.projects.garden.done) stock.push(['Seeds', String(S.stock.seeds)]);
   stock.push(['Campfire', S.fire > 0 ? (S.fire < 20 ? 'burning low' : 'burning') : 'out']);
 

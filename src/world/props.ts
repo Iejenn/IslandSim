@@ -94,7 +94,7 @@ export function createProps(scene: Scene) {
       g.add(mesh(new CylinderGeometry(0.07, 0.08, 2.3, 5), M.wood, x, 1.15, 0.7));
       g.add(mesh(new CylinderGeometry(0.07, 0.08, 1.4, 5), M.wood, x, 0.7, -0.8));
     }
-    const roof = mesh(new BoxGeometry(2.6, 0.08, 2.1), M.thatch, 0, 1.79, -0.05);
+    const roof = mesh(new BoxGeometry(2.6, 0.08, 2.1), M.tarp, 0, 1.79, -0.05); // a tarp she found, a different colour on every island
     roof.rotation.x = -0.505;
     g.add(roof);
     g.add(mesh(new BoxGeometry(1.5, 0.1, 0.9), M.bed, 0, 0.05, 0));

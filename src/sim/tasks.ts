@@ -3,7 +3,7 @@
 import { ONE_SHOT_SECONDS } from '../config/animations';
 import { freePlots, growingPlots, ripePlots } from './garden';
 import {
-  BOAT_DOCK, BOULDERS, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
+  BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
   HAMMOCK_P, LOOKOUT_DECK, LOOKOUT_P, pointAt, RACK_P, SAIL_ROUTE, SCREE_P, SCREE_STAND, SEATS, SH, SHELTER, SPRING, standNear,
   V, WOODPILE_P, type Pt,
 } from './island';
@@ -15,10 +15,16 @@ import { addRawFish, nearestBoulder, nearestTree } from './resources';
 import { addXp } from './skills';
 import {
   feed, highlight, hour, isNight, log, S, say, tr,
-  type CraftKey, type DoStep, type GoStep, type PlanKey, type Step, type Task, type TaskId, type WaitStep,
+  type CraftKey, type DoStep, type GoStep, type PlanKey, type Resource, type Step, type Task, type TaskId, type WaitStep,
 } from './state';
 import { TH, thoughtFor } from './thoughts';
 import { clamp, pick, rand } from './util';
+
+/** Odds a fishing trip lands something, for the gear she'd use right now. */
+export function catchChance() {
+  const rod = has('rod'), spear = !rod && has('spear');
+  return Math.min(0.95, 0.35 + 0.06 * S.skills.fishing.lvl + (rod ? 0.25 : spear ? 0.2 : 0) + (works('dock') && !spear ? 0.12 : 0));
+}
 
 /* ---------- step builders ---------- */
 const go = (p: Pt, carry?: boolean, run?: boolean): GoStep => ({ type: 'go', to: copy(p), carry: !!carry, run });
@@ -45,6 +51,7 @@ const setBerries = (i: number, n: number) => { S.berries[i] = clamp(n, 0, 6); };
 
 const WOODPILE_STAND = standNear(WOODPILE_P, 0.9);
 const RACK_STAND = standNear(RACK_P, 0.9);
+const BARREL_STAND = standNear(BARREL_P, 0.8, FIRE);
 const CRAFT_SEAT = SEATS[0]; // she crafts sitting by the fire
 /** Her seat by the fire: the chair once she's made one, otherwise a log. */
 const fireSeat = () => S.items.chair ? CHAIR_P : CRAFT_SEAT.p;
@@ -62,6 +69,9 @@ const SITE: Record<string, { stand: Pt; face: Pt }> = {
   lodge: { stand: LODGE_DOOR, face: LODGE_P },
   fence: { stand: ground(V(Math.cos(0.9) * (FENCE_R - 1), Math.sin(0.9) * (FENCE_R - 1))), face: ground(V(Math.cos(0.9) * FENCE_R * 1.2, Math.sin(0.9) * FENCE_R * 1.2)) },
   coop: { stand: standNear(COOP_P, 1.3), face: COOP_P },
+  trap: { stand: TRAP_STAND, face: TRAP_P },
+  barrel: { stand: BARREL_STAND, face: BARREL_P },
+  treehouse: { stand: standNear(TREEHOUSE_P, 1.2, FIRE), face: TREEHOUSE_P },
 };
 const has = (k: CraftKey) => !!S.items[k];
 /** Up on the lookout platform: standing, or rocking in her chair if she made one. */
@@ -93,10 +103,11 @@ export const T: Record<string, () => Task | null> = {
     })]);
   },
   fish() {
-    const rod = has('rod'), dock = works('dock');
+    // three ways to fish: a rod (from the shore or the dock), wading in with a spear, or by hand
+    const rod = has('rod'), spear = !rod && has('spear'), dock = works('dock') && !spear;
     const spot = dock ? DOCK_END : FISH.spot, face = dock ? DOCK_FACE : FISH.face;
-    return mk('fish', dock ? 'Fishing off the dock' : 'Fishing at the shore', thoughtFor('fish', 'food'), sitAt(spot, face, rod ? 60 : 90, dm => feed('fun', dm * (dock ? 6 : 4) / 60), () => {
-      const lvl = S.skills.fishing.lvl, ok = Math.random() < 0.35 + 0.06 * lvl + (rod ? 0.25 : 0) + (dock ? 0.12 : 0);
+    const landed = () => {
+      const lvl = S.skills.fishing.lvl, ok = Math.random() < catchChance();
       S.stats.fishTrips++;
       if (ok) {
         const n = lvl >= 4 && Math.random() < 0.4 ? 2 : 1;
@@ -112,7 +123,27 @@ export const T: Record<string, () => Task | null> = {
         say('Nothing. The fish are laughing at me.'); log('Came back from fishing empty-handed.');
         remember('fish', -0.08);
       }
-    }));
+    };
+    if (spear) {
+      return mk('fish', 'Spear fishing in the shallows', pick(['Hold still… hold still…', 'There! No… there!', 'Quick hands, quick hands.']), [go(SPEAR_SPOT.spot), act({
+        pose: 'idle', face: SPEAR_SPOT.face, min: 70, tick: dm => feed('fun', dm * 7 / 60), done: landed,
+      })]);
+    }
+    return mk('fish', dock ? 'Fishing off the dock' : 'Fishing at the shore', thoughtFor('fish', 'food'), sitAt(spot, face, rod ? 60 : 90, dm => feed('fun', dm * (dock ? 6 : 4) / 60), landed));
+  },
+  checktrap() {
+    if (!works('trap') || S.trapFish < 1) return null;
+    return mk('checktrap', 'Checking the fish trap', pick(['Anything in there?', 'Let’s see what the sea brought.', 'Come to mama.']), [go(TRAP_STAND), act({
+      pose: 'gather', face: TRAP_P, min: 15, done() {
+        const n = Math.floor(S.trapFish);
+        S.trapFish -= n;
+        addRawFish(n);
+        S.stats.fishCaught += n;
+        addXp('fishing', 5);
+        say(n > 1 ? `${n} fish in the trap!` : 'One fish in the trap. I’ll take it.');
+        highlight('emptied the fish trap');
+      },
+    })]);
   },
   cook() {
     // she cooks over the campfire, or in her kitchen (whose stove burns a log from the pile)
@@ -157,12 +188,22 @@ export const T: Record<string, () => Task | null> = {
         pose: 'gather', face: RACK_P, min: 8, done() { if (S.stock.fish > 0) { S.stock.fish--; feed('food', 32); } },
       })]);
     }
+    // starving with no way to cook: raw fish it is
+    if (S.stock.veg <= 0 && S.stock.raw > 0 && S.needs.food < 15) {
+      return mk('eat', 'Eating raw fish', 'Raw fish. Desperate times.', [act({ pose: 'gather', min: 8, done() { if (S.stock.raw > 0) { S.stock.raw--; feed('food', 20); } } })]);
+    }
     if (S.stock.veg <= 0) return null;
     return mk('eat', 'Eating raw vegetables', 'Crunchy. Better cooked, but crunchy.', [go(GARDEN_STAND, false, urgent(S.needs.food)), act({
       pose: 'gather', face: GARDEN_P, min: 6, done() { if (S.stock.veg > 0) { S.stock.veg--; feed('food', 16); } },
     })]);
   },
   drink() {
+    // rainwater from the barrel when it's nearer than the pond
+    if (S.barrel >= 1 && works('barrel') && dist(BARREL_STAND, S.pos) < dist(SPRING.spot, S.pos)) {
+      return mk('drink', 'Drinking rainwater from the barrel', pick(['Rainwater. Free delivery.', 'Best idea I ever had, this barrel.']), [go(BARREL_STAND, false, urgent(S.needs.water)), act({
+        pose: 'gather', face: BARREL_P, min: 8, done() { S.barrel = Math.max(0, S.barrel - 1); feed('water', 45); addXp('survival', 1); },
+      })]);
+    }
     return mk('drink', 'Drinking at the spring', thoughtFor('drink', 'water'), [go(SPRING.spot, false, urgent(S.needs.water)), act({
       pose: 'gather', face: SPRING.face, min: 12, done() { feed('water', 50); addXp('survival', 2); },
     })]);
@@ -199,7 +240,7 @@ export const T: Record<string, () => Task | null> = {
       })]);
   },
   chop() {
-    const i = nearestTree('tree', S.pos);
+    const i = nearestTree('tree', S.pos, TREEHOUSE_TREE); // never the big tree by camp (the treehouse tree)
     if (!has('axe') || i < 0) return null;
     const t = FOREST[i];
     return mk('chop', 'Chopping down a tree', pick(TH.chop), [go(t.stand), act({
@@ -312,8 +353,9 @@ export const T: Record<string, () => Task | null> = {
   },
   water() {
     if (!growingPlots().length) return null;
-    const bucket = has('bucket');
-    return mk('water', 'Watering the garden', pick(TH.water), [go(SPRING.spot), act({ pose: 'gather', face: SPRING.face, min: 5 }), go(GARDEN_STAND, true),
+    const bucket = has('bucket'), barrel = works('barrel') && S.barrel >= 1;
+    const src = barrel ? { spot: BARREL_STAND, face: BARREL_P } : SPRING;
+    return mk('water', 'Watering the garden', pick(TH.water), [go(src.spot), act({ pose: 'gather', face: src.face, min: 5, done() { if (barrel) S.barrel = Math.max(0, S.barrel - 1); } }), go(GARDEN_STAND, true),
       act({
         pose: 'gather', face: GARDEN_P, min: bucket ? 5 : 10, done() {
           for (const p of growingPlots()) p.water = 100;
@@ -360,12 +402,15 @@ export const T: Record<string, () => Task | null> = {
     const beds = [
       { where: 'shelter', spot: SHELTER, lift: 0, rate: (works('hut') ? 15 : 13) + (has('bed') ? 4 : 0) + blanket, label: 'Sleeping in the shelter' },
       ...(has('hammock') ? [{ where: 'hammock', spot: HAMMOCK, lift: HAMMOCK.lift, rate: 18, label: 'Sleeping in the hammock' }] : []),
+      // (an adventurous soul likes the treehouse even when there's a softer bed)
+      ...(works('treehouse') ? [{ where: 'treehouse', spot: TREEHOUSE_BED, lift: TREEHOUSE_BED.lift!, rate: 19 + blanket, pref: 6 * S.taste.adventure, label: 'Sleeping in the treehouse' }] : []),
       ...(lodge ? [{ where: 'lodge', spot: LODGE_BED, lift: 0, rate: (has('realbed') ? 24 : 16 + (has('bed') ? 4 : 0)) + blanket, label: has('realbed') ? 'Sleeping in her bed' : 'Sleeping in the lodge' }] : []),
     ];
-    const bed = beds.reduce((a, b) => b.rate > a.rate ? b : a);
+    const score = (b: { rate: number; pref?: number }) => b.rate + (b.pref ?? 0);
+    const bed = beds.reduce((a, b) => score(b) > score(a) ? b : a);
     let mins = 120;
     if (night) { const hr = hour(); mins = Math.max(60, ((7 - hr + 24) % 24) * 60); } // sleep until 07:00
-    const th = night ? (bed.where === 'hammock' ? 'This hammock is heaven.' : has('realbed') && bed.where === 'lodge' ? 'My own bed. Bliss.' : thoughtFor('sleep', 'energy')) : pick(TH.nap);
+    const th = night ? (bed.where === 'hammock' ? 'This hammock is heaven.' : bed.where === 'treehouse' ? 'Goodnight, stars. Goodnight, leaves.' : has('realbed') && bed.where === 'lodge' ? 'My own bed. Bliss.' : thoughtFor('sleep', 'energy')) : pick(TH.nap);
     return mk('sleep', night ? bed.label : 'Taking a nap', th,
       sitAt(bed.spot.spot, bed.spot.face, mins, dm => { feed('energy', dm * bed.rate / 60); }, () => { if (night && bed.where === 'shelter') S.stats.nightsInShelter++; }, bed.lift));
   },
@@ -526,12 +571,12 @@ export const T: Record<string, () => Task | null> = {
 
   /* ----- fixing what the storm broke ----- */
   repair() {
-    const k = damaged().find(d => Object.entries(REPAIRABLE[d] ?? {}).every(([r, n]) => S.stock[r as 'wood' | 'stone'] >= n!));
+    const k = damaged().find(d => Object.entries(REPAIRABLE[d] ?? {}).every(([r, n]) => S.stock[r as Resource] >= n!));
     if (!k) return null;
     const site = SITE[k];
     return mk('repair', `Repairing the ${PLANS[k].name}`, pick(TH.repair), [go(site.stand), act({
       pose: 'hammer', face: site.face, min: 40,
-      begin() { for (const [r, n] of Object.entries(REPAIRABLE[k] ?? {})) S.stock[r as 'wood' | 'stone'] -= n!; },
+      begin() { for (const [r, n] of Object.entries(REPAIRABLE[k] ?? {})) S.stock[r as Resource] -= n!; },
       done() {
         S.projects[k].damaged = false;
         S.stats.repairs++;
@@ -553,11 +598,11 @@ export const T: Record<string, () => Task | null> = {
 };
 
 // Tasks that urgent needs (or something new to try) are allowed to cut short.
-export const INTERRUPTIBLE = new Set<TaskId>(['relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
+export const INTERRUPTIBLE = new Set<TaskId>(['checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
 // Outdoor tasks a sudden shower sends her away from.
-export const RAIN_STOPS = new Set<TaskId>(['relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
+export const RAIN_STOPS = new Set<TaskId>(['checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
 // Which task "tries out" each newly made thing.
-export const CURIOUS_TASK: Partial<Record<CraftKey, TaskId>> = { rod: 'fish', drum: 'drum', journal: 'write', axe: 'chop', pick: 'mine', chair: 'relax', rocker: 'watch' };
+export const CURIOUS_TASK: Partial<Record<CraftKey, TaskId>> = { rod: 'fish', spear: 'fish', drum: 'drum', journal: 'write', axe: 'chop', pick: 'mine', chair: 'relax', rocker: 'watch' };
 
 /* ---------- task lifecycle ---------- */
 export function startTask(t: Task) {

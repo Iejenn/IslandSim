@@ -152,6 +152,8 @@ reserve(COOP_P, SHEEP_PEN_P);
 
 /* ---------- things she builds herself (spots are reserved up front so decoration stays clear) ---------- */
 export const WOODPILE_P = ground(V(-2.0, 0.6));
+export const BARREL_P = ground(V(-3.0, 1.7)); // rain barrel, by the woodpile
+reserve(BARREL_P);
 export const RACK_P = ground(V(4.0, 0.0));
 export const GARDEN_P = ground(V(2.6, 5.0));
 // 2×2 beds around the garden centre
@@ -178,6 +180,15 @@ export const BOAT_DOCK = { ...addScaled(DOCK_END, dockPerp, 0.95), y: 0 };
 /** Boat trip: a loop around part of the coast, then back to the mooring. */
 export const SAIL_ROUTE = [1, 2, 3, 4].map(k => pointAt(FISH_A + k * 0.33, 1.32));
 reserve(DOCK_START, pointAt(FISH_A, 0.74));
+
+// a fish trap in the shallows a little way along the beach from the dock (the
+// other side from the canoe route)
+export const TRAP_A = FISH_A - 0.5;
+export const TRAP_P = ground(pointAt(TRAP_A, 1.04));
+export const TRAP_STAND = ground(pointAt(TRAP_A, 0.93));
+reserve(TRAP_STAND);
+// she wades out to spear fish just beside the fishing spot
+export const SPEAR_SPOT: Spot = { spot: ground(pointAt(FISH_A - 0.18, 1.01)), face: pointAt(FISH_A - 0.18, 1.5) };
 
 // lookout tower on the south beach; she climbs up to watch the sea and the stars
 export const LOOKOUT_P = ground(pointAt(-1.2, 0.78));
@@ -208,6 +219,11 @@ function scatter(seed: number, n: number, a0: number, a1: number, t0: number, t1
 }
 export const FOREST = scatter(7, 22, FOREST_A - 0.5, FOREST_A + 0.5, 0.34, 0.66, 2.7, 1.9).map(pos => ({ pos, stand: standNear(pos, 0.95) }));
 reserve(...FOREST.map(t => t.pos));
+// the forest tree closest to camp: the one she'd build a treehouse in (so she never fells it)
+export const TREEHOUSE_TREE = FOREST.reduce((b, t, i) => Math.hypot(t.pos.x, t.pos.z) < Math.hypot(FOREST[b].pos.x, FOREST[b].pos.z) ? i : b, 0);
+export const TREEHOUSE_P = FOREST[TREEHOUSE_TREE].pos;
+export const TREEHOUSE_DECK = 2.3; // platform height
+export const TREEHOUSE_BED: Spot = { spot: standNear(TREEHOUSE_P, 0.8), face: standNear(TREEHOUSE_P, 3), lift: TREEHOUSE_DECK + 0.1 };
 export const BOULDERS = scatter(11, 9, ROCKS_A - 0.42, ROCKS_A + 0.42, 0.45, 0.85, 2.5, 1.8).map(pos => ({ pos, stand: standNear(pos, 1.0) }));
 reserve(...BOULDERS.map(b => b.pos));
 // where loose stones lie around, in the middle of the rocky area

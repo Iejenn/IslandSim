@@ -7,7 +7,7 @@
 // it point forward right now, and keep that while the animation swings.
 import { BufferGeometry, CylinderGeometry, Float32BufferAttribute, Group, Line, LineBasicMaterial, Mesh, Quaternion, Vector3, type Object3D, type Scene } from 'three';
 import type { CraftKey } from '../sim/state';
-import { toolModel } from '../world/crafted';
+import { spearModel, toolModel } from '../world/crafted';
 import { M } from '../world/materials';
 
 const ROD_LENGTH = 1.7; // world units
@@ -15,8 +15,9 @@ const WATER_Y = 0.12;
 const X = new Vector3(1, 0, 0);
 const ROD_TILT = new Quaternion().setFromAxisAngle(X, 0.75); // from straight up, leaned forward
 const TOOL_TILT = new Quaternion().setFromAxisAngle(X, 1.1); // tool head out in front, ready to swing
+const SPEAR_TILT = new Quaternion().setFromAxisAngle(X, 2.2); // point down into the water in front of her
 
-export type HeldTool = Extract<CraftKey, 'rod' | 'axe' | 'pick'>;
+export type HeldTool = Extract<CraftKey, 'rod' | 'axe' | 'pick' | 'spear'>;
 
 export function createHeldTools(scene: Scene) {
   const rodGeo = new CylinderGeometry(0.018, 0.03, ROD_LENGTH, 5);
@@ -25,7 +26,7 @@ export function createHeldTools(scene: Scene) {
   rod.castShadow = true;
   // tool models are built handle-down at the origin; grip them a little up the handle
   const wrap = (g: Group) => { const w = new Group(); g.position.y = -0.15; w.add(g); return w; };
-  const tools: Record<HeldTool, Object3D> = { rod, axe: wrap(toolModel('axe')), pick: wrap(toolModel('pick')) };
+  const tools: Record<HeldTool, Object3D> = { rod, axe: wrap(toolModel('axe')), pick: wrap(toolModel('pick')), spear: wrap(spearModel()) };
   for (const t of Object.values(tools)) t.visible = false;
 
   const lineGeo = new BufferGeometry();
@@ -65,6 +66,7 @@ export function createHeldTools(scene: Scene) {
       hand.getWorldScale(s);
       obj.scale.setScalar(1 / s.x);
       if (tool === 'rod') aim(obj, her, ROD_TILT); // every frame: steady rod
+      else if (tool === 'spear') aim(obj, her, SPEAR_TILT); // poised over the water
       else if (picked) aim(obj, her, TOOL_TILT); // once: then it swings with the hand
       if (tool !== 'rod') return;
       // line from the rod tip to a bobber in the water in front of her

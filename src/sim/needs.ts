@@ -6,6 +6,7 @@ import { updateGarden } from './garden';
 import { endOfDay } from './memory';
 import { chooseGoal, comfort } from './plans';
 import { updateResources } from './resources';
+import { dreamLine, noteTaste } from './taste';
 import { dayNum, hooks, hour, log, S, say, tr, type TaskId } from './state';
 import { interrupt, INTERRUPTIBLE } from './tasks';
 import { clamp } from './util';
@@ -57,7 +58,10 @@ export function updateNeeds(dm: number) {
     maybeHotDay();
     maybeDogArrives();
     noteComfort();
+    // every few days she's reminded of her dream, until it comes true
+    if (dayNum() % 4 === 0 && dreamLine() && S.feelingsNoted.includes('dream')) say(dreamLine());
   }
+  noteTaste(dayNum());
   // when she's comfortable during the day, she sometimes sets herself something to make (~every 3 game hours)
   const h = hour();
   if (!S.goal && h >= 8 && h < 18 && n.food > 35 && n.water > 35 && Math.random() < dm / 180) chooseGoal();
@@ -67,7 +71,10 @@ export function updateNeeds(dm: number) {
 /** True if this task would be interrupted right away because a need is critical. */
 export function wouldBeCutShort(id: TaskId) {
   const n = S.needs;
-  const crit = (n.water < 12 && id !== 'drink') || (n.food < 12 && id !== 'forage' && id !== 'fish' && id !== 'eat' && id !== 'cook' && id !== 'harvest') || (n.energy < 6 && id !== 'sleep');
+  // with the fire out, fetching wood IS getting food (no fire, no cooking her catch)
+  const feedsHer = id === 'forage' || id === 'fish' || id === 'eat' || id === 'cook' || id === 'harvest' || id === 'checktrap'
+    || (S.fire <= 0 && (id === 'sticks' || id === 'chop' || id === 'wood'));
+  const crit = (n.water < 12 && id !== 'drink') || (n.food < 12 && !feedsHer) || (n.energy < 6 && id !== 'sleep');
   return crit && INTERRUPTIBLE.has(id);
 }
 

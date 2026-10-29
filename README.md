@@ -20,6 +20,16 @@ builds a coop: then she herds them in one by one, collects eggs for omelettes
 and shears the sheep for wool (a blanket, a sweater for rainy days). Her
 spring sits on a headland on the far side, ringed by berry bushes.
 
+Every castaway is different. Besides her two traits she has her own taste
+(cosy comforts, practical things, animals, gardening, the sea, making things,
+adventure) and one dream she's set on. Taste only tilts the odds: an animal
+lover will probably fence in the chickens early, but may still build a lodge
+later. There's usually more than one way to get what she needs: fishing with
+a rod or wading in with a spear, a fish trap, a rain barrel instead of the
+walk to the pond, a treehouse. Even the colours differ per island (the tarp
+on her shelter, her bedding, the hammock, roofs, the wood). The diary hints
+at who she is, so you find out by watching.
+
 A stray dog may wash ashore and, if she earns its trust, follows her
 everywhere. Storms strip the berry bushes and can damage her buildings until
 she repairs them; on hot days she cools off in the sea. Crabs, gulls and
@@ -50,7 +60,8 @@ Other scripts:
 - `npm run build` type-checks and builds the site into `dist/`
 - `npm run preview` serves the built `dist/` folder locally
 - `npm run simulate` runs the sim without graphics for many islands and prints
-  how their lives went (deaths, what got built, harvests, favourite activities).
+  how their lives went (deaths, what got built, harvests, favourite activities)
+  and how different the islands turned out from each other.
   Use it after changing any numbers to check the balance:
   `npm run simulate -- 50 30` (50 islands × 30 days).
 
@@ -74,6 +85,7 @@ src/
     resources.ts   forest regrowth, fallen branches, loose stones, fish going off
     garden.ts      garden beds growing, drying out, ripening, rotting
     weather.ts     rain showers, storms (with damage) and hot days
+    taste.ts       her leanings and dream: what kind of life she tends towards
     companion.ts   the stray dog and its trust
     animals.ts     chickens and sheep: laying eggs, growing wool, who to herd next
     memory.ts      what she likes/dislikes and the daily diary recap

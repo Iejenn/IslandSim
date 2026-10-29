@@ -2,15 +2,16 @@
 // garden plants. Each project is a list of parts that appear one by one as
 // her building progress goes up, so you can watch it take shape.
 import {
-  BoxGeometry, CylinderGeometry, ExtrudeGeometry, Group, IcosahedronGeometry, Shape, SphereGeometry,
+  BoxGeometry, CylinderGeometry, ExtrudeGeometry, TorusGeometry, Group, IcosahedronGeometry, Shape, SphereGeometry,
   type Material, type Mesh, type Object3D, type Scene, ConeGeometry, DodecahedronGeometry,
 } from 'three';
-import { BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
+import { BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
 import type { ProjectKey, SimState } from '../sim/state';
 import { M, mat, mesh } from './materials';
 
 const soil = mat('#6B4A33'), withered = mat('#8A7A4E'), fruitRed = mat('#D9452B', { roughness: 0.5 }), hull = mat('#8A5A34');
 const WATER_Y = 0.12;
+const trapFishMat = mat('#8FB6C4', { roughness: 0.4, metalness: 0.2 }), rainwater = mat('#5FB8C9', { roughness: 0.2 });
 
 export function createBuildings(scene: Scene) {
   /** Adds parts (hidden) and returns them in the order they should appear. */
@@ -220,6 +221,92 @@ export function createBuildings(scene: Scene) {
     return parts;
   })();
 
+  /* fish trap: a ring of stakes in the shallows with a woven funnel; caught fish show inside */
+  const trap = (() => {
+    const g = new Group(), parts: Object3D[] = [];
+    at(g, TRAP_P.x, 0, TRAP_P.z, -TRAP_A);
+    scene.add(g);
+    const top = WATER_Y + 0.35;
+    for (let i = 0; i < 10; i++) {
+      if (i === 2) continue; // the mouth of the trap, towards the beach
+      const a = i / 10 * Math.PI * 2, x = Math.cos(a) * 0.75, z = Math.sin(a) * 0.75;
+      const base = Math.min(WATER_Y, ground(V(TRAP_P.x + x, TRAP_P.z + z)).y) - 0.1;
+      parts.push(mesh(new CylinderGeometry(0.035, 0.045, top - base, 5), M.log, x, (top + base) / 2, z));
+    }
+    const ring = mesh(new TorusGeometry(0.75, 0.025, 4, 20), M.hammock, 0, WATER_Y + 0.18, 0);
+    ring.rotation.x = Math.PI / 2;
+    parts.push(ring);
+    const funnel = mesh(new ConeGeometry(0.3, 0.6, 8, 1, true), M.hammock, 0, WATER_Y + 0.05, 0);
+    funnel.rotation.z = Math.PI / 2;
+    parts.push(funnel);
+    for (const p of parts) { p.visible = false; g.add(p); }
+    const fish = [0, 1, 2].map(i => {
+      const f = mesh(new ConeGeometry(0.06, 0.26, 4), trapFishMat, Math.cos(i * 2.1) * 0.35, WATER_Y + 0.03, Math.sin(i * 2.1) * 0.35, false);
+      f.rotation.z = Math.PI / 2;
+      f.visible = false;
+      g.add(f);
+      return f;
+    });
+    return { parts, fish };
+  })();
+
+  /* rain barrel by the woodpile: a few stones, the barrel, hoops, a funnel on top */
+  const barrel = (() => {
+    const g = new Group(), parts: Object3D[] = [];
+    at(g, BARREL_P.x, BARREL_P.y, BARREL_P.z);
+    scene.add(g);
+    for (let i = 0; i < 4; i++) parts.push(mesh(new DodecahedronGeometry(0.16, 0), M.rock, Math.cos(i * 1.6) * 0.3, 0.06, Math.sin(i * 1.6) * 0.3));
+    parts.push(mesh(new CylinderGeometry(0.34, 0.3, 0.8, 10, 1, true), M.wood, 0, 0.5, 0));
+    parts.push(mesh(new CylinderGeometry(0.3, 0.3, 0.04, 10), M.wood, 0, 0.12, 0)); // bottom
+    for (const y of [0.25, 0.75]) {
+      const hoop = mesh(new TorusGeometry(0.33, 0.02, 4, 14), M.log, 0, y, 0);
+      hoop.rotation.x = Math.PI / 2;
+      parts.push(hoop);
+    }
+    parts.push(mesh(new ConeGeometry(0.5, 0.25, 10, 1, true), M.tarp, 0, 1.0, 0)); // catches the rain (a scrap of tarp)
+    (parts[parts.length - 1] as Mesh).rotation.x = Math.PI;
+    for (const p of parts) { p.visible = false; g.add(p); }
+    const water = mesh(new CylinderGeometry(0.3, 0.3, 0.02, 10), rainwater, 0, 0.2, 0, false);
+    water.visible = false;
+    g.add(water);
+    return { parts, water };
+  })();
+
+  /* treehouse in the big tree by camp: the tree itself (grown taller), a deck,
+     railings, a ladder and an A-frame roof of tarp */
+  const treehouse = (() => {
+    const g = new Group(), parts: Object3D[] = [], H = TREEHOUSE_DECK;
+    at(g, TREEHOUSE_P.x, TREEHOUSE_P.y, TREEHOUSE_P.z, yawTo(TREEHOUSE_P, FIRE));
+    scene.add(g);
+    const tree = new Group(); // replaces the forest tree while she builds
+    tree.add(mesh(new CylinderGeometry(0.2, 0.3, 4.6, 7), M.trunk, 0, 2.3, 0));
+    tree.add(mesh(new IcosahedronGeometry(1.7, 0), M.leaf, 0, 5.0, 0));
+    tree.add(mesh(new IcosahedronGeometry(1.1, 0), M.leaf2, 0.8, 5.6, -0.4));
+    tree.add(mesh(new IcosahedronGeometry(1.0, 0), M.leaf2, -0.9, 4.6, 0.3));
+    parts.push(tree);
+    for (const [x, z] of [[-0.9, -0.9], [0.9, -0.9], [-0.9, 0.9], [0.9, 0.9]]) {
+      const beam = mesh(new CylinderGeometry(0.05, 0.05, 1.3, 5), M.log, x * 0.6, H - 0.55, z * 0.6);
+      beam.rotation.set(z * 0.5, 0, -x * 0.5);
+      parts.push(beam);
+    }
+    parts.push(mesh(new BoxGeometry(2.4, 0.1, 2.4), M.wood, 0, H, 0)); // deck
+    for (let i = 0; i < 7; i++) parts.push(mesh(new BoxGeometry(0.5, 0.04, 0.05), M.wood, 0, 0.3 + i * 0.3, 1.32)); // ladder rungs
+    for (const x of [-0.25, 0.25]) parts.push(mesh(new BoxGeometry(0.05, H, 0.05), M.log, x, H / 2, 1.32));
+    for (const [x, z, rot, len] of [[0, -1.17, 0, 2.4], [-1.17, 0, Math.PI / 2, 2.4], [1.17, 0, Math.PI / 2, 2.4]] as const) {
+      const rail = mesh(new BoxGeometry(len, 0.05, 0.05), M.wood, x, H + 0.55, z);
+      rail.rotation.y = rot;
+      parts.push(rail);
+    }
+    // A-frame: ridge 1.9 above the deck, eaves at 0.6, so she fits underneath
+    for (const sd of [-1, 1]) {
+      const r = mesh(new BoxGeometry(1.75, 0.05, 2.2), M.tarp, sd * 0.57, H + 1.25, 0);
+      r.rotation.z = -sd * Math.atan2(1.3, 1.15);
+      parts.push(r);
+    }
+    for (const p of parts) { p.visible = false; g.add(p); }
+    return parts;
+  })();
+
   /* woodpile: logs stacked in a little pyramid, one per log in stock */
   const woodpile = (() => {
     const g = new Group();
@@ -261,7 +348,7 @@ export function createBuildings(scene: Scene) {
     const n = started ? Math.max(1, Math.ceil(progress * (damaged ? 0.7 : 1) * parts.length)) : 0;
     parts.forEach((p, i) => { p.visible = i < n; });
   };
-  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop };
+  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop, trap: trap.parts, barrel: barrel.parts, treehouse };
   /** Is this world point inside the lodge's walls? */
   const inLodge = (x: number, z: number) => {
     const dx = x - LODGE_P.x, dz = z - LODGE_P.z, c = Math.cos(LODGE_YAW), s = Math.sin(LODGE_YAW);
@@ -289,6 +376,9 @@ export function createBuildings(scene: Scene) {
     canoe.g.position.y += 0.04 * Math.sin(t * 1.6);
     rack.fish.forEach((f, i) => { f.visible = S.projects.rack.done && i < S.stock.fish; });
     woodpile.forEach((l, i) => { l.visible = i < S.stock.wood; });
+    trap.fish.forEach((f, i) => { f.visible = S.projects.trap.done && i < Math.floor(S.trapFish); f.rotation.y = Math.sin(t * 2 + i * 2) * 0.6; });
+    barrel.water.visible = S.projects.barrel.done && S.barrel >= 0.5;
+    barrel.water.position.y = 0.15 + 0.08 * Math.min(8, S.barrel);
     plants.forEach(({ g, leaves, fruits }, i) => {
       const p = S.plots[i];
       g.visible = S.projects.garden.done && p.state !== 'empty';

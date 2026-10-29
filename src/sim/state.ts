@@ -3,6 +3,7 @@
 // sim talks to the outside world only through `hooks`, which main.ts wires up.
 import type { AnimKey } from '../config/animations';
 import { BOULDERS, BUSHES, CHICKEN_HOMES, copy, FOREST, PLOTS, SHEEP_HOMES, START, type Pt } from './island';
+import { rollDream, rollTaste } from './taste';
 import { clamp, mergeInto, pick } from './util';
 
 export const NAMES = ['Mara', 'Lena', 'Iris', 'Noor', 'Sofie', 'Ava', 'Elin', 'Tess', 'Yara', 'Fenna'];
@@ -14,19 +15,20 @@ export type Trait = keyof typeof TRAITS;
 export type SkillKey = keyof typeof SKILLS;
 export type NeedKey = keyof typeof NEEDS;
 /** Things she makes in one sitting at the campfire. */
-export type CraftKey = 'axe' | 'pick' | 'rod' | 'basket' | 'hammock' | 'bucket' | 'drum' | 'journal'
+export type CraftKey = 'axe' | 'pick' | 'rod' | 'spear' | 'basket' | 'hammock' | 'bucket' | 'drum' | 'journal'
   | 'chair' | 'table' | 'bed' | 'shelf' | 'rocker' // furniture, once her crafting is good enough
   | 'realbed' | 'sofa' | 'kitchen' // for the lodge's rooms
   | 'blanket' | 'sweater'; // from her sheep's wool
 /** Things she builds over several sessions on site. */
-export type ProjectKey = 'garden' | 'rack' | 'dock' | 'hut' | 'hearth' | 'lookout' | 'canoe' | 'lodge' | 'fence' | 'coop';
+export type ProjectKey = 'garden' | 'rack' | 'dock' | 'hut' | 'hearth' | 'lookout' | 'canoe' | 'lodge' | 'fence' | 'coop'
+  | 'trap' | 'barrel' | 'treehouse'; // other ways to get food, water and a home
 export type PlanKey = CraftKey | ProjectKey;
 export type Resource = 'wood' | 'stone' | 'fibre' | 'wool';
 export type TaskId =
   | 'forage' | 'fish' | 'cook' | 'eat' | 'drink' | 'wood' | 'sleep' | 'shelter' | 'relax' | 'explore' | 'talk'
   | 'sticks' | 'chop' | 'fibre' | 'stones' | 'mine' | 'replant' | 'craft' | 'build'
   | 'plant' | 'water' | 'harvest' | 'drum' | 'write' | 'sail' | 'stargaze' | 'watch'
-  | 'befriend' | 'play' | 'repair' | 'swim' | 'herd' | 'shear' | 'collect'
+  | 'befriend' | 'play' | 'repair' | 'swim' | 'herd' | 'shear' | 'collect' | 'checktrap'
   | 'celebrate' | 'stand';
 
 /* ---------- task steps ---------- */
@@ -84,10 +86,18 @@ function rollTraits(): [Trait, Trait] {
   return [a, b];
 }
 
+// Random looks for the things she makes (0…1 each, the world maps them onto a
+// colour palette), so one island's tent is green and another's blue.
+export const LOOK_KEYS = ['tarp', 'bedding', 'hammock', 'cushion', 'blanket', 'roof', 'wood'] as const;
+
 function createState() {
+  const taste = rollTaste();
   return {
     name: pick(NAMES),
     traits: rollTraits(),
+    taste, // what kind of life she leans towards (see taste.ts)
+    dream: rollDream(taste) as PlanKey | null, // the one big thing she's set on
+    look: Object.fromEntries(LOOK_KEYS.map(k => [k, Math.random()])) as Record<typeof LOOK_KEYS[number], number>,
     min: 7 * 60, // game minutes since day 1, 00:00
     dayIdx: 0,
     speed: 1,
@@ -128,6 +138,9 @@ function createState() {
       lodge: { started: false, progress: 0, done: false },
       fence: { started: false, progress: 0, done: false },
       coop: { started: false, progress: 0, done: false },
+      trap: { started: false, progress: 0, done: false },
+      barrel: { started: false, progress: 0, done: false },
+      treehouse: { started: false, progress: 0, done: false },
     } as Record<ProjectKey, Project>,
     goal: null as PlanKey | null, // what she's working towards (something to craft or build)
     goalSince: 0, // game minute the goal was set
@@ -145,6 +158,8 @@ function createState() {
     chickens: CHICKEN_HOMES.map(() => ({ penned: false })),
     sheep: SHEEP_HOMES.map(() => ({ penned: false, wool: 0 })), // wool: 0…1, ready to shear at 1
     coopEggs: 0, // eggs waiting in the coop
+    trapFish: 0, // fish waiting in her fish trap
+    barrel: 0, // drinks of rainwater in the barrel
     // a stray dog that may wash ashore; she has to win its trust
     dog: { state: 'none' as 'none' | 'wild' | 'friend', trust: 0, name: '', home: copy(START) },
     sailing: false, // in the boat

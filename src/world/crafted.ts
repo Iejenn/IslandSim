@@ -7,7 +7,7 @@ import type { CraftKey, SimState } from '../sim/state';
 import { M, mat, mesh } from './materials';
 import { v3 } from './stage';
 
-const wool = mat('#EDE6D6'), fibre = mat('#B9A26A'), stone = mat('#8E979B'), hide = mat('#E3D3B0', { roughness: 0.7 }), tin = mat('#9C7A52');
+const wool = M.cushion, fibre = mat('#B9A26A'), stone = mat('#8E979B'), hide = mat('#E3D3B0', { roughness: 0.7 }), tin = mat('#9C7A52');
 
 /** A stone tool head on a wooden handle (axe or pick), standing upright. */
 export function toolModel(kind: 'axe' | 'pick') {
@@ -23,6 +23,15 @@ export function toolModel(kind: 'axe' | 'pick') {
     g.add(head);
   }
   g.add(mesh(new TorusGeometry(0.035, 0.012, 4, 8), fibre, 0, 0.62, 0)); // lashing
+  return g;
+}
+
+/** A sharpened pole with a stone tip, built pointing up from the origin. */
+export function spearModel() {
+  const g = new Group();
+  g.add(mesh(new CylinderGeometry(0.022, 0.028, 1.7, 5), M.log, 0, 0.85, 0));
+  g.add(mesh(new ConeGeometry(0.045, 0.2, 4), stone, 0, 1.8, 0));
+  g.add(mesh(new TorusGeometry(0.03, 0.01, 4, 8), fibre, 0, 1.68, 0)); // lashing
   return g;
 }
 
@@ -70,7 +79,7 @@ export function createCrafted(scene: Scene) {
       for (const x of [-1.4, 1.4]) g.add(mesh(new CylinderGeometry(0.08, 0.1, 1.7, 6), M.wood, x, 0.85, 0));
       const cg = new CylinderGeometry(0.5, 0.5, 2.5, 10, 1, true, Math.PI, Math.PI);
       cg.rotateZ(Math.PI / 2);
-      g.add(mesh(cg, fibre, 0, 0.95, 0));
+      g.add(mesh(cg, M.hammock, 0, 0.95, 0));
       return place(g, HAMMOCK_P.x, HAMMOCK_P.z, yawTo(HAMMOCK_P, FIRE) + Math.PI / 2);
     },
     bucket() {
@@ -89,6 +98,13 @@ export function createCrafted(scene: Scene) {
         g.add(cord);
       }
       return place(g, DRUM_P.x, DRUM_P.z);
+    },
+    spear() {
+      const g = spearModel();
+      g.rotation.z = -0.3; // leaning against the shelter
+      const holder = new Group();
+      holder.add(g);
+      return place(holder, SH.x + 1.9, SH.z + 0.1);
     },
     journal() {
       const g = new Group();
@@ -159,8 +175,8 @@ export function createCrafted(scene: Scene) {
     },
     blanket() {
       const g = new Group();
-      g.add(mesh(new BoxGeometry(1.2, 0.05, 1.1), mat('#B5523B'), 0, 0, 0));
-      g.add(mesh(new BoxGeometry(1.2, 0.051, 0.12), mat('#E8D7B5'), 0, 0, 0.3)); // stripe
+      g.add(mesh(new BoxGeometry(1.2, 0.05, 1.1), M.blanket, 0, 0, 0));
+      g.add(mesh(new BoxGeometry(1.2, 0.051, 0.12), M.blanketStripe, 0, 0, 0.3)); // stripe
       return place(g, SH.x, SH.z, yawTo(SH, FIRE));
     },
     sweater() {
