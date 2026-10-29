@@ -1,0 +1,85 @@
+// Plays out the current task's steps. Walking happens here (in game time) so
+// fast-forward moves her at the right speed; character/movement.ts only
+// mirrors the result onto the 3D model.
+import { decide } from './decide';
+import { ground, height, V, type Pt } from './island';
+import { hooks, S, type Step } from './state';
+import { endTask } from './tasks';
+import { clamp } from './util';
+
+/** Path from a to b that detours around the campfire instead of walking through it. */
+function avoidFire(a: Pt, b: Pt): Pt[] {
+  const ab = { x: b.x - a.x, z: b.z - a.z }, L2 = ab.x * ab.x + ab.z * ab.z;
+  if (L2 < 1e-4) return [b];
+  const t = clamp(-(a.x * ab.x + a.z * ab.z) / L2, 0, 1), cp = V(a.x + ab.x * t, a.z + ab.z * t);
+  const cpLen = Math.hypot(cp.x, cp.z);
+  if (cpLen < 1.3 && Math.hypot(a.x, a.z) > 1.3 && Math.hypot(b.x, b.z) > 1.3) {
+    const n = cpLen < 0.01 ? V(-ab.z, ab.x) : cp, l = Math.hypot(n.x, n.z);
+    return [ground(V(n.x / l * 1.9, n.z / l * 1.9)), b];
+  }
+  return [b];
+}
+
+function enterStep(st: Step) {
+  if (st.type === 'go') {
+    st.path = avoidFire(S.pos, st.to);
+    hooks.play(st.carry ? 'walkCarry' : 'walk');
+    S.lift = 0;
+  } else if (st.type === 'do') {
+    S.faceTarget = st.face || null;
+    S.lift = st.lift || 0;
+    if (st.pose === 'sit') { hooks.play('sitDown'); S.sitting = true; }
+    else if (st.pose === 'gather') hooks.play('gather', false);
+    else hooks.play('idle');
+  } else {
+    hooks.play(st.anim, true);
+    if (st.anim === 'standUp') { S.sitting = false; S.lift = 0; }
+  }
+}
+
+function next() {
+  const task = S.task;
+  if (!task) return;
+  task.i++;
+  task.started = false;
+  task.el = 0;
+  if (task.i >= task.steps.length) endTask();
+}
+
+/**
+ * Advance the current task.
+ * @param dtAnim real seconds scaled like the animations (for 'wait' steps)
+ * @param dm game minutes elapsed
+ */
+export function runTask(dtAnim: number, dm: number) {
+  if (!S.task) { decide(); if (!S.task) return; }
+  const task = S.task;
+  const st = task.steps[task.i];
+  if (!st) { endTask(); return; }
+  if (!task.started) { task.started = true; task.el = 0; enterStep(st); }
+  if (st.type === 'go') {
+    const path = st.path!, tgt = path[0], pos = S.pos;
+    const dx = tgt.x - pos.x, dz = tgt.z - pos.z, d = Math.hypot(dx, dz);
+    const step = 0.4 * dm; // walk speed tied to game time so fast-forward doesn't starve her
+    S.faceTarget = tgt;
+    if (d <= step) {
+      pos.x = tgt.x; pos.z = tgt.z;
+      path.shift();
+      if (!path.length) next();
+    } else {
+      pos.x += dx / d * step; pos.z += dz / d * step;
+    }
+  } else if (st.type === 'do') {
+    task.el += dm;
+    if (st.tick) st.tick(dm);
+    if (task.el >= st.min) { if (st.done) st.done(); next(); }
+  } else {
+    task.el += dtAnim;
+    if (task.el >= st.sec) next();
+  }
+}
+
+/** Keep her standing on the terrain (plus any lift, e.g. lying in the hammock). */
+export function settleHeight() {
+  S.pos.y = height(S.pos.x, S.pos.z) + S.lift;
+}
