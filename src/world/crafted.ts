@@ -2,7 +2,7 @@
 // woodpile, the rod against the shelter, the drum by the fire and so on.
 // Everything is built up front (hidden) and shown once the sim says she has it.
 import { BoxGeometry, ConeGeometry, CylinderGeometry, Group, TorusGeometry, type Object3D, type Scene } from 'three';
-import { FIRE, GARDEN_P, ground, HAMMOCK_P, JOURNAL_P, DRUM_P, SH, WOODPILE_P, yawTo } from '../sim/island';
+import { CHAIR_P, FIRE, GARDEN_P, ground, HAMMOCK_P, JOURNAL_P, DRUM_P, LOOKOUT_DECK, LOOKOUT_P, SH, SHELF_P, TABLE_P, WOODPILE_P, yawTo } from '../sim/island';
 import type { CraftKey, SimState } from '../sim/state';
 import { M, mat, mesh } from './materials';
 import { v3 } from './stage';
@@ -99,9 +99,63 @@ export function createCrafted(scene: Scene) {
       });
       return place(g, JOURNAL_P.x + 0.7, JOURNAL_P.z + 0.15);
     },
+
+    /* ---------- furniture ---------- */
+    chair() {
+      const g = new Group();
+      for (const [x, z] of [[-0.22, -0.2], [0.22, -0.2], [-0.22, 0.2], [0.22, 0.2]]) g.add(mesh(new CylinderGeometry(0.03, 0.03, 0.42, 5), M.log, x, 0.21, z));
+      g.add(mesh(new BoxGeometry(0.52, 0.05, 0.48), M.wood, 0, 0.44, 0)); // seat
+      g.add(mesh(new BoxGeometry(0.52, 0.5, 0.05), M.wood, 0, 0.72, -0.24)); // back, away from the fire
+      return place(g, CHAIR_P.x, CHAIR_P.z, yawTo(CHAIR_P, FIRE));
+    },
+    table() {
+      const g = new Group();
+      for (const [x, z] of [[-0.45, -0.3], [0.45, -0.3], [-0.45, 0.3], [0.45, 0.3]]) g.add(mesh(new CylinderGeometry(0.04, 0.04, 0.68, 5), M.log, x, 0.34, z));
+      g.add(mesh(new BoxGeometry(1.1, 0.06, 0.75), M.wood, 0, 0.7, 0));
+      g.add(mesh(new CylinderGeometry(0.12, 0.08, 0.06, 8), tin, 0.15, 0.76, 0.05)); // a bowl
+      return place(g, TABLE_P.x, TABLE_P.z, yawTo(TABLE_P, FIRE));
+    },
+    bed() {
+      // a raised frame under her sleeping mat, inside the shelter
+      const g = new Group();
+      for (const [x, z] of [[-0.75, -0.45], [0.75, -0.45], [-0.75, 0.45], [0.75, 0.45]]) g.add(mesh(new BoxGeometry(0.08, 0.2, 0.08), M.log, x, 0.1, z));
+      for (const z of [-0.47, 0.47]) g.add(mesh(new BoxGeometry(1.6, 0.08, 0.06), M.log, 0, 0.16, z));
+      for (const x of [-0.77, 0.77]) g.add(mesh(new BoxGeometry(0.06, 0.08, 1.0), M.log, x, 0.16, 0));
+      return place(g, SH.x, SH.z, yawTo(SH, FIRE));
+    },
+    shelf() {
+      const g = new Group();
+      for (const x of [-0.5, 0.5]) g.add(mesh(new BoxGeometry(0.06, 1.0, 0.3), M.log, x, 0.5, 0));
+      for (const y of [0.35, 0.75]) g.add(mesh(new BoxGeometry(1.06, 0.04, 0.3), M.wood, 0, y, 0));
+      return place(g, SHELF_P.x, SHELF_P.z, yawTo(SHELF_P, FIRE));
+    },
+    rocker() {
+      // on the lookout platform, facing out to sea
+      const g = new Group();
+      for (const x of [-0.22, 0.22]) {
+        const runner = mesh(new TorusGeometry(0.5, 0.025, 4, 12, 1.2), M.log, x, 0.5, 0);
+        runner.rotation.set(Math.PI / 2, 0, Math.PI / 2 - 0.6);
+        runner.rotation.order = 'YXZ';
+        g.add(runner);
+        g.add(mesh(new CylinderGeometry(0.025, 0.025, 0.4, 5), M.log, x, 0.25, 0.15));
+        g.add(mesh(new CylinderGeometry(0.025, 0.025, 0.4, 5), M.log, x, 0.25, -0.15));
+      }
+      g.add(mesh(new BoxGeometry(0.5, 0.05, 0.45), M.wood, 0, 0.44, 0));
+      g.add(mesh(new BoxGeometry(0.5, 0.55, 0.05), M.wood, 0, 0.74, -0.22));
+      place(g, LOOKOUT_P.x, LOOKOUT_P.z, yawTo(FIRE, LOOKOUT_P));
+      g.position.y += LOOKOUT_DECK;
+      return g;
+    },
   };
+  // shells on the shelf: one per shell in her collection
+  const shells = Array.from({ length: 8 }, (_, i) => {
+    const sh = mesh(new ConeGeometry(0.05, 0.08, 6), i % 2 ? mat('#F2D8C9') : mat('#E9B8A0'), -0.4 + (i % 4) * 0.25, i < 4 ? 0.41 : 0.81, 0.02, false);
+    sh.rotation.x = Math.PI / 2;
+    return sh;
+  });
   const models = {} as Record<CraftKey, Object3D>;
   for (const k of Object.keys(BUILD) as CraftKey[]) models[k] = BUILD[k]();
+  shells.forEach(sh => models.shelf.add(sh));
 
   /**
    * Show what she owns. Tools in her hands (see character/heldTools.ts) are
@@ -109,5 +163,6 @@ export function createCrafted(scene: Scene) {
    */
   return function updateCrafted(S: SimState, held: CraftKey | null) {
     for (const k of Object.keys(models) as CraftKey[]) models[k].visible = !!S.items[k] && k !== held;
+    shells.forEach((sh, i) => { sh.visible = i < S.stock.shells; });
   };
 }

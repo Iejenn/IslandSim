@@ -22,7 +22,7 @@ export function updateResources(dm: number) {
     if (t.growth >= 1) { t.state = 'tree'; t.growth = 1; log('A sapling she planted has grown into a tree.'); }
   }
   if (S.stock.raw > 0 && S.min - S.rawSince > FISH_KEEPS_MIN) {
-    if (S.projects.rack.done) {
+    if (S.projects.rack.done && !S.projects.rack.damaged) {
       S.stock.fish = Math.min(8, S.stock.fish + S.stock.raw);
       log('She hung the fish she couldn’t cook on the rack to dry.');
     } else {

@@ -27,7 +27,8 @@ export function createHud() {
     get following() { return following; },
     render() {
       $('clock').textContent = `Day ${dayNum()}, ${clock()}`;
-      $('phase').textContent = PHASES(hour()) + (S.weather.raining ? ' · Rain' : '');
+      const w = S.weather;
+      $('phase').textContent = PHASES(hour()) + (w.storm ? ' · Storm' : w.raining ? ' · Rain' : w.hot ? ' · Hot' : '');
     },
   };
 }

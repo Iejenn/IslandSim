@@ -9,13 +9,15 @@ import { createHeldTools, type HeldTool } from './character/heldTools';
 import { createBody } from './character/movement';
 import { updateNeeds } from './sim/needs';
 import { runTask, settleHeight } from './sim/runner';
-import { hooks, hour, initState, log, say } from './sim/state';
+import { hooks, hour, initState, isNight, log, say } from './sim/state';
 import { startTask, T } from './sim/tasks';
 import { createBubble } from './ui/bubble';
 import { createHud } from './ui/hud';
 import { createPanel } from './ui/panel';
+import { createAnimals } from './world/animals';
 import { createBuildings } from './world/buildings';
 import { createCrafted } from './world/crafted';
+import { createDog } from './world/dog';
 import { createForest } from './world/forest';
 import { createProps } from './world/props';
 import { createRain } from './world/rain';
@@ -41,6 +43,8 @@ const updateForest = createForest(scene);
 const updateCrafted = createCrafted(scene);
 const updateBuildings = createBuildings(scene);
 const updateRain = createRain(scene);
+const updateDog = createDog(scene);
+const updateAnimals = createAnimals(scene);
 
 /* ---------- sim + her ---------- */
 const S = initState(save?.state);
@@ -148,9 +152,13 @@ function frame(now: number) {
   updateForest(S);
   props.syncBerries(S.berries);
   updateBuildings(S, body.her, clockT);
-  const rain = updateRain(dt, S.weather.raining, controls.target);
+  if (ready) updateDog(S, body.her, dt, clockT);
+  updateAnimals(dt, clockT, isNight());
+  const storm = S.weather.storm;
+  const rain = updateRain(dt, S.weather.raining, controls.target, storm);
+  props.sway(storm ? rain : rain * 0.3, clockT);
   animateWater(clockT);
-  updateSky(clockT, hour(), S.fire, props.campfire, rain);
+  updateSky(clockT, hour(), S.fire, props.campfire, rain, storm, dt);
   if (hud.following && ready) {
     tmpV.copy(body.her.position);
     tmpV.y += 1;

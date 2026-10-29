@@ -21,18 +21,19 @@ export function createRain(scene: Scene) {
    * @param raining whether the sim says it's raining
    * @param center where the camera is looking (rain only needs to cover the view)
    */
-  return function updateRain(dt: number, raining: boolean, center: Vector3) {
+  return function updateRain(dt: number, raining: boolean, center: Vector3, storm = false) {
     intensity += ((raining ? 1 : 0) - intensity) * Math.min(1, dt * 0.6);
     lines.visible = intensity > 0.01;
     if (!lines.visible) return intensity;
-    material.opacity = 0.55 * intensity;
+    material.opacity = (storm ? 0.75 : 0.55) * intensity;
+    const fall = storm ? 1.5 : 1, slant = storm ? 0.35 : 0.06; // storms: harder, wind-driven rain
     const a = geo.attributes.position.array as Float32Array;
     for (let i = 0; i < DROPS; i++) {
       const o = offs[i];
-      o[1] -= SPEED * dt;
+      o[1] -= SPEED * fall * dt;
       if (o[1] < 0) o[1] += TOP;
       const x = center.x + o[0], y = o[1], z = center.z + o[2];
-      a.set([x, y, z, x + 0.06, y + LEN, z], i * 6); // slight slant
+      a.set([x, y, z, x + slant, y + LEN, z], i * 6);
     }
     geo.attributes.position.needsUpdate = true;
     return intensity;

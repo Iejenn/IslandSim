@@ -8,7 +8,7 @@ const LABEL: Partial<Record<TaskId, string>> = {
   fish: 'fishing', explore: 'walking the beach', talk: 'talking to the seagulls', relax: 'sitting by the fire',
   drum: 'drumming', write: 'carving stories', chop: 'chopping wood', mine: 'breaking stones', build: 'building things',
   craft: 'making things', cook: 'cooking', plant: 'gardening', water: 'gardening', harvest: 'gardening',
-  sail: 'paddling', stargaze: 'stargazing', watch: 'watching the sea',
+  sail: 'paddling', stargaze: 'stargazing', watch: 'watching the sea', play: 'playing with her dog', swim: 'swimming',
 };
 
 export const liking = (id: TaskId) => S.likes[id] ?? 0;

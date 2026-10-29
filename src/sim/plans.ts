@@ -58,8 +58,9 @@ export const PLANS: Record<PlanKey, PlanDef> = {
   },
   bucket: {
     kind: 'craft', name: 'bucket', a: 'a bucket', cost: { wood: 3, fibre: 1 }, minutes: 60,
-    unlocked: () => S.stats.waterings >= 2,
-    want: 'Carrying water in my hands is getting old. A bucket, that’s what I need.',
+    // for watering the garden, or as a cooking pot once she's growing vegetables
+    unlocked: () => S.stats.waterings >= 2 || (S.projects.garden.done && S.stats.meals >= 4),
+    want: 'A bucket would carry water for the garden, and double as a cooking pot.',
     done: 'A bucket! My poor hands thank me.',
     weight: () => tr('lazy') ? 2.5 : 1.5,
   },
@@ -76,6 +77,43 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'I could carve my stories into wooden boards. A book only I can read.',
     done: 'My first story board. Chapter one: the beach.',
     weight: () => tr('curious') ? 3 : 1,
+  },
+
+  /* ---------- furniture: she only thinks of these once her crafting is good enough ---------- */
+  chair: {
+    kind: 'craft', name: 'chair', a: 'a chair', cost: { wood: 3 }, minutes: 70,
+    unlocked: () => S.skills.crafting.lvl >= 1,
+    want: 'I’m sick of sitting on logs. A real chair by the fire, that’s the dream.',
+    done: 'A chair! An actual chair. I feel like a queen.',
+    weight: () => 2 + (tr('lazy') ? 1 : 0),
+  },
+  table: {
+    kind: 'craft', name: 'table', a: 'a table', cost: { wood: 4, stone: 2 }, minutes: 90,
+    unlocked: () => S.skills.crafting.lvl >= 2 && !!S.items.chair,
+    want: 'Eating off my knees gets old. A table would make meals feel civilised.',
+    done: 'A table! Dinner is served. Properly.',
+    weight: () => 1.5,
+  },
+  bed: {
+    kind: 'craft', name: 'bed frame', a: 'a bed frame', cost: { wood: 4, fibre: 3 }, minutes: 100,
+    unlocked: () => S.skills.crafting.lvl >= 3 && S.stats.nightsInShelter >= 3,
+    want: 'If I raised my bed off the ground, maybe I’d stop waking up with sand everywhere.',
+    done: 'A proper bed frame. Goodbye, sand.',
+    weight: () => 1.5 + (tr('lazy') ? 1 : 0),
+  },
+  shelf: {
+    kind: 'craft', name: 'shelf', a: 'a shelf', cost: { wood: 3 }, minutes: 60,
+    unlocked: () => S.skills.crafting.lvl >= 3 && (S.stock.shells >= 3 || !!S.items.journal),
+    want: 'My shells and story boards deserve a proper place. A shelf!',
+    done: 'Everything has its place now. It looks like someone lives here.',
+    weight: () => 1.2 + (tr('curious') ? 0.8 : 0),
+  },
+  rocker: {
+    kind: 'craft', name: 'rocking chair', a: 'a rocking chair', cost: { wood: 4, fibre: 2 }, minutes: 110,
+    unlocked: () => S.skills.crafting.lvl >= 4 && S.projects.lookout.done,
+    want: 'A rocking chair up on the lookout… I could watch the sea for hours.',
+    done: 'A rocking chair with the best view on the island.',
+    weight: () => 1 + (tr('lazy') ? 1 : 0) + (tr('curious') ? 0.5 : 0),
   },
 
   /* ---------- projects ---------- */
@@ -184,7 +222,8 @@ export function startPlan(k: PlanKey) {
 export function workOn(k: PlanKey, dm: number) {
   const p = progressOf(k);
   p.progress = Math.min(1, p.progress + dm / PLANS[k].minutes * workSpeed(k));
-  addXp(PLANS[k].kind === 'craft' ? 'crafting' : 'building', dm * 10 / 60);
+  // crafting levels up faster than building: furniture depends on it
+  addXp(PLANS[k].kind === 'craft' ? 'crafting' : 'building', dm * (PLANS[k].kind === 'craft' ? 30 : 10) / 60);
 }
 
 /** Called when a work session ends; finishes the plan if it's complete. */
@@ -196,6 +235,7 @@ export function checkFinished(k: PlanKey) {
   else {
     S.items[k as CraftKey] = true;
     S.stats.crafted++;
+    addXp('crafting', 20);
     S.curious.push(k as CraftKey); // she'll want to try it out
   }
   S.goal = null;
@@ -208,11 +248,27 @@ export function checkFinished(k: PlanKey) {
   if (S.task) S.task.celebrate = true;
 }
 
+/* ---------- storm damage ---------- */
+// What the storm can damage, and what fixing it costs.
+export const REPAIRABLE: Partial<Record<ProjectKey, Partial<Record<Resource, number>>>> = {
+  rack: { wood: 1 }, dock: { wood: 3 }, hut: { wood: 1, stone: 2 }, lookout: { wood: 2 },
+};
+/** A finished project that isn't storm-damaged right now. */
+export const works = (k: ProjectKey) => S.projects[k].done && !S.projects[k].damaged;
+export const damaged = () => (Object.keys(REPAIRABLE) as ProjectKey[]).filter(k => S.projects[k].damaged);
+
+/* ---------- home comfort: how much the camp feels like a home ---------- */
+const COMFORT_ITEMS: CraftKey[] = ['chair', 'table', 'bed', 'shelf', 'rocker', 'hammock', 'drum'];
+/** 0…10: furniture and comforts she has made, plus a sound roof and hearth. */
+export function comfort() {
+  return COMFORT_ITEMS.filter(k => S.items[k]).length + (works('hut') ? 2 : 0) + (S.projects.hearth.done ? 1 : 0);
+}
+
 /* ---------- walking surface: terrain, or the dock deck once it exists ---------- */
 const along = (p: Pt) => p.x * DOCK.dir.x + p.z * DOCK.dir.z;
 const across = (p: Pt) => Math.abs(-p.x * DOCK.dir.z + p.z * DOCK.dir.x);
 export function onDock(p: Pt) {
-  if (!S.projects.dock.done) return false;
+  if (!S.projects.dock.done) return false; // (a storm-damaged dock is still walkable, just not usable)
   const a = along(p);
   return a >= DOCK.from - 0.05 && a <= DOCK.to && across(p) <= DOCK.halfWidth;
 }

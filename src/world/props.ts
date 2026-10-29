@@ -12,6 +12,7 @@ import { FIRE_LIGHT_SCALE, type Campfire } from './sky';
 import { v3 } from './stage';
 
 export function createProps(scene: Scene) {
+  const palms: Group[] = []; // their tops sway in the wind
   function palm(p: Pt, s = 1) {
     const g = new Group(), lean = rand(0.4, 1.1);
     const curve = new CatmullRomCurve3([new Vector3(0, 0, 0), new Vector3(lean * 0.15, 1.2, 0), new Vector3(lean * 0.5, 2.4, 0), new Vector3(lean, 3.3, 0)]);
@@ -35,6 +36,7 @@ export function createProps(scene: Scene) {
     g.rotation.y = rand(0, Math.PI * 2);
     g.scale.setScalar(s);
     scene.add(g);
+    palms.push(g);
   }
   function rock(p: Pt, r: number) {
     const o = mesh(new DodecahedronGeometry(r, 0), M.rock);
@@ -140,6 +142,14 @@ export function createProps(scene: Scene) {
 
   return {
     campfire,
+    /** Palms lean and sway with the wind (0 calm … 1 storm). @param t real seconds */
+    sway(wind: number, t: number) {
+      palms.forEach((g, i) => {
+        const w = 0.015 + wind * 0.12;
+        g.rotation.x = Math.sin(t * (1.2 + wind * 2) + i) * w;
+        g.rotation.z = Math.cos(t * (1.0 + wind * 2) + i * 1.3) * w + wind * 0.08;
+      });
+    },
     /** Show as many berries on each bush as the sim says are left. */
     syncBerries(counts: number[]) {
       berryMeshes.forEach((meshes, b) => meshes.forEach((m, i) => { m.visible = i < counts[b]; }));
