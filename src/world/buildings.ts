@@ -80,12 +80,12 @@ export function createBuildings(scene: Scene) {
     scene.add(g);
     const side = new Shape();
     // profile in (−z, y): follows the roof from the tall front posts to the low back posts
-    side.moveTo(-0.72, 0); side.lineTo(0.82, 0); side.lineTo(0.82, 0.3); side.lineTo(-0.72, 1.55); side.lineTo(-0.72, 0);
+    side.moveTo(-0.72, 0); side.lineTo(0.82, 0); side.lineTo(0.82, 1.32); side.lineTo(-0.72, 2.15); side.lineTo(-0.72, 0);
     const sideGeo = new ExtrudeGeometry(side, { depth: 0.07, bevelEnabled: false });
     sideGeo.rotateY(Math.PI / 2);
     const parts: Object3D[] = [-1.18, 1.11].map(x => mesh(sideGeo, M.wood, x, 0, 0));
-    parts.push(mesh(new BoxGeometry(2.3, 0.36, 0.07), M.wood, 0, 0.18, -0.82));
-    for (const x of [-0.76, 0.76]) parts.push(mesh(new BoxGeometry(0.7, 1.5, 0.07), M.wood, x, 0.75, 0.72));
+    parts.push(mesh(new BoxGeometry(2.3, 1.32, 0.07), M.wood, 0, 0.66, -0.82));
+    for (const x of [-0.76, 0.76]) parts.push(mesh(new BoxGeometry(0.7, 2.1, 0.07), M.wood, x, 1.05, 0.72));
     for (const p of parts) { p.visible = false; g.add(p); }
     return parts;
   })();

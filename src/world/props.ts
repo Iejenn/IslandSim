@@ -96,12 +96,14 @@ export function createProps(scene: Scene) {
     const g = new Group();
     g.position.copy(v3(SH));
     g.rotation.y = yawTo(SH, FIRE);
+    // Tall enough (roof ~2.25 at the front, ~1.35 at the back) for her big
+    // cartoon head when she sits or sleeps underneath; it used to poke through.
     for (const x of [-1.1, 1.1]) {
-      g.add(mesh(new CylinderGeometry(0.07, 0.08, 1.65, 5), M.wood, x, 0.82, 0.7));
-      g.add(mesh(new CylinderGeometry(0.07, 0.08, 0.35, 5), M.wood, x, 0.17, -0.8));
+      g.add(mesh(new CylinderGeometry(0.07, 0.08, 2.3, 5), M.wood, x, 1.15, 0.7));
+      g.add(mesh(new CylinderGeometry(0.07, 0.08, 1.4, 5), M.wood, x, 0.7, -0.8));
     }
-    const roof = mesh(new BoxGeometry(2.6, 0.08, 2.1), M.thatch, 0, 0.95, -0.05);
-    roof.rotation.x = -0.71;
+    const roof = mesh(new BoxGeometry(2.6, 0.08, 2.1), M.thatch, 0, 1.79, -0.05);
+    roof.rotation.x = -0.505;
     g.add(roof);
     g.add(mesh(new BoxGeometry(1.5, 0.1, 0.9), M.bed, 0, 0.05, 0));
     scene.add(g);

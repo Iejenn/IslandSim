@@ -6,6 +6,8 @@ const PHASES = (h: number) => h < 5 || h >= 21 ? 'Night' : h < 11 ? 'Morning' : 
 
 export function createHud() {
   const speedBtns = document.querySelectorAll<HTMLButtonElement>('[data-speed]');
+  // reflect the (possibly saved) speed
+  speedBtns.forEach(x => x.setAttribute('aria-pressed', String(+x.dataset.speed! === S.speed)));
   speedBtns.forEach(b => b.addEventListener('click', () => {
     S.speed = +b.dataset.speed!;
     speedBtns.forEach(x => x.setAttribute('aria-pressed', String(x === b)));

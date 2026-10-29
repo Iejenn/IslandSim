@@ -13,10 +13,13 @@ import { v3 } from './stage';
 export function createGiftModels(scene: Scene) {
   const effects: { t: number; run(dt: number): boolean }[] = [];
   let boat: Group | null = null;
+  let leaningRod: Group | null = null; // hidden while she's carrying it
 
+  let instant = false; // true while rebuilding gifts from a save: no beam, no pop-in
   function popIn(g: Group) {
-    g.scale.setScalar(0.01);
     scene.add(g);
+    if (instant) return;
+    g.scale.setScalar(0.01);
     const beam = new Mesh(new CylinderGeometry(0.9, 0.9, 14, 16, 1, true), new MeshBasicMaterial({ color: '#FFE9A8', transparent: true, opacity: 0.5, side: DoubleSide, depthWrite: false }));
     beam.position.copy(g.position);
     beam.position.y += 7;
@@ -56,6 +59,7 @@ export function createGiftModels(scene: Scene) {
       r.rotation.z = 0.35;
       g.add(r);
       g.add(mesh(new CylinderGeometry(0.08, 0.08, 0.06, 8), M.rock, 0.18, 0.5, 0));
+      leaningRod = g;
       popIn(g);
     },
     hammock() {
@@ -128,6 +132,14 @@ export function createGiftModels(scene: Scene) {
 
   return {
     build: (k: GiftKey) => BUILD[k](),
+    /** Hide the rod at the shelter while it's in her hands. */
+    setRodHeld(held: boolean) { if (leaningRod) leaningRod.visible = !held; },
+    /** Put already-received gifts back on the island after loading a save. */
+    restore(keys: GiftKey[]) {
+      instant = true;
+      keys.forEach(k => BUILD[k]());
+      instant = false;
+    },
     /**
      * Advance pop-in effects and move the boat: moored at the dock, or under
      * her while she's sailing.

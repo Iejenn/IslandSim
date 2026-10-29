@@ -99,6 +99,7 @@ h2:first-child{margin-top:2px}
 .diary li{padding:8px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:78px 1fr;gap:10px}
 .diary time{color:var(--soft);font-size:13px;font-variant-numeric:tabular-nums}
 .diary span{font-size:14px}
+.link-btn{border:0;background:none;padding:14px 0 0;color:var(--soft);font-size:13px;text-decoration:underline}
 
 .overlay{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:rgba(8,18,28,.55);padding:24px}
 .overlay[hidden]{display:none}
