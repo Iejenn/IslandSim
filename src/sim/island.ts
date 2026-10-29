@@ -16,8 +16,12 @@ export function dirXZ(a: Pt, b: Pt): Pt {
 }
 
 /* ---------- island shape: one height function drives terrain AND walking ---------- */
+// Overall island size. Everything placed relative to the coast (forest, rocks,
+// beach walks, the fishing spot, dock and canoe route) scales with it; the camp
+// around the fire keeps its fixed positions so her daily walks stay short.
+export const ISLAND_SCALE = 1.35;
 export function islandR(a: number) {
-  return 13.5 + 1.1 * Math.sin(3 * a + 0.5) + 0.6 * Math.sin(5 * a + 2.1) + 0.4 * Math.sin(7 * a);
+  return ISLAND_SCALE * (13.5 + 1.1 * Math.sin(3 * a + 0.5) + 0.6 * Math.sin(5 * a + 2.1) + 0.4 * Math.sin(7 * a));
 }
 export function tAt(x: number, z: number) {
   return Math.hypot(x, z) / islandR(Math.atan2(z, x));
@@ -158,9 +162,9 @@ function scatter(seed: number, n: number, a0: number, a1: number, t0: number, t1
   }
   return out;
 }
-export const FOREST = scatter(7, 16, 1.7, 3.1, 0.25, 0.64, 1.55, 1.9).map(pos => ({ pos, stand: standNear(pos, 0.95) }));
+export const FOREST = scatter(7, 22, 1.7, 3.1, 0.25, 0.64, 1.6, 1.9).map(pos => ({ pos, stand: standNear(pos, 0.95) }));
 reserve(...FOREST.map(t => t.pos));
-export const BOULDERS = scatter(11, 7, -1.45, -0.3, 0.5, 0.86, 1.6, 1.8).map(pos => ({ pos, stand: standNear(pos, 1.0) }));
+export const BOULDERS = scatter(11, 9, -1.45, -0.3, 0.5, 0.86, 1.7, 1.8).map(pos => ({ pos, stand: standNear(pos, 1.0) }));
 reserve(...BOULDERS.map(b => b.pos));
 // where loose stones lie around, in the middle of the rocky area
 export const SCREE_P = scatter(13, 1, -1.3, -0.4, 0.55, 0.8, 0, 1.3)[0];

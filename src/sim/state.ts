@@ -152,7 +152,16 @@ export let S: SimState;
 /** Start a new life, or continue a saved one (see sim/persist.ts). */
 export function initState(saved?: Record<string, unknown>) {
   S = createState();
-  if (saved) mergeInto(S as unknown as Record<string, unknown>, saved);
+  if (saved) {
+    const fresh = createState();
+    mergeInto(S as unknown as Record<string, unknown>, saved);
+    // Lists tied to the island layout must match it; if the layout changed
+    // since the save (e.g. a bigger forest), start those lists fresh.
+    if (S.trees.length !== fresh.trees.length) S.trees = fresh.trees;
+    if (S.boulders.length !== fresh.boulders.length) S.boulders = fresh.boulders;
+    if (S.plots.length !== fresh.plots.length) S.plots = fresh.plots;
+    if (S.berries.length !== fresh.berries.length) S.berries = fresh.berries;
+  }
   return S;
 }
 

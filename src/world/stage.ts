@@ -23,17 +23,17 @@ export function createStage(host: HTMLElement) {
 
   const scene = new Scene();
   scene.background = new Color('#8FD3E6');
-  scene.fog = new Fog('#8FD3E6', 70, 170);
+  scene.fog = new Fog('#8FD3E6', 85, 200);
 
   const camera = new PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 400);
-  camera.position.set(17, 13, 21);
+  camera.position.set(22, 17, 28);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 0.8, 0);
   controls.enableDamping = true;
   controls.maxPolarAngle = 1.38;
   controls.minDistance = 4;
-  controls.maxDistance = 55;
+  controls.maxDistance = 70;
 
   addEventListener('resize', () => {
     camera.aspect = innerWidth / innerHeight;

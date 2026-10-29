@@ -127,13 +127,13 @@ export function createProps(scene: Scene) {
   });
 
   /* decoration: palms on the beach ring and small rocks inland, kept clear of key spots (the forest lives in forest.ts) */
-  for (let i = 0; i < 14; i++) {
-    const a = i / 14 * Math.PI * 2 + rand(-0.15, 0.15);
+  for (let i = 0; i < 20; i++) {
+    const a = i / 20 * Math.PI * 2 + rand(-0.12, 0.12);
     if (Math.abs(((a - FISH_A + Math.PI * 3) % (Math.PI * 2)) - Math.PI) < 0.35) continue; // keep the fishing spot open
     const p = pointAt(a, rand(0.7, 0.84));
     if (clearOf(p, 2)) palm(p, rand(0.85, 1.15));
   }
-  for (let n = 0, tries = 0; n < 12 && tries < 120; tries++) {
+  for (let n = 0, tries = 0; n < 16 && tries < 160; tries++) {
     const p = pointAt(rand(0, 6.3), rand(0.45, 0.95));
     if (clearOf(p, 1.6)) { rock(p, rand(0.2, 0.5)); n++; }
   }
