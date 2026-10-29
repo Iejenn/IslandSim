@@ -6,6 +6,7 @@ import { DOCK, height, type Pt } from './island';
 import { remember } from './memory';
 import { addXp } from './skills';
 import { dayNum, highlight, log, S, say, tr, type CraftKey, type PlanKey, type ProjectKey, type Resource } from './state';
+import { growTaste, tasteFor, type Leaning } from './taste';
 
 interface PlanDef {
   kind: 'craft' | 'build';
@@ -17,6 +18,7 @@ interface PlanDef {
   want: string; // what she says when she sets the goal
   done: string; // what she says when it's finished
   weight: () => number; // how much she wants it compared to the other options
+  tags: Leaning[]; // which of her leanings it appeals to (see taste.ts)
 }
 
 export const PLANS: Record<PlanKey, PlanDef> = {
@@ -26,21 +28,29 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     unlocked: () => S.min >= 9 * 60,
     want: 'A sharp stone on a stick… an axe. Then I can cut real firewood.',
     done: 'A stone axe! Crude, but it’ll bite.',
-    weight: () => 6,
+    // useful to everyone, but not everyone's first thought (fallen branches do for a while)
+    weight: () => 3 + (S.stock.wood < 2 ? 1 : 0),
+
+    tags: ['practical'],
   },
   pick: {
     kind: 'craft', name: 'stone pick', a: 'a stone pick', cost: { wood: 1, stone: 3 }, minutes: 60,
-    unlocked: () => !!S.items.axe,
+    unlocked: () => !!S.items.axe || dayNum() >= 3,
     want: 'With a pick I could break proper stones off those boulders.',
     done: 'A pick. Those boulders don’t stand a chance.',
     weight: () => 2,
+
+    tags: ['practical'],
   },
   rod: {
     kind: 'craft', name: 'fishing rod', a: 'a fishing rod', cost: { wood: 1, fibre: 2 }, minutes: 45,
-    unlocked: () => S.stats.fishTrips >= 1,
+    // a spear fisher only bothers with a rod once she's good at fishing
+    unlocked: () => S.stats.fishTrips >= 1 && (!S.items.spear || S.skills.fishing.lvl >= 3),
     want: 'If only I had a proper fishing rod… I could make one.',
     done: 'A real fishing rod, made by me. The fish don’t stand a chance.',
     weight: () => (tr('hardworking') ? 3 : 1.5) + (S.fishFails >= 2 ? 2 : 0),
+
+    tags: ['sea'],
   },
   basket: {
     kind: 'craft', name: 'basket', a: 'a basket', cost: { fibre: 4 }, minutes: 50,
@@ -48,6 +58,8 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'If I wove a basket, I could carry more berries back.',
     done: 'A woven basket. My grandmother would be proud.',
     weight: () => 1.5,
+
+    tags: ['green', 'practical'],
   },
   hammock: {
     kind: 'craft', name: 'hammock', a: 'a hammock', cost: { fibre: 6, wood: 2 }, minutes: 90,
@@ -55,6 +67,8 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'My back aches. A hammock would be heaven, if I can weave one.',
     done: 'A hammock! Tonight I sleep like a queen.',
     weight: () => tr('lazy') ? 3 : 1.2,
+
+    tags: ['comfort', 'adventure'],
   },
   bucket: {
     kind: 'craft', name: 'bucket', a: 'a bucket', cost: { wood: 3, fibre: 1 }, minutes: 60,
@@ -63,20 +77,36 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'A bucket would carry water for the garden, and double as a cooking pot.',
     done: 'A bucket! My poor hands thank me.',
     weight: () => tr('lazy') ? 2.5 : 1.5,
+
+    tags: ['green', 'practical'],
   },
   drum: {
     kind: 'craft', name: 'drum', a: 'a drum', cost: { wood: 2, fibre: 2 }, minutes: 75,
-    unlocked: () => tr('musical') || dayNum() >= 4,
+    unlocked: () => tr('musical') || dayNum() >= 2,
     want: 'I miss music. Maybe I can make a drum.',
     done: 'It’s just a log and some fibre, but it has a beat!',
     weight: () => tr('musical') ? 4 : 1,
+
+    tags: ['creative'],
   },
   journal: {
     kind: 'craft', name: 'story boards', a: 'some story boards', cost: { wood: 2 }, minutes: 60,
-    unlocked: () => tr('curious') || dayNum() >= 3,
+    unlocked: () => tr('curious') || dayNum() >= 2,
     want: 'I could carve my stories into wooden boards. A book only I can read.',
     done: 'My first story board. Chapter one: the beach.',
     weight: () => tr('curious') ? 3 : 1,
+
+    tags: ['creative'],
+  },
+
+  spear: {
+    kind: 'craft', name: 'fishing spear', a: 'a fishing spear', cost: { wood: 1, stone: 1 }, minutes: 35,
+    // the other way to catch fish: wade in and spear them (she rarely makes both)
+    unlocked: () => S.stats.fishTrips >= 1 && !S.items.rod,
+    want: 'Sitting and waiting isn’t for me. A sharp spear, and I’ll wade in after them.',
+    done: 'A fishing spear! Watch out, fish.',
+    weight: () => 1.5 + (tr('hardworking') ? 0.5 : 0) + (S.fishFails >= 2 ? 1 : 0),
+    tags: ['sea', 'adventure'],
   },
 
   /* ---------- furniture: she only thinks of these once her crafting is good enough ---------- */
@@ -86,13 +116,17 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'I’m sick of sitting on logs. A real chair by the fire, that’s the dream.',
     done: 'A chair! An actual chair. I feel like a queen.',
     weight: () => 2 + (tr('lazy') ? 1 : 0),
+
+    tags: ['comfort'],
   },
   table: {
     kind: 'craft', name: 'table', a: 'a table', cost: { wood: 4, stone: 2 }, minutes: 90,
-    unlocked: () => S.skills.crafting.lvl >= 2 && !!S.items.chair,
+    unlocked: () => S.skills.crafting.lvl >= 2,
     want: 'Eating off my knees gets old. A table would make meals feel civilised.',
     done: 'A table! Dinner is served. Properly.',
     weight: () => 1.5,
+
+    tags: ['comfort'],
   },
   bed: {
     kind: 'craft', name: 'bed frame', a: 'a bed frame', cost: { wood: 4, fibre: 3 }, minutes: 100,
@@ -100,6 +134,8 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'If I raised my bed off the ground, maybe I’d stop waking up with sand everywhere.',
     done: 'A proper bed frame. Goodbye, sand.',
     weight: () => 1.5 + (tr('lazy') ? 1 : 0),
+
+    tags: ['comfort'],
   },
   shelf: {
     kind: 'craft', name: 'shelf', a: 'a shelf', cost: { wood: 3 }, minutes: 60,
@@ -107,6 +143,8 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'My shells and story boards deserve a proper place. A shelf!',
     done: 'Everything has its place now. It looks like someone lives here.',
     weight: () => 1.2 + (tr('curious') ? 0.8 : 0),
+
+    tags: ['creative', 'comfort'],
   },
   rocker: {
     kind: 'craft', name: 'rocking chair', a: 'a rocking chair', cost: { wood: 4, fibre: 2 }, minutes: 110,
@@ -114,6 +152,8 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'A rocking chair up on the lookout… I could watch the sea for hours.',
     done: 'A rocking chair with the best view on the island.',
     weight: () => 1 + (tr('lazy') ? 1 : 0) + (tr('curious') ? 0.5 : 0),
+
+    tags: ['comfort', 'sea'],
   },
 
   /* ---------- for the lodge's rooms ---------- */
@@ -123,6 +163,8 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'A bedroom deserves a real bed. Wool mattress, wooden frame. Heaven.',
     done: 'A real bed in a real bedroom. I might cry.',
     weight: () => 3 + (tr('lazy') ? 1 : 0),
+
+    tags: ['comfort'],
   },
   sofa: {
     kind: 'craft', name: 'sofa', a: 'a sofa', cost: { wood: 4, wool: 2 }, minutes: 110,
@@ -130,6 +172,8 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'The living room needs a sofa. Something soft to sink into on rainy days.',
     done: 'A sofa! I’m never getting up again.',
     weight: () => 2 + (tr('lazy') ? 1.5 : 0),
+
+    tags: ['comfort'],
   },
   kitchen: {
     kind: 'craft', name: 'kitchen', a: 'a little kitchen', cost: { wood: 4, stone: 4 }, minutes: 120,
@@ -137,6 +181,8 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'A stone stove and a counter, and I could cook indoors, rain or shine.',
     done: 'My own kitchen! Time to get creative.',
     weight: () => 2.5,
+
+    tags: ['comfort', 'practical'],
   },
   /* ---------- from her sheep's wool ---------- */
   blanket: {
@@ -145,6 +191,8 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'With that wool I could knit a blanket. Warm nights at last.',
     done: 'A wool blanket. Soft, warm, and it smells like sheep. Perfect.',
     weight: () => 2,
+
+    tags: ['comfort', 'animals'],
   },
   sweater: {
     kind: 'craft', name: 'sweater', a: 'a wool sweater', cost: { wool: 2 }, minutes: 70,
@@ -152,6 +200,8 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'A thick sweater would make the rainy days a lot less miserable.',
     done: 'A sweater! Lumpy, but mine.',
     weight: () => 1.5,
+
+    tags: ['animals', 'creative'],
   },
 
   /* ---------- projects ---------- */
@@ -161,6 +211,8 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'If I grew my own food, I wouldn’t depend on these bushes.',
     done: 'My own little garden! I saved a few berry seeds to start with.',
     weight: () => 2 + (tr('hardworking') ? 1 : 0),
+
+    tags: ['green'],
   },
   rack: {
     kind: 'build', name: 'drying rack', a: 'a drying rack', cost: { wood: 3, fibre: 2 }, minutes: 90,
@@ -168,6 +220,8 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'If I could dry fish, a catch wouldn’t go bad when the fire is out.',
     done: 'A drying rack. No more wasted fish.',
     weight: () => 1.5,
+
+    tags: ['sea', 'practical'],
   },
   dock: {
     kind: 'build', name: 'dock', a: 'a dock', cost: { wood: 8, stone: 4 }, minutes: 240,
@@ -175,6 +229,8 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'A dock would get me out past the shallows, where the big fish are.',
     done: 'The dock is done! Look how far out I can go.',
     weight: () => 1 + (tr('curious') ? 1 : 0) + (tr('hardworking') ? 0.5 : 0),
+
+    tags: ['sea'],
   },
   hut: {
     kind: 'build', name: 'stone walls', a: 'stone walls for her shelter', cost: { wood: 6, stone: 10 }, minutes: 200,
@@ -182,6 +238,8 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'Next time it rains, I want real walls around me. Stone ones.',
     done: 'Stone walls! It finally feels like a home.',
     weight: () => 1.5 + (tr('lazy') ? 1 : 0),
+
+    tags: ['practical', 'comfort'],
   },
   hearth: {
     kind: 'build', name: 'stone hearth', a: 'a stone hearth', cost: { stone: 6 }, minutes: 90,
@@ -189,21 +247,27 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'A proper stone hearth would keep the fire going longer on less wood.',
     done: 'A real hearth. The fire will last much longer now.',
     weight: () => 1.5 + (tr('hardworking') ? 0.5 : 0),
+
+    tags: ['practical'],
   },
   lookout: {
     kind: 'build', name: 'lookout tower', a: 'a lookout tower', cost: { wood: 10, stone: 4 }, minutes: 240,
-    unlocked: () => dayNum() >= 5 && (tr('curious') || !!S.items.journal),
+    unlocked: () => dayNum() >= 5,
     want: 'From up high I could see the whole sea… and the stars.',
     done: 'The lookout is finished! I can see forever from up there.',
     weight: () => tr('curious') ? 2.5 : 1,
+
+    tags: ['adventure'],
   },
   fence: {
     kind: 'build', name: 'fence', a: 'a fence around her home', cost: { wood: 10 }, minutes: 200,
-    // after the first tools: 10 logs this early starved her of axe/rod/furniture time
-    unlocked: () => dayNum() >= 5 && !!S.items.axe,
+    // not on day one: 10 logs that early starve her of everything else (an animal lover still gets there first)
+    unlocked: () => dayNum() >= 4,
     want: 'If I fenced in the camp, I could keep those chickens and sheep.',
     done: 'The fence is up. Now to bring the animals home.',
-    weight: () => 2.5 + (tr('hardworking') ? 0.5 : 0), // the animals wandering past her camp keep reminding her
+    weight: () => 1.8 + (tr('hardworking') ? 0.5 : 0), // the animals wandering past her camp keep reminding her
+
+    tags: ['animals'],
   },
   coop: {
     kind: 'build', name: 'chicken coop', a: 'a chicken coop', cost: { wood: 5, fibre: 2 }, minutes: 120,
@@ -211,13 +275,42 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'A coop for the chickens, and I’d have eggs every morning.',
     done: 'The coop is ready. Here, chick-chick-chick!',
     weight: () => 2.5,
+
+    tags: ['animals'],
+  },
+  trap: {
+    kind: 'build', name: 'fish trap', a: 'a fish trap', cost: { wood: 3, fibre: 4 }, minutes: 120,
+    unlocked: () => S.stats.fishTrips >= 3 && dayNum() >= 3,
+    want: 'A woven trap in the shallows would catch fish while I do other things.',
+    done: 'The trap is set. Let’s see what swims in.',
+    weight: () => 1.2 + (tr('lazy') ? 1 : 0),
+    tags: ['sea', 'practical'],
+  },
+  barrel: {
+    kind: 'build', name: 'rain barrel', a: 'a rain barrel', cost: { wood: 4, fibre: 1 }, minutes: 90,
+    unlocked: () => S.stats.rainsSeen >= 1 && dayNum() >= 3,
+    want: 'All that rain, and I walk to the pond every time. A barrel would catch it.',
+    done: 'A rain barrel! Now we wait for the clouds.',
+    weight: () => 1.2 + (tr('lazy') ? 1 : 0),
+    tags: ['practical', 'green'],
+  },
+  treehouse: {
+    kind: 'build', name: 'treehouse', a: 'a treehouse', cost: { wood: 10, fibre: 4 }, minutes: 300,
+    unlocked: () => dayNum() >= 6 && S.skills.building.lvl >= 1,
+    want: 'That big tree near camp… I could build a house up in its branches.',
+    done: 'A treehouse! I’m sleeping up here tonight.',
+    weight: () => 1 + (tr('curious') ? 1 : 0),
+    tags: ['adventure', 'creative'],
   },
   lodge: {
     kind: 'build', name: 'lodge', a: 'a lodge', cost: { wood: 16, stone: 12 }, minutes: 420,
-    unlocked: () => S.projects.hut.done && dayNum() >= 8 && S.skills.building.lvl >= 2,
+    // usually after stone walls, but a skilled builder can go straight for the house
+    unlocked: () => dayNum() >= 8 && (S.projects.hut.done ? S.skills.building.lvl >= 2 : S.skills.building.lvl >= 4),
     want: 'This shelter has served me well. But I want a real house: a bedroom, a living room, a kitchen.',
     done: 'A lodge! With rooms! I built a house with my own hands.',
     weight: () => 2 + (tr('hardworking') ? 1 : 0),
+
+    tags: ['comfort', 'practical'],
   },
   canoe: {
     kind: 'build', name: 'canoe', a: 'a canoe', cost: { wood: 8, fibre: 4 }, minutes: 200,
@@ -225,6 +318,8 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     want: 'With the dock done… I keep dreaming of a little canoe.',
     done: 'A canoe! Hollowed out by hand. Where shall we go?',
     weight: () => 2 + (tr('curious') ? 2 : 0),
+
+    tags: ['sea', 'adventure'],
   },
 };
 
@@ -232,14 +327,17 @@ const isProject = (k: PlanKey): k is ProjectKey => PLANS[k].kind === 'build';
 export const isDone = (k: PlanKey) => isProject(k) ? S.projects[k].done : !!S.items[k as CraftKey];
 const progressOf = (k: PlanKey) => isProject(k) ? S.projects[k] : S.crafting;
 
+/** How much she wants a plan: its own appeal, tilted by her taste, and a lot more if it's her dream. */
+export const desire = (k: PlanKey) => PLANS[k].weight() * tasteFor(PLANS[k].tags) * (S.dream === k ? 3 : 1);
+
 /** Maybe pick something to make. Returns true if she set a new goal. */
 export function chooseGoal() {
   if (S.goal) return false;
   const cand = (Object.keys(PLANS) as PlanKey[]).filter(k => !isDone(k) && PLANS[k].unlocked());
   if (!cand.length) return false;
-  const tot = cand.reduce((s, k) => s + PLANS[k].weight(), 0);
+  const tot = cand.reduce((s, k) => s + desire(k), 0);
   let r = Math.random() * tot, k = cand[0];
-  for (const c of cand) { r -= PLANS[c].weight(); if (r <= 0) { k = c; break; } }
+  for (const c of cand) { r -= desire(c); if (r <= 0) { k = c; break; } }
   S.goal = k;
   S.goalSince = S.min;
   S.crafting = { started: false, progress: 0 };
@@ -299,7 +397,14 @@ export function checkFinished(k: PlanKey) {
     S.curious.push(k as CraftKey); // she'll want to try it out
   }
   S.goal = null;
+  growTaste(def.tags); // making what she loves makes her love it more
   if (k === 'garden') S.stock.seeds += 3;
+  if (S.dream === k) {
+    S.dream = null;
+    S.mood = 40;
+    log(`Her dream came true: ${def.a}.`);
+    highlight('made her dream come true');
+  }
   S.mood = Math.min(40, S.mood + 20);
   say(def.done);
   log(def.kind === 'craft' ? `She made ${def.a}.` : `She finished the ${def.name}.`);
@@ -312,6 +417,7 @@ export function checkFinished(k: PlanKey) {
 // What the storm can damage, and what fixing it costs.
 export const REPAIRABLE: Partial<Record<ProjectKey, Partial<Record<Resource, number>>>> = {
   rack: { wood: 1 }, dock: { wood: 3 }, hut: { wood: 1, stone: 2 }, lookout: { wood: 2 }, lodge: { wood: 2, stone: 1 },
+  trap: { wood: 2 }, treehouse: { wood: 2 },
 };
 /** A finished project that isn't storm-damaged right now. */
 export const works = (k: ProjectKey) => S.projects[k].done && !S.projects[k].damaged;
@@ -319,9 +425,9 @@ export const damaged = () => (Object.keys(REPAIRABLE) as ProjectKey[]).filter(k 
 
 /* ---------- home comfort: how much the camp feels like a home ---------- */
 const COMFORT_ITEMS: CraftKey[] = ['chair', 'table', 'bed', 'shelf', 'rocker', 'hammock', 'drum', 'realbed', 'sofa', 'kitchen', 'blanket'];
-/** 0…16: furniture and comforts she has made, plus a sound roof (or a whole lodge) and hearth. */
+/** 0…18: furniture and comforts she has made, plus a sound roof (or a whole lodge) and hearth. */
 export function comfort() {
-  return COMFORT_ITEMS.filter(k => S.items[k]).length + (works('lodge') ? 4 : works('hut') ? 2 : 0) + (S.projects.hearth.done ? 1 : 0);
+  return COMFORT_ITEMS.filter(k => S.items[k]).length + (works('lodge') ? 4 : works('hut') ? 2 : 0) + (works('treehouse') ? 2 : 0) + (S.projects.hearth.done ? 1 : 0);
 }
 /** Somewhere dry and solid to sleep and shelter: the lodge, or the shelter with stone walls. */
 export const indoors = () => works('lodge') || works('hut');

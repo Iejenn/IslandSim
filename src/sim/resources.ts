@@ -3,6 +3,7 @@
 // stones slowly weather out of the rocky area, saplings grow back into
 // trees, and fish she can't cook goes bad (or dries, with a rack).
 import { BOULDERS, dist, FOREST, type Pt } from './island';
+import { works } from './plans';
 import { highlight, log, S } from './state';
 
 const SAPLING_DAYS = 3.5; // replanted sapling → full tree
@@ -16,6 +17,9 @@ export function updateResources(dm: number) {
   // more living trees → more fallen branches
   S.deadwood = Math.min(10, S.deadwood + days * 0.3 * standingTrees());
   S.loose = Math.min(10, S.loose + days * 2);
+  // the fish trap fills up slowly (fish keep alive in it); rain fills the barrel
+  if (works('trap')) S.trapFish = Math.min(3, S.trapFish + days * 1.6);
+  if (works('barrel') && S.weather.raining) S.barrel = Math.min(8, S.barrel + dm / 25);
   for (const t of S.trees) {
     if (t.state !== 'sapling') continue;
     t.growth += days / SAPLING_DAYS;
@@ -34,10 +38,10 @@ export function updateResources(dm: number) {
 }
 
 /** Index of the nearest forest tree in a given state (or -1). */
-export function nearestTree(state: 'tree' | 'stump' | 'sapling', from: Pt) {
+export function nearestTree(state: 'tree' | 'stump' | 'sapling', from: Pt, skip = -1) {
   let best = -1, bd = 1e9;
   S.trees.forEach((t, i) => {
-    if (t.state !== state) return;
+    if (t.state !== state || i === skip) return;
     const d = dist(FOREST[i].stand, from);
     if (d < bd) { bd = d; best = i; }
   });

@@ -25,6 +25,7 @@ import { createRain } from './world/rain';
 import { createSky } from './world/sky';
 import { createStage } from './world/stage';
 import { createTerrain } from './world/terrain';
+import { applyLook } from './world/materials';
 import { createWater } from './world/water';
 import { clearSave, newSeed, readSave, withSeed, writeSave } from './save';
 import { snapshot } from './sim/persist';
@@ -50,6 +51,7 @@ const updateLivestock = createLivestock(scene);
 
 /* ---------- sim + her ---------- */
 const S = initState(save?.state);
+applyLook(S.look); // this island's colours: tarp, bedding, roofs, wood…
 // Dev only (stripped from the production build): poke at the state from the
 // browser console, e.g. __S.needs.food = 5, __S.projects.dock.done = true, __give('axe').
 if (import.meta.env.DEV) {
@@ -148,7 +150,7 @@ function frame(now: number) {
   if (ready) { settleHeight(); body.update(dt); }
   // she carries the right tool for the whole task (rod for fishing, axe for chopping, pick for mining)
   const id = S.task?.id;
-  const held: HeldTool | null = !ready ? null : id === 'fish' && S.items.rod ? 'rod' : id === 'chop' && S.items.axe ? 'axe' : id === 'mine' && S.items.pick ? 'pick' : null;
+  const held: HeldTool | null = !ready ? null : id === 'fish' && S.items.rod ? 'rod' : id === 'fish' && S.items.spear ? 'spear' : id === 'chop' && S.items.axe ? 'axe' : id === 'mine' && S.items.pick ? 'pick' : null;
   heldTools.update(held, body.her, clockT);
   updateCrafted(S, held);
   updateForest(S);

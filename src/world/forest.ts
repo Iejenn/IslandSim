@@ -2,7 +2,7 @@
 // tree has a full tree, a stump and a sapling model; the sim's state picks
 // which one shows. Boulders shrink as she breaks stones off them.
 import { CylinderGeometry, DodecahedronGeometry, Group, IcosahedronGeometry, type Mesh, type Scene } from 'three';
-import { BOULDERS, FOREST, SCREE_P } from '../sim/island';
+import { BOULDERS, FOREST, SCREE_P, TREEHOUSE_TREE } from '../sim/island';
 import type { SimState } from '../sim/state';
 import { M, mat, mesh } from './materials';
 import { v3 } from './stage';
@@ -55,6 +55,8 @@ export function createForest(scene: Scene) {
       full.visible = t.state === 'tree';
       stump.visible = t.state === 'stump';
       sapling.visible = t.state === 'sapling';
+      // the treehouse brings its own (taller) version of this tree
+      if (i === TREEHOUSE_TREE && S.projects.treehouse.started) full.visible = stump.visible = sapling.visible = false;
       if (t.state === 'sapling') sapling.scale.setScalar(s * (0.5 + 1.5 * t.growth)); // grows into a small tree
     });
     boulders.forEach((b, i) => {
