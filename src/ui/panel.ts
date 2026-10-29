@@ -43,12 +43,14 @@ function renderCamp() {
   if (S.stock.fibre) stock.push(['Plant fibre', String(S.stock.fibre)]);
   if (S.stock.saplings) stock.push(['Saplings', String(S.stock.saplings)]);
   if (S.stock.raw) stock.push(['Fresh fish', `${S.stock.raw} (needs cooking)`]);
+  if (S.stock.veg) stock.push(['Vegetables', String(S.stock.veg)]);
+  if (S.stock.shells) stock.push(['Shells collected', String(S.stock.shells)]);
   if (S.projects.rack.done) stock.push(['Dried fish', String(S.stock.fish)]);
   if (S.projects.garden.done) stock.push(['Seeds', String(S.stock.seeds)]);
   stock.push(['Campfire', S.fire > 0 ? (S.fire < 20 ? 'burning low' : 'burning') : 'out']);
 
   const made = (Object.keys(S.items) as CraftKey[]).filter(k => S.items[k]).map(k => [cap(PLANS[k].name), ''] as [string, string]);
-  const built = (Object.keys(S.projects) as ProjectKey[]).filter(k => S.projects[k].done).map(k => [cap(PLANS[k].name), ''] as [string, string]);
+  const built = (Object.keys(S.projects) as ProjectKey[]).filter(k => S.projects[k].done).map(k => [cap(PLANS[k].name), S.projects[k].damaged ? 'storm-damaged' : ''] as [string, string]);
   if (S.projects.garden.done) {
     const growing = growingPlots().length, ripe = ripePlots().length, dead = S.plots.filter(p => p.state === 'withered').length;
     const parts = [growing && `${growing} growing`, ripe && `${ripe} ripe`, dead && `${dead} withered`].filter(Boolean);
@@ -62,7 +64,11 @@ function renderCamp() {
   const mined = S.boulders.filter(b => b < 8).length;
   if (mined) island.push(['Boulders', `${S.boulders.filter(b => b > 0).length} left`]);
 
-  $('camp').innerHTML = section('Supplies', stock) + section('Made by hand', made) + section('Built', built) + section('The island', island);
+  const friends: [string, string][] = [];
+  if (S.dog.state === 'wild') friends.push(['A stray dog', S.dog.trust > 0.5 ? 'warming up to her' : S.dog.trust > 0 ? 'still wary' : 'keeps its distance']);
+  if (S.dog.state === 'friend') friends.push([S.dog.name, 'her dog']);
+
+  $('camp').innerHTML = section('Supplies', stock) + section('Made by hand', made) + section('Built', built) + section('Company', friends) + section('The island', island);
 }
 
 export function createPanel(onNewIsland: () => void) {

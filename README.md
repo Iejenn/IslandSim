@@ -8,8 +8,15 @@ crafts tools at the campfire (a stone axe to fell trees, a pick to mine
 boulders, a fishing rod, a hammock, a drum…), and builds bigger things on
 site (a garden, a drying rack, a dock, stone walls, a hearth, a lookout, a
 canoe). Felled trees leave stumps until she replants them, and without wood
-the fire dies and she can't cook her catch. What she'll want to make next is
-never listed: it depends on how her life goes.
+the fire dies and she can't cook her catch. As her crafting improves she makes
+furniture (a chair by the fire, a table, a bed frame, a shelf for her shells, a
+rocking chair on the lookout) and the camp starts to feel like home.
+
+A stray dog may wash ashore and, if she earns its trust, follows her
+everywhere. Storms strip the berry bushes and can damage her buildings until
+she repairs them; on hot days she cools off in the sea. Crabs, gulls and
+jumping fish keep her company too. What she'll want to make next is never
+listed: it depends on how her life goes.
 
 Progress is saved in the browser (localStorage), so a refresh continues the
 same life. "Start over on a new island" at the bottom of the Diary resets it.
@@ -58,13 +65,15 @@ src/
     plans.ts       everything she can craft or build: costs, when she wants it, progress
     resources.ts   forest regrowth, fallen branches, loose stones, fish going off
     garden.ts      garden beds growing, drying out, ripening, rotting
-    weather.ts     rain showers
+    weather.ts     rain showers, storms (with damage) and hot days
+    companion.ts   the stray dog and its trust
     memory.ts      what she likes/dislikes and the daily diary recap
     thoughts.ts    what she says
     persist.ts     turning state into saveable JSON and back
   world/           three.js scene: stage (renderer/camera), terrain, water,
-                   sky (lights, day/night), rain, props, forest & boulders,
-                   buildings, crafted items
+                   sky (lights, day/night, lightning), rain, props, forest &
+                   boulders, buildings, crafted items & furniture, the dog,
+                   wildlife
   character/       loading the model, playing animations, moving the body,
                    tools in her hand
   save.ts          localStorage save/load and the island's layout seed

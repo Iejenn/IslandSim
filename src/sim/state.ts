@@ -14,7 +14,8 @@ export type Trait = keyof typeof TRAITS;
 export type SkillKey = keyof typeof SKILLS;
 export type NeedKey = keyof typeof NEEDS;
 /** Things she makes in one sitting at the campfire. */
-export type CraftKey = 'axe' | 'pick' | 'rod' | 'basket' | 'hammock' | 'bucket' | 'drum' | 'journal';
+export type CraftKey = 'axe' | 'pick' | 'rod' | 'basket' | 'hammock' | 'bucket' | 'drum' | 'journal'
+  | 'chair' | 'table' | 'bed' | 'shelf' | 'rocker'; // furniture, once her crafting is good enough
 /** Things she builds over several sessions on site. */
 export type ProjectKey = 'garden' | 'rack' | 'dock' | 'hut' | 'hearth' | 'lookout' | 'canoe';
 export type PlanKey = CraftKey | ProjectKey;
@@ -23,6 +24,7 @@ export type TaskId =
   | 'forage' | 'fish' | 'cook' | 'eat' | 'drink' | 'wood' | 'sleep' | 'shelter' | 'relax' | 'explore' | 'talk'
   | 'sticks' | 'chop' | 'fibre' | 'stones' | 'mine' | 'replant' | 'craft' | 'build'
   | 'plant' | 'water' | 'harvest' | 'drum' | 'write' | 'sail' | 'stargaze' | 'watch'
+  | 'befriend' | 'play' | 'repair' | 'swim'
   | 'celebrate' | 'stand';
 
 /* ---------- task steps ---------- */
@@ -68,7 +70,7 @@ export interface Plot {
   dryMin: number; // game minutes spent completely dry
 }
 
-export interface Project { started: boolean; progress: number; done: boolean }
+export interface Project { started: boolean; progress: number; done: boolean; damaged?: boolean }
 
 function rollTraits(): [Trait, Trait] {
   const k = Object.keys(TRAITS) as Trait[];
@@ -105,7 +107,7 @@ function createState() {
 
     /* ---------- island life ---------- */
     // logs on the woodpile, stones, plant fibre, saplings to replant, fresh fish to cook, dried fish, garden seeds
-    stock: { wood: 2, stone: 0, fibre: 0, saplings: 0, raw: 0, fish: 0, seeds: 0 },
+    stock: { wood: 2, stone: 0, fibre: 0, saplings: 0, raw: 0, fish: 0, seeds: 0, veg: 0, shells: 0 }, // veg: stored garden vegetables; shells: her collection
     rawSince: 0, // game minute the oldest uncooked fish was caught
     lastMeal: 0, // game minute of her last cooked meal
     trees: FOREST.map(() => ({ state: 'tree' as 'tree' | 'stump' | 'sapling', growth: 1 })),
@@ -129,10 +131,12 @@ function createState() {
     likes: {} as Partial<Record<TaskId, number>>,
     feelingsNoted: [] as string[], // strong likes/dislikes already written in the diary
     // lifetime counters (unlock new plans)
-    stats: { forages: 0, fishTrips: 0, fishCaught: 0, nightsInShelter: 0, waterings: 0, harvests: 0, rainsSeen: 0, writeMin: 0, treesFelled: 0, stonesMined: 0, crafted: 0, meals: 0 },
+    stats: { forages: 0, fishTrips: 0, fishCaught: 0, nightsInShelter: 0, waterings: 0, harvests: 0, rainsSeen: 0, writeMin: 0, treesFelled: 0, stonesMined: 0, crafted: 0, meals: 0, storms: 0, repairs: 0 },
     // highlights of the current day, summarised in the diary at dawn
     today: [] as string[],
-    weather: { raining: false, until: 0 },
+    weather: { raining: false, until: 0, storm: false, hot: false },
+    // a stray dog that may wash ashore; she has to win its trust
+    dog: { state: 'none' as 'none' | 'wild' | 'friend', trust: 0, name: '', home: copy(START) },
     sailing: false, // in the boat
 
     // her body, as far as the sim is concerned

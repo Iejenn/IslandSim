@@ -109,7 +109,8 @@ export function createBuildings(scene: Scene) {
     const g = new Group(), H = LOOKOUT_DECK, parts: Object3D[] = [];
     at(g, LOOKOUT_P.x, LOOKOUT_P.y, LOOKOUT_P.z, yawTo(LOOKOUT_P, FIRE));
     scene.add(g);
-    for (const [x, z] of [[-0.6, -0.6], [0.6, -0.6], [0.6, 0.6], [-0.6, 0.6]]) parts.push(mesh(new CylinderGeometry(0.07, 0.09, H + 1, 6), M.log, x, (H + 1) / 2, z));
+    // posts run well above the platform so the roof clears her head (she's tall with that hair)
+    for (const [x, z] of [[-0.6, -0.6], [0.6, -0.6], [0.6, 0.6], [-0.6, 0.6]]) parts.push(mesh(new CylinderGeometry(0.07, 0.09, H + 2.2, 6), M.log, x, (H + 2.2) / 2, z));
     for (let i = 0; i < 6; i++) parts.push(mesh(new BoxGeometry(0.5, 0.04, 0.05), M.wood, 0, 0.35 + i * 0.35, 0.75)); // ladder rungs
     parts.push(mesh(new BoxGeometry(1.5, 0.08, 1.5), M.wood, 0, H - 0.04, 0)); // platform
     for (const [x, z, r] of [[0, -0.7, 0], [0.7, 0, Math.PI / 2], [-0.7, 0, Math.PI / 2]]) {
@@ -117,7 +118,7 @@ export function createBuildings(scene: Scene) {
       rail.rotation.y = r;
       parts.push(rail);
     }
-    const roof = mesh(new ConeGeometry(1.15, 0.6, 4), M.thatch, 0, H + 1.25, 0);
+    const roof = mesh(new ConeGeometry(1.15, 0.6, 4), M.thatch, 0, H + 2.45, 0);
     roof.rotation.y = Math.PI / 4;
     parts.push(roof);
     for (const p of parts) { p.visible = false; g.add(p); }
@@ -182,8 +183,9 @@ export function createBuildings(scene: Scene) {
     return { g, leaves, fruits };
   });
 
-  const showParts = (parts: Object3D[], started: boolean, progress: number) => {
-    const n = started ? Math.max(1, Math.ceil(progress * parts.length)) : 0;
+  const showParts = (parts: Object3D[], started: boolean, progress: number, damaged = false) => {
+    // storm damage knocks some of the later parts off until she repairs it
+    const n = started ? Math.max(1, Math.ceil(progress * (damaged ? 0.7 : 1) * parts.length)) : 0;
     parts.forEach((p, i) => { p.visible = i < n; });
   };
   const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts };
@@ -194,7 +196,7 @@ export function createBuildings(scene: Scene) {
    * @param t real seconds (bobbing)
    */
   return function updateBuildings(S: SimState, her: Object3D, t: number) {
-    for (const k of Object.keys(PARTS) as ProjectKey[]) showParts(PARTS[k], S.projects[k].started, S.projects[k].progress);
+    for (const k of Object.keys(PARTS) as ProjectKey[]) showParts(PARTS[k], S.projects[k].started, S.projects[k].progress, S.projects[k].damaged);
     if (S.sailing) {
       canoe.g.position.set(her.position.x, WATER_Y, her.position.z);
       canoe.g.rotation.y = her.rotation.y;

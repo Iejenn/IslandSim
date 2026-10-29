@@ -55,7 +55,7 @@ function enterStep(st: Step) {
     else hooks.play('idle');
   } else {
     hooks.play(st.anim, true);
-    if (st.anim === 'standUp') { S.sitting = false; S.lift = 0; }
+    if (st.anim === 'standUp') S.sitting = false; // (lift resets when the task ends, so she stands up *on* the lookout or hammock)
   }
 }
 

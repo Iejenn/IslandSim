@@ -46,7 +46,8 @@ export function createSky(scene: Scene) {
    * @param fire fire level 0–100
    * @param rain rain intensity 0–1 (greys the sky, hides the sun, pulls the fog in)
    */
-  return function updateSky(t: number, h: number, fire: number, campfire: Campfire, rain = 0) {
+  let flash = 0, nextFlash = 2; // lightning
+  return function updateSky(t: number, h: number, fire: number, campfire: Campfire, rain = 0, storm = false, dt = 0) {
     const ang = (h - 6) / 12 * Math.PI, e = Math.sin(ang); // e: sun elevation, -1..1
     sun.position.set(Math.cos(ang) * 35, Math.max(e, 0.05) * 35, 12);
     sun.intensity = Math.max(0, e) * 1.6 * LEGACY * (1 - 0.7 * rain);
@@ -55,13 +56,18 @@ export function createSky(scene: Scene) {
     else if (e > 0) sky.copy(cDusk).lerp(cDay, e / 0.25);
     else if (e > -0.18) sky.copy(cNight).lerp(cDusk, (e + 0.18) / 0.18);
     else sky.copy(cNight);
-    if (rain > 0) sky.lerp(grey.copy(cRain).multiplyScalar(0.2 + 0.8 * day), rain * 0.75);
+    if (rain > 0) sky.lerp(grey.copy(cRain).multiplyScalar((storm ? 0.1 : 0.2) + (storm ? 0.55 : 0.8) * day), rain * (storm ? 0.9 : 0.75));
+    // lightning: a brief white flash every few seconds during a storm
+    nextFlash -= dt;
+    if (storm && rain > 0.5 && nextFlash <= 0) { flash = 1; nextFlash = 2 + Math.random() * 6; }
+    flash = Math.max(0, flash - dt * 6);
+    if (flash > 0) sky.lerp(grey.set('#EEF3FF'), flash * 0.8);
     (scene.background as Color).copy(sky);
     const fog = scene.fog as Fog;
     fog.color.copy(sky);
     fog.near = 120 - 75 * rain;
     fog.far = 260 - 140 * rain;
-    hemi.intensity = (0.18 + 0.45 * day) * LEGACY;
+    hemi.intensity = (0.18 + 0.45 * day + flash * 1.5) * LEGACY;
     moon.intensity = 0.35 * (1 - day) * LEGACY;
     (stars.material as PointsMaterial).opacity = clamp(-e * 3, 0, 1) * 0.9 * (1 - rain); // clouds hide the stars
 

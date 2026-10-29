@@ -118,6 +118,11 @@ export const DRUM_P = ground(V(2.5, -1.5)); // near the fire, so she drums by fi
 export const HAMMOCK_P = ground(V(-4.2, -6.0));
 export const JOURNAL_P = copy(SEATS[1].p);
 reserve(DRUM_P, HAMMOCK_P);
+// furniture she makes once she's handy enough
+export const CHAIR_P = ground(V(1.1, -1.7)); // by the fire, facing it
+export const TABLE_P = ground(V(0.9, -2.95)); // next to the chair
+export const SHELF_P = ground(V(-1.9, -3.6)); // beside the shelter, for her shells and story boards
+reserve(CHAIR_P, TABLE_P, SHELF_P);
 
 /* ---------- things she builds herself (spots are reserved up front so decoration stays clear) ---------- */
 export const WOODPILE_P = ground(V(-2.0, 0.6));

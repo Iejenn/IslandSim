@@ -1,24 +1,26 @@
 // Needs decay over game time, health follows from them, plus the slower
 // rhythms: weather, the garden, new goals and the daily recap.
+import { maybeDogArrives } from './companion';
 import { updateGarden } from './garden';
 import { endOfDay } from './memory';
-import { chooseGoal } from './plans';
+import { chooseGoal, comfort } from './plans';
 import { updateResources } from './resources';
 import { dayNum, hooks, hour, log, S, say, tr, type TaskId } from './state';
 import { interrupt, INTERRUPTIBLE } from './tasks';
 import { clamp } from './util';
-import { updateWeather } from './weather';
+import { maybeHotDay, updateWeather } from './weather';
 
 /** @param dm game minutes elapsed */
 export function updateNeeds(dm: number) {
   const n = S.needs, asleep = S.task && S.task.id === 'sleep' && S.sitting;
   const indoors = S.task && (S.task.id === 'sleep' || S.task.id === 'shelter') && S.sitting;
-  n.food -= dm * (asleep ? 2 : 4) / 60;
-  n.water -= dm * (asleep ? 3 : 6) / 60;
+  const dog = S.dog.state === 'friend';
+  n.food -= dm * ((asleep ? 2 : 4) + (dog ? 0.4 : 0)) / 60; // she shares scraps with her dog
+  n.water -= dm * (asleep ? 3 : S.weather.hot ? 9 : 6) / 60; // hot days make her thirsty
   n.fun -= dm * (asleep ? 0 : 4) / 60;
-  n.company -= dm * (tr('social') ? 3 : 2) / 60;
+  n.company -= dm * (tr('social') ? 3 : 2) * (dog ? 0.5 : 1) / 60; // a dog is good company
   if (!asleep) n.energy -= dm * 4 / 60;
-  if (S.weather.raining && !indoors) n.fun -= dm * 2 / 60; // being soaked isn't fun
+  if (S.weather.raining && !indoors) n.fun -= dm * (S.weather.storm ? 4 : 2) / 60; // being soaked isn't fun
   for (const k in n) n[k as keyof typeof n] = clamp(n[k as keyof typeof n], 0, 100);
 
   if (n.food < 8) S.health -= dm * 6 / 60;
@@ -50,6 +52,9 @@ export function updateNeeds(dm: number) {
     S.dayIdx = di;
     S.berries = S.berries.map(b => clamp(b + 3, 0, 6));
     log(`Day ${dayNum()} begins.`);
+    maybeHotDay();
+    maybeDogArrives();
+    noteComfort();
   }
   // when she's comfortable during the day, she sometimes sets herself something to make (~every 3 game hours)
   const h = hour();
@@ -66,7 +71,16 @@ export function wouldBeCutShort(id: TaskId) {
 
 export function happiness() {
   const n = S.needs;
-  return clamp(0.22 * n.fun + 0.18 * n.company + 0.15 * n.food + 0.15 * n.water + 0.1 * n.energy + 0.2 * S.health + S.mood - 8, 0, 100);
+  const home = Math.min(10, comfort() * 1.2); // a camp that feels like home makes everything a bit better
+  return clamp(0.22 * n.fun + 0.18 * n.company + 0.15 * n.food + 0.15 * n.water + 0.1 * n.energy + 0.2 * S.health + S.mood + home - 8, 0, 100);
+}
+
+/** Diary notes the first time the camp starts to feel like home. */
+function noteComfort() {
+  const c = comfort();
+  const note = (key: string, text: string) => { if (!S.feelingsNoted.includes(key)) { S.feelingsNoted.push(key); log(text); } };
+  if (c >= 3) note('home:1', 'The camp is starting to feel like a real home.');
+  if (c >= 7) note('home:2', 'She can’t imagine living anywhere else now.');
 }
 
 function die() {

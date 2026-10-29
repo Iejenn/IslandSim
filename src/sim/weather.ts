@@ -1,29 +1,62 @@
-// Rain showers: they come and go at random, water the garden, damp the fire
-// and send her looking for shelter.
-import { highlight, log, S, say } from './state';
+// Weather: rain showers come and go at random, some turn into storms that
+// strip the berry bushes and can damage what she's built, and some days are
+// scorching hot. Rain waters the garden, damps the fire and sends her to shelter.
+import { damaged, PLANS, REPAIRABLE } from './plans';
+import { dayNum, highlight, hour, log, S, say, type ProjectKey } from './state';
 import { interrupt, RAIN_STOPS } from './tasks';
-import { pick, rand } from './util';
+import { clamp, pick, rand } from './util';
 
 const AVG_GAP_MIN = 40 * 60; // on average a shower starts every ~40 game hours
+const STORM_CHANCE = 0.25; // share of showers (from day 3) that are storms
 
 /** @param dm game minutes elapsed */
 export function updateWeather(dm: number) {
   const w = S.weather;
+  if (w.hot && (hour() >= 19 || w.raining)) w.hot = false; // the heat breaks in the evening
   if (w.raining) {
-    S.fire = Math.max(0, S.fire - dm * 4 / 60);
+    S.fire = Math.max(0, S.fire - dm * (w.storm ? 10 : 4) / 60);
     if (S.min >= w.until) {
+      const wasStorm = w.storm;
       w.raining = false;
-      say(pick(['The sun’s back.', 'Finally, the rain stopped.', 'Everything smells fresh after the rain.']));
+      w.storm = false;
+      say(wasStorm ? 'The storm’s passed. Let’s see what’s left standing.' : pick(['The sun’s back.', 'Finally, the rain stopped.', 'Everything smells fresh after the rain.']));
     }
     return;
   }
   // no rain on the first morning, she has enough to deal with
   if (S.min < 20 * 60 || Math.random() >= dm / AVG_GAP_MIN) return;
   w.raining = true;
-  w.until = S.min + rand(60, 240);
+  w.storm = dayNum() >= 3 && Math.random() < STORM_CHANCE;
+  w.until = S.min + (w.storm ? rand(120, 300) : rand(60, 240));
   S.stats.rainsSeen++;
-  say(pick(['Rain! Everything’s getting soaked.', 'Here comes the rain.', 'Great. Wet again.']));
-  log('It started to rain.');
-  highlight('got caught in the rain');
+  if (w.storm) startStorm();
+  else {
+    say(pick(['Rain! Everything’s getting soaked.', 'Here comes the rain.', 'Great. Wet again.']));
+    log('It started to rain.');
+    highlight('got caught in the rain');
+  }
   if (S.task && RAIN_STOPS.has(S.task.id)) interrupt();
+}
+
+function startStorm() {
+  S.stats.storms++;
+  say(pick(['That’s not rain, that’s a storm!', 'The wind! Hold on to something!', 'Thunder… this is going to be a bad one.']));
+  log('A storm rolled in.');
+  highlight('rode out a storm');
+  S.berries = S.berries.map(b => clamp(b - 2, 0, 6)); // the wind strips the bushes
+  // the wind may damage one of her buildings
+  const standing = (Object.keys(REPAIRABLE) as ProjectKey[]).filter(k => S.projects[k].done && !damaged().includes(k));
+  if (standing.length && Math.random() < 0.6) {
+    const k = pick(standing);
+    S.projects[k].damaged = true;
+    log(`The storm tore a piece off the ${PLANS[k].name}.`);
+  }
+}
+
+/** At dawn: maybe a scorching day. */
+export function maybeHotDay() {
+  if (S.weather.raining || Math.random() > 0.2) return;
+  S.weather.hot = true;
+  say(pick(['It’s scorching today.', 'The sand is too hot to walk on.', 'What a heatwave.']));
+  log('A scorching hot day.');
 }
