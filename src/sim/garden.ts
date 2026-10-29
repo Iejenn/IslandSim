@@ -2,7 +2,7 @@
 // need harvesting. Dry beds wither; ripe crops left too long rot.
 import { highlight, log, S } from './state';
 
-const GROW_MIN = 2 * 1440, FINE_GROW_MIN = 1.4 * 1440; // game minutes to ripen
+const GROW_MIN = 2 * 1440; // game minutes to ripen
 const WITHER_DRY_MIN = 0.75 * 1440; // completely dry this long → withered
 const ROT_AT = 2.2; // growth value where an unharvested crop rots
 
@@ -15,7 +15,7 @@ export const driest = () => growingPlots().reduce((m, p) => Math.min(m, p.water)
 /** @param dm game minutes elapsed */
 export function updateGarden(dm: number) {
   if (!S.projects.garden.done) return;
-  const dryDays = S.items.can ? 2.4 : 1.4; // full bed → bone dry, in days
+  const dryDays = S.items.bucket ? 2.4 : 1.4; // full bed → bone dry, in days (a bucket soaks them properly)
   let ripened = 0;
   for (const p of S.plots) {
     if (p.state !== 'growing' && p.state !== 'ripe') continue;
@@ -32,7 +32,7 @@ export function updateGarden(dm: number) {
         continue;
       }
       p.dryMin = 0;
-      p.growth += dm / (p.fine ? FINE_GROW_MIN : GROW_MIN) * (1 + 0.05 * S.skills.gardening.lvl);
+      p.growth += dm / GROW_MIN * (1 + 0.05 * S.skills.gardening.lvl);
       if (p.growth >= 1) { p.state = 'ripe'; ripened++; }
     } else {
       p.growth += dm / GROW_MIN;

@@ -6,8 +6,9 @@ import { clamp, pick } from './util';
 
 const LABEL: Partial<Record<TaskId, string>> = {
   fish: 'fishing', explore: 'walking the beach', talk: 'talking to the seagulls', relax: 'sitting by the fire',
-  piano: 'playing the piano', read: 'reading', chop: 'chopping wood', build: 'building things',
-  plant: 'gardening', water: 'gardening', harvest: 'gardening', sail: 'sailing', stargaze: 'stargazing',
+  drum: 'drumming', write: 'carving stories', chop: 'chopping wood', mine: 'breaking stones', build: 'building things',
+  craft: 'making things', cook: 'cooking', plant: 'gardening', water: 'gardening', harvest: 'gardening',
+  sail: 'paddling', stargaze: 'stargazing', watch: 'watching the sea',
 };
 
 export const liking = (id: TaskId) => S.likes[id] ?? 0;

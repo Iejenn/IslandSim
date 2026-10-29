@@ -3,7 +3,7 @@
 // mirrors the result onto the 3D model.
 import { decide } from './decide';
 import { DOCK_START, ground, V, type Pt } from './island';
-import { onDock, surfaceY } from './projects';
+import { onDock, surfaceY } from './plans';
 import { hooks, S, type Step } from './state';
 import { endTask } from './tasks';
 import { clamp } from './util';
