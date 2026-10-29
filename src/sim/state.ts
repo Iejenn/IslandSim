@@ -3,7 +3,7 @@
 // sim talks to the outside world only through `hooks`, which main.ts wires up.
 import type { AnimKey } from '../config/animations';
 import { copy, PLOTS, START, type Pt, type Spot } from './island';
-import { clamp, pick } from './util';
+import { clamp, mergeInto, pick } from './util';
 
 export const NAMES = ['Mara', 'Lena', 'Iris', 'Noor', 'Sofie', 'Ava', 'Elin', 'Tess', 'Yara', 'Fenna'];
 export const TRAITS = { musical: 'Musical', curious: 'Curious', hardworking: 'Hard-working', lazy: 'Easy-going', social: 'Sociable' };
@@ -138,8 +138,10 @@ export type SimState = ReturnType<typeof createState>;
 // Created by initState() rather than at import time so that random rolls
 // (name, traits) happen after the world is scattered.
 export let S: SimState;
-export function initState() {
+/** Start a new life, or continue a saved one (see sim/persist.ts). */
+export function initState(saved?: Record<string, unknown>) {
   S = createState();
+  if (saved) mergeInto(S as unknown as Record<string, unknown>, saved);
   return S;
 }
 

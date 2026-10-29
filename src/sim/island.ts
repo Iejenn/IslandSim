@@ -74,7 +74,8 @@ reserve(FIRE);
 export const SH = ground(V(-3.4, -2.4));
 export const SHELTER: Spot = (() => {
   const dir = dirXZ(SH, FIRE);
-  return { spot: ground(addScaled(SH, dir, 0.15)), face: addScaled(SH, dir, 3) };
+  // towards the tall front of the shelter, so she fits under the sloped roof
+  return { spot: ground(addScaled(SH, dir, 0.3)), face: addScaled(SH, dir, 3) };
 })();
 reserve(SH);
 

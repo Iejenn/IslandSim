@@ -48,7 +48,7 @@ function renderCamp() {
   $('camp').innerHTML = rows.map(([a, b]) => `<div class="camp-row"><span>${a}</span><span>${b}</span></div>`).join('');
 }
 
-export function createPanel(onGiftGiven: () => void) {
+export function createPanel(onGiftGiven: () => void, onNewIsland: () => void) {
   const needsEl = $('needs'), skillsEl = $('skills'), panel = $('panel'), toggle = $('sheetToggle');
   needsEl.innerHTML = Object.entries(NEEDS).map(([k, l]) =>
     `<div class="meter" data-k="${k}" data-level="ok"><span>${l}</span><div class="m-track"><i></i></div><span class="m-val">0</span></div>`).join('');
@@ -73,7 +73,10 @@ export function createPanel(onGiftGiven: () => void) {
     toggle.textContent = 'Show';
     toggle.setAttribute('aria-expanded', 'false');
   }
-  $('restart').addEventListener('click', () => location.reload());
+  $('restart').addEventListener('click', onNewIsland);
+  $('startOver').addEventListener('click', () => {
+    if (confirm(`Leave ${S.name} and start over on a new island? This can’t be undone.`)) onNewIsland();
+  });
 
   return {
     expand() {
