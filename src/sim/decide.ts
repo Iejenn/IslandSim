@@ -4,6 +4,7 @@
 import { driest, freePlots, growingPlots, ripePlots } from './garden';
 import { liking } from './memory';
 import { wouldBeCutShort } from './needs';
+import { nextToHerd, sheepToShear } from './animals';
 import { canWork, damaged, FIREWOOD_RESERVE, missing, PLANS, REPAIRABLE, works } from './plans';
 import { standingTrees } from './resources';
 import { hour, isNight, S, tr, type TaskId } from './state';
@@ -43,7 +44,9 @@ export function decide() {
   // a catch is only worth much if she can cook it (or dry it)
   add('fish', 1.4 * u(n.food) * catchChance * (fishUseful ? 1 : 0.3) + (S.items.rod ? 0.05 : 0) + 0.2 * u(n.fun)
     + craving + (S.projects.dock.done ? 0.1 : 0) - (night ? 0.6 : 0) + (tr('hardworking') ? 0.05 : 0) - wet * 0.7);
-  if ((S.stock.raw > 0 || S.stock.veg >= 2) && fireLit) add('cook', 1.8 * u(n.food) + (S.stock.raw > 0 ? 0.45 : 0.2));
+  const canCook = fireLit || (S.items.kitchen && S.projects.lodge.done && S.stock.wood > 0);
+  const hasMeal = S.stock.raw > 0 || S.stock.veg >= 2 || S.stock.eggs >= 2;
+  if (hasMeal && canCook) add('cook', 1.8 * u(n.food) + (S.stock.raw > 0 ? 0.45 : 0.25));
   if (S.stock.fish > 0 || S.stock.veg > 0) add('eat', 1.9 * u(n.food) * (S.stock.fish > 0 ? 1 : 0.8) + 0.05);
   add('drink', 2.2 * u(n.water));
   // keeping the fire alive is a priority: it's how she cooks, and it's home
@@ -62,6 +65,13 @@ export function decide() {
   if (repairWood && S.stock.wood < repairWood + FIREWOOD_RESERVE) need.wood = Math.max(need.wood, 1);
   if (repairStone && S.stock.stone < repairStone) need.stone = Math.max(need.stone, 1);
   if (broken.length) add('repair', 0.7 + busy - dark - wet);
+
+  /* animals: bring them home, collect eggs, shear the sheep (wool is often what her goal is waiting on) */
+  // once the fence (or coop) is up, bringing the animals home is the obvious next step
+  // (it carries the same drive as her current goal, so a new project doesn't leave the animals out)
+  if (nextToHerd(S.pos)) add('herd', 0.85 + Math.max(0, busy) - dark - wet);
+  if (S.coopEggs >= 2) add('collect', 0.62 + S.coopEggs * 0.04 - dark);
+  if (sheepToShear()) add('shear', 0.88 + 0.05 * sheepToShear() + (need.wool > 0 ? 0.3 : 0) - dark - wet); // heavy fleeces need taking off
   const woodLow = S.stock.wood < 3, desperate = !fireLit && S.stock.wood === 0 ? 0.4 : 0; // no fire, no cooking
   const canChop = !!S.items.axe && standingTrees() > 0;
   if (need.wood > 0 || woodLow) {

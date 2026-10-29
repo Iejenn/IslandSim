@@ -5,7 +5,7 @@ import {
   BoxGeometry, CylinderGeometry, ExtrudeGeometry, Group, IcosahedronGeometry, Shape, SphereGeometry,
   type Material, type Mesh, type Object3D, type Scene, ConeGeometry, DodecahedronGeometry,
 } from 'three';
-import { BOAT_DOCK, DOCK, FIRE, GARDEN_P, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, WOODPILE_P, yawTo } from '../sim/island';
+import { BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
 import type { ProjectKey, SimState } from '../sim/state';
 import { M, mat, mesh } from './materials';
 
@@ -147,6 +147,79 @@ export function createBuildings(scene: Scene) {
     return { g, parts };
   })();
 
+  /* the lodge: floor, outer walls with a doorway, three rooms, a gable roof.
+     The roof hides while she's inside so you can see her in the rooms. */
+  const lodge = (() => {
+    const g = new Group(), { w, d, h } = LODGE_SIZE, hw = w / 2, hd = d / 2, parts: Object3D[] = [];
+    at(g, LODGE_P.x, LODGE_P.y, LODGE_P.z, LODGE_YAW);
+    scene.add(g);
+    const wall = (len: number, x: number, z: number, rot = 0, height = h) => {
+      const m = mesh(new BoxGeometry(len, height, 0.14), M.log, x, height / 2, z);
+      m.rotation.y = rot;
+      return m;
+    };
+    parts.push(mesh(new BoxGeometry(w, 0.12, d), M.wood, 0, 0.06, 0)); // floor
+    parts.push(wall(w, 0, -hd)); // back
+    parts.push(wall(d, -hw, 0, Math.PI / 2), wall(d, hw, 0, Math.PI / 2)); // sides
+    parts.push(wall(hw - 0.6, -(hw + 0.6) / 2, hd), wall(hw - 0.6, (hw + 0.6) / 2, hd)); // front, with a doorway in the middle
+    parts.push(wall(1.2, 0, hd, 0, 0.5)); // lintel over the door
+    (parts[parts.length - 1] as Mesh).position.y = h - 0.25;
+    for (const x of [-2.2, 2.2]) parts.push(mesh(new BoxGeometry(0.7, 0.5, 0.16), M.ebony, x, 1.5, hd)); // windows
+    // interior walls between the rooms, open towards the front so she can walk through
+    for (const x of [-1.1, 1.1]) parts.push(wall(d - 1.4, x, -0.7, Math.PI / 2));
+    parts.push(mesh(new BoxGeometry(1.4, 0.06, 1.9), M.bed, -2.2, 0.15, -0.8)); // bedroll (until she makes a real bed)
+    const roofs: Object3D[] = [];
+    for (const s of [-1, 1]) {
+      const r = mesh(new BoxGeometry(w + 0.6, 0.12, hd * 1.25), M.thatch, 0, h + 0.55, s * hd * 0.55);
+      r.rotation.x = s * 0.48;
+      roofs.push(r);
+    }
+    const chimney = mesh(new BoxGeometry(0.45, 1.4, 0.45), M.rock, 2.4, h + 0.6, -1.4);
+    roofs.push(chimney);
+    parts.push(...roofs);
+    for (const p of parts) { p.visible = false; g.add(p); }
+    const bedroll = parts[parts.length - 4];
+    return { g, parts, roofs, bedroll };
+  })();
+
+  /* fence: a ring of posts and rails around her home, with gaps for gates */
+  const fence = (() => {
+    const parts: Object3D[] = [], n = 40;
+    const isGate = (a: number) => FENCE_GATES.some(gA => Math.abs(Math.atan2(Math.sin(a - gA), Math.cos(a - gA))) < 0.12);
+    const pt = (a: number) => ground(V(Math.cos(a) * FENCE_R, Math.sin(a) * FENCE_R));
+    for (let i = 0; i < n; i++) {
+      const a = i / n * Math.PI * 2, a2 = (i + 1) / n * Math.PI * 2;
+      if (isGate(a)) continue;
+      const p = pt(a);
+      parts.push(mesh(new CylinderGeometry(0.06, 0.07, 1.0, 5), M.log, p.x, p.y + 0.45, p.z));
+      if (isGate(a2)) continue;
+      const q = pt(a2), len = Math.hypot(q.x - p.x, q.z - p.z);
+      for (const y of [0.45, 0.8]) {
+        const rail = mesh(new BoxGeometry(len, 0.05, 0.05), M.wood, (p.x + q.x) / 2, (p.y + q.y) / 2 + y, (p.z + q.z) / 2);
+        rail.rotation.y = -Math.atan2(q.z - p.z, q.x - p.x);
+        parts.push(rail);
+      }
+    }
+    return staged(parts);
+  })();
+
+  /* chicken coop: a little house on stilts with a ramp */
+  const coop = (() => {
+    const g = new Group(), parts: Object3D[] = [];
+    at(g, COOP_P.x, COOP_P.y, COOP_P.z, yawTo(COOP_P, FIRE));
+    scene.add(g);
+    for (const [x, z] of [[-0.5, -0.4], [0.5, -0.4], [-0.5, 0.4], [0.5, 0.4]]) parts.push(mesh(new CylinderGeometry(0.04, 0.04, 0.4, 5), M.log, x, 0.2, z));
+    parts.push(mesh(new BoxGeometry(1.2, 0.7, 0.9), M.wood, 0, 0.75, 0));
+    const roof = mesh(new ConeGeometry(0.95, 0.5, 4), M.thatch, 0, 1.35, 0);
+    roof.rotation.y = Math.PI / 4;
+    parts.push(roof);
+    const ramp = mesh(new BoxGeometry(0.3, 0.03, 0.8), M.log, 0, 0.22, 0.75);
+    ramp.rotation.x = 0.55;
+    parts.push(ramp, mesh(new BoxGeometry(0.25, 0.3, 0.02), M.ebony, 0, 0.6, 0.46)); // ramp and little door
+    for (const p of parts) { p.visible = false; g.add(p); }
+    return parts;
+  })();
+
   /* woodpile: logs stacked in a little pyramid, one per log in stock */
   const woodpile = (() => {
     const g = new Group();
@@ -188,7 +261,12 @@ export function createBuildings(scene: Scene) {
     const n = started ? Math.max(1, Math.ceil(progress * (damaged ? 0.7 : 1) * parts.length)) : 0;
     parts.forEach((p, i) => { p.visible = i < n; });
   };
-  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts };
+  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop };
+  /** Is this world point inside the lodge's walls? */
+  const inLodge = (x: number, z: number) => {
+    const dx = x - LODGE_P.x, dz = z - LODGE_P.z, c = Math.cos(LODGE_YAW), s = Math.sin(LODGE_YAW);
+    return Math.abs(dx * c - dz * s) < LODGE_SIZE.w / 2 && Math.abs(dx * s + dz * c) < LODGE_SIZE.d / 2;
+  };
 
   /**
    * Mirror sim state onto the models (cheap; called every frame).
@@ -197,6 +275,10 @@ export function createBuildings(scene: Scene) {
    */
   return function updateBuildings(S: SimState, her: Object3D, t: number) {
     for (const k of Object.keys(PARTS) as ProjectKey[]) showParts(PARTS[k], S.projects[k].started, S.projects[k].progress, S.projects[k].damaged);
+    // the lodge replaces the shelter (and its stone walls) once it's finished
+    if (S.projects.lodge.done) for (const p of hut) p.visible = false;
+    if (S.projects.lodge.done && inLodge(her.position.x, her.position.z)) for (const r of lodge.roofs) r.visible = false;
+    if (S.items.realbed) lodge.bedroll.visible = false;
     if (S.sailing) {
       canoe.g.position.set(her.position.x, WATER_Y, her.position.z);
       canoe.g.rotation.y = her.rotation.y;

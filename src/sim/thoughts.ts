@@ -21,6 +21,7 @@ export const TH = {
   craft: ['Measure, cut, tie.', 'I’m getting good with my hands.', 'Nobody taught me this. I’m figuring it out.'],
   cook: ['Smells amazing.', 'Grilled fish, island style.', 'Careful… don’t burn it.'],
   write: ['Chapter seven: the storm.', 'One day someone will read these.', 'Carving words takes patience.'],
+  herd: ['Come on, this way. There’s food at home.', 'Easy… easy… good girl.', 'Herding is harder than it looks.'],
   befriend: ['Easy, buddy. I won’t hurt you.', 'Here, have some. It’s okay.', 'You’re as lost as I am, aren’t you?'],
   repair: ['That storm made a mess.', 'Patch it up, good as new. Almost.', 'Fixing things again. Story of my life.'],
   swim: ['The water is perfect!', 'Ahh, finally cool.', 'I could float here all day.'],

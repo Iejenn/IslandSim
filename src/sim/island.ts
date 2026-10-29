@@ -20,9 +20,9 @@ export function dirXZ(a: Pt, b: Pt): Pt {
 // beach walks, the fishing spot, dock and canoe route) scales with it; the camp
 // around the fire keeps its fixed positions so her daily walks stay short.
 export const ISLAND_SCALE = 1.45;
-// Two broad lobes stick out of the main island: the forest to the west and
-// the rocky area to the east, so each has room of its own.
-export const FOREST_A = 2.4, ROCKS_A = -0.875; // directions (radians) of the lobes
+// Broad lobes stick out of the main island: the forest to the west, the rocky
+// area to the east and the pond meadow to the north, so each has room of its own.
+export const FOREST_A = 2.4, ROCKS_A = -0.875, POND_A = -2.3; // directions (radians) of the lobes
 // How much faster she moves than on the original island, so the longer walks
 // out to the lobes don't eat her whole day.
 export const PACE = ISLAND_SCALE * 1.15;
@@ -31,7 +31,7 @@ const lobe = (a: number, centre: number, width: number, size: number) => {
   return size * Math.exp(-(d * d) / (2 * width * width));
 };
 export function islandR(a: number) {
-  const lobes = lobe(a, FOREST_A, 0.4, 14) + lobe(a, ROCKS_A, 0.36, 11);
+  const lobes = lobe(a, FOREST_A, 0.4, 14) + lobe(a, ROCKS_A, 0.36, 11) + lobe(a, POND_A, 0.42, 11);
   // a big smooth bump makes a squarish headland; ragged it up so the coast looks natural
   const ragged = (lobes / 12) * (1.6 * Math.sin(7 * a + 1.3) + 1.0 * Math.sin(11 * a + 0.4) + 0.7 * Math.sin(17 * a + 2.2));
   return ISLAND_SCALE * (13.5 + 1.1 * Math.sin(3 * a + 0.5) + 0.6 * Math.sin(5 * a + 2.1) + 0.4 * Math.sin(7 * a)) + lobes + ragged;
@@ -96,14 +96,14 @@ export const SHELTER: Spot = (() => {
 })();
 reserve(SH);
 
-/* spring */
-export const SP = ground(V(-6.2, -3.4));
+/* the pond (her spring) out on the north meadow, ringed by berry bushes */
+export const SP = ground(pointAt(POND_A, 0.42));
 export const SPRING: Spot = { spot: standNear(SP, 1.45), face: SP };
 reserve(SP);
 
-/* berry bushes (berry counts live in sim state) */
-export const BUSHES = [V(5.2, 2.4), V(3.4, -5.4), V(-4.4, 4.4)].map(raw => {
-  const pos = ground(raw);
+/* berry bushes around the pond (berry counts live in sim state) */
+export const BUSHES = [0.6, 1.5, 2.6, 3.7, 4.6, 5.5].map(k => {
+  const pos = ground(V(SP.x + Math.cos(POND_A + k) * 3.1, SP.z + Math.sin(POND_A + k) * 3.1));
   reserve(pos);
   return { pos, stand: standNear(pos, 1.0) };
 });
@@ -115,7 +115,7 @@ reserve(FISH.spot);
 
 /* where crafted things end up */
 export const DRUM_P = ground(V(2.5, -1.5)); // near the fire, so she drums by firelight
-export const HAMMOCK_P = ground(V(-4.2, -6.0));
+export const HAMMOCK_P = ground(V(-0.6, -6.6)); // (clear of where the lodge will stand)
 export const JOURNAL_P = copy(SEATS[1].p);
 reserve(DRUM_P, HAMMOCK_P);
 // furniture she makes once she's handy enough
@@ -123,6 +123,32 @@ export const CHAIR_P = ground(V(1.1, -1.7)); // by the fire, facing it
 export const TABLE_P = ground(V(0.9, -2.95)); // next to the chair
 export const SHELF_P = ground(V(-1.9, -3.6)); // beside the shelter, for her shells and story boards
 reserve(CHAIR_P, TABLE_P, SHELF_P);
+
+/* ---------- the lodge: the shelter rebuilt into a house with three rooms ---------- */
+// It stands just behind the old shelter, facing the fire. Local x runs along
+// the front (bedroom | living room | kitchen), local z points at the fire.
+const lodgeDir = dirXZ(SH, FIRE);
+export const LODGE_P = ground(addScaled(SH, lodgeDir, -1.0));
+export const LODGE_YAW = yawTo(LODGE_P, FIRE);
+export const LODGE_SIZE = { w: 6.6, d: 4.4, h: 2.6 };
+/** A point inside the lodge, from lodge-local coordinates. */
+export function lodgeLocal(lx: number, lz: number) {
+  const c = Math.cos(LODGE_YAW), s = Math.sin(LODGE_YAW);
+  return ground(V(LODGE_P.x + lx * c + lz * s, LODGE_P.z - lx * s + lz * c));
+}
+export const LODGE_DOOR = lodgeLocal(0, 2.9);
+export const LODGE_BED: Spot = { spot: lodgeLocal(-2.2, -0.8), face: lodgeLocal(-2.2, 2) };
+export const LODGE_SOFA: Spot = { spot: lodgeLocal(-0.1, -1.25), face: lodgeLocal(-0.1, 2) };
+export const LODGE_KITCHEN: Spot = { spot: lodgeLocal(2.2, -0.7), face: lodgeLocal(2.2, -2.2) };
+reserve(LODGE_P, lodgeLocal(-2.6, 0), lodgeLocal(2.6, 0));
+
+/* ---------- animals: a fence around the home area, a coop inside it ---------- */
+export const FENCE_R = 9.2;
+// openings in the fence towards the dock and each headland
+export const FENCE_GATES = [Math.PI / 2, FOREST_A, ROCKS_A, POND_A];
+export const COOP_P = ground(V(5.0, 3.4));
+export const SHEEP_PEN_P = ground(V(-5.6, 4.0)); // where her sheep graze inside the fence
+reserve(COOP_P, SHEEP_PEN_P);
 
 /* ---------- things she builds herself (spots are reserved up front so decoration stays clear) ---------- */
 export const WOODPILE_P = ground(V(-2.0, 0.6));
@@ -191,3 +217,10 @@ reserve(SCREE_P);
 
 /* where she wakes up */
 export const START = ground(V(1.4, 2.6));
+
+/* where the wild animals roam until she brings them home: chickens on the
+   south meadow, sheep on the pond meadow, all outside the fence */
+const outsideFence = (pts: Pt[]) => pts.filter(p => Math.hypot(p.x, p.z) > FENCE_R + 1.2);
+export const CHICKEN_HOMES = outsideFence(scatter(17, 8, 0.3, 1.5, 0.48, 0.66, 1.4, 1.6)).slice(0, 4);
+export const SHEEP_HOMES = outsideFence(scatter(19, 8, POND_A - 0.55, POND_A + 0.55, 0.5, 0.7, 2.0, 1.8)).slice(0, 3);
+reserve(...CHICKEN_HOMES, ...SHEEP_HOMES);

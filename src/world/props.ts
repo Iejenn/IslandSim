@@ -83,8 +83,8 @@ export function createProps(scene: Scene) {
     scene.add(g);
   }
 
-  /* shelter */
-  {
+  /* shelter (replaced by the lodge once she builds one) */
+  const shelter = (() => {
     const g = new Group();
     g.position.copy(v3(SH));
     g.rotation.y = yawTo(SH, FIRE);
@@ -99,7 +99,8 @@ export function createProps(scene: Scene) {
     g.add(roof);
     g.add(mesh(new BoxGeometry(1.5, 0.1, 0.9), M.bed, 0, 0.05, 0));
     scene.add(g);
-  }
+    return g;
+  })();
 
   /* spring */
   {
@@ -142,6 +143,7 @@ export function createProps(scene: Scene) {
 
   return {
     campfire,
+    shelter,
     /** Palms lean and sway with the wind (0 calm … 1 storm). @param t real seconds */
     sway(wind: number, t: number) {
       palms.forEach((g, i) => {

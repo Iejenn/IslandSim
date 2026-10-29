@@ -19,6 +19,7 @@ import { createBuildings } from './world/buildings';
 import { createCrafted } from './world/crafted';
 import { createDog } from './world/dog';
 import { createForest } from './world/forest';
+import { createLivestock } from './world/livestock';
 import { createProps } from './world/props';
 import { createRain } from './world/rain';
 import { createSky } from './world/sky';
@@ -45,6 +46,7 @@ const updateBuildings = createBuildings(scene);
 const updateRain = createRain(scene);
 const updateDog = createDog(scene);
 const updateAnimals = createAnimals(scene);
+const updateLivestock = createLivestock(scene);
 
 /* ---------- sim + her ---------- */
 const S = initState(save?.state);
@@ -153,6 +155,8 @@ function frame(now: number) {
   props.syncBerries(S.berries);
   updateBuildings(S, body.her, clockT);
   if (ready) updateDog(S, body.her, dt, clockT);
+  updateLivestock(S, body.her, dt, clockT);
+  props.shelter.visible = !S.projects.lodge.done; // the lodge replaces the old shelter
   updateAnimals(dt, clockT, isNight());
   const storm = S.weather.storm;
   const rain = updateRain(dt, S.weather.raining, controls.target, storm);

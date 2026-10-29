@@ -12,6 +12,14 @@ the fire dies and she can't cook her catch. As her crafting improves she makes
 furniture (a chair by the fire, a table, a bed frame, a shelf for her shells, a
 rocking chair on the lookout) and the camp starts to feel like home.
 
+Later on she can tear down her shelter and build a lodge with a bedroom, a
+living room and a kitchen, then furnish it (a real bed, a sofa, a wood stove
+for cooking when the campfire is out). Chickens and sheep roam the island
+from day one, but they're no use to her until she fences off her home and
+builds a coop: then she herds them in one by one, collects eggs for omelettes
+and shears the sheep for wool (a blanket, a sweater for rainy days). Her
+spring sits on a headland on the far side, ringed by berry bushes.
+
 A stray dog may wash ashore and, if she earns its trust, follows her
 everywhere. Storms strip the berry bushes and can damage her buildings until
 she repairs them; on hot days she cools off in the sea. Crabs, gulls and
@@ -67,13 +75,14 @@ src/
     garden.ts      garden beds growing, drying out, ripening, rotting
     weather.ts     rain showers, storms (with damage) and hot days
     companion.ts   the stray dog and its trust
+    animals.ts     chickens and sheep: laying eggs, growing wool, who to herd next
     memory.ts      what she likes/dislikes and the daily diary recap
     thoughts.ts    what she says
     persist.ts     turning state into saveable JSON and back
   world/           three.js scene: stage (renderer/camera), terrain, water,
                    sky (lights, day/night, lightning), rain, props, forest &
-                   boulders, buildings, crafted items & furniture, the dog,
-                   wildlife
+                   boulders, buildings (incl. the lodge, fence and coop),
+                   crafted items & furniture, the dog, livestock, wildlife
   character/       loading the model, playing animations, moving the body,
                    tools in her hand
   save.ts          localStorage save/load and the island's layout seed

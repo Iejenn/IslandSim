@@ -116,6 +116,44 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     weight: () => 1 + (tr('lazy') ? 1 : 0) + (tr('curious') ? 0.5 : 0),
   },
 
+  /* ---------- for the lodge's rooms ---------- */
+  realbed: {
+    kind: 'craft', name: 'real bed', a: 'a real bed', cost: { wood: 4, wool: 3 }, minutes: 120,
+    unlocked: () => S.projects.lodge.done,
+    want: 'A bedroom deserves a real bed. Wool mattress, wooden frame. Heaven.',
+    done: 'A real bed in a real bedroom. I might cry.',
+    weight: () => 3 + (tr('lazy') ? 1 : 0),
+  },
+  sofa: {
+    kind: 'craft', name: 'sofa', a: 'a sofa', cost: { wood: 4, wool: 2 }, minutes: 110,
+    unlocked: () => S.projects.lodge.done,
+    want: 'The living room needs a sofa. Something soft to sink into on rainy days.',
+    done: 'A sofa! I’m never getting up again.',
+    weight: () => 2 + (tr('lazy') ? 1.5 : 0),
+  },
+  kitchen: {
+    kind: 'craft', name: 'kitchen', a: 'a little kitchen', cost: { wood: 4, stone: 4 }, minutes: 120,
+    unlocked: () => S.projects.lodge.done,
+    want: 'A stone stove and a counter, and I could cook indoors, rain or shine.',
+    done: 'My own kitchen! Time to get creative.',
+    weight: () => 2.5,
+  },
+  /* ---------- from her sheep's wool ---------- */
+  blanket: {
+    kind: 'craft', name: 'wool blanket', a: 'a wool blanket', cost: { wool: 3 }, minutes: 80,
+    unlocked: () => S.stats.shorn >= 1,
+    want: 'With that wool I could knit a blanket. Warm nights at last.',
+    done: 'A wool blanket. Soft, warm, and it smells like sheep. Perfect.',
+    weight: () => 2,
+  },
+  sweater: {
+    kind: 'craft', name: 'sweater', a: 'a wool sweater', cost: { wool: 2 }, minutes: 70,
+    unlocked: () => S.stats.shorn >= 1 && S.stats.rainsSeen >= 2,
+    want: 'A thick sweater would make the rainy days a lot less miserable.',
+    done: 'A sweater! Lumpy, but mine.',
+    weight: () => 1.5,
+  },
+
   /* ---------- projects ---------- */
   garden: {
     kind: 'build', name: 'garden', a: 'a garden', cost: { wood: 4 }, minutes: 150,
@@ -159,6 +197,28 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     done: 'The lookout is finished! I can see forever from up there.',
     weight: () => tr('curious') ? 2.5 : 1,
   },
+  fence: {
+    kind: 'build', name: 'fence', a: 'a fence around her home', cost: { wood: 10 }, minutes: 200,
+    // after the first tools: 10 logs this early starved her of axe/rod/furniture time
+    unlocked: () => dayNum() >= 5 && !!S.items.axe,
+    want: 'If I fenced in the camp, I could keep those chickens and sheep.',
+    done: 'The fence is up. Now to bring the animals home.',
+    weight: () => 2.5 + (tr('hardworking') ? 0.5 : 0), // the animals wandering past her camp keep reminding her
+  },
+  coop: {
+    kind: 'build', name: 'chicken coop', a: 'a chicken coop', cost: { wood: 5, fibre: 2 }, minutes: 120,
+    unlocked: () => S.projects.fence.done,
+    want: 'A coop for the chickens, and I’d have eggs every morning.',
+    done: 'The coop is ready. Here, chick-chick-chick!',
+    weight: () => 2.5,
+  },
+  lodge: {
+    kind: 'build', name: 'lodge', a: 'a lodge', cost: { wood: 16, stone: 12 }, minutes: 420,
+    unlocked: () => S.projects.hut.done && dayNum() >= 8 && S.skills.building.lvl >= 2,
+    want: 'This shelter has served me well. But I want a real house: a bedroom, a living room, a kitchen.',
+    done: 'A lodge! With rooms! I built a house with my own hands.',
+    weight: () => 2 + (tr('hardworking') ? 1 : 0),
+  },
   canoe: {
     kind: 'build', name: 'canoe', a: 'a canoe', cost: { wood: 8, fibre: 4 }, minutes: 200,
     unlocked: () => S.projects.dock.done,
@@ -193,7 +253,7 @@ export const FIREWOOD_RESERVE = 2;
 
 /** How much of each resource she still has to gather before she can start her goal. */
 export function missing(): Record<Resource, number> {
-  const out = { wood: 0, stone: 0, fibre: 0 }, k = S.goal;
+  const out = { wood: 0, stone: 0, fibre: 0, wool: 0 }, k = S.goal;
   if (!k || progressOf(k).started) return out;
   for (const r of Object.keys(out) as Resource[]) {
     const cost = PLANS[k].cost[r] ?? 0;
@@ -251,18 +311,20 @@ export function checkFinished(k: PlanKey) {
 /* ---------- storm damage ---------- */
 // What the storm can damage, and what fixing it costs.
 export const REPAIRABLE: Partial<Record<ProjectKey, Partial<Record<Resource, number>>>> = {
-  rack: { wood: 1 }, dock: { wood: 3 }, hut: { wood: 1, stone: 2 }, lookout: { wood: 2 },
+  rack: { wood: 1 }, dock: { wood: 3 }, hut: { wood: 1, stone: 2 }, lookout: { wood: 2 }, lodge: { wood: 2, stone: 1 },
 };
 /** A finished project that isn't storm-damaged right now. */
 export const works = (k: ProjectKey) => S.projects[k].done && !S.projects[k].damaged;
 export const damaged = () => (Object.keys(REPAIRABLE) as ProjectKey[]).filter(k => S.projects[k].damaged);
 
 /* ---------- home comfort: how much the camp feels like a home ---------- */
-const COMFORT_ITEMS: CraftKey[] = ['chair', 'table', 'bed', 'shelf', 'rocker', 'hammock', 'drum'];
-/** 0…10: furniture and comforts she has made, plus a sound roof and hearth. */
+const COMFORT_ITEMS: CraftKey[] = ['chair', 'table', 'bed', 'shelf', 'rocker', 'hammock', 'drum', 'realbed', 'sofa', 'kitchen', 'blanket'];
+/** 0…16: furniture and comforts she has made, plus a sound roof (or a whole lodge) and hearth. */
 export function comfort() {
-  return COMFORT_ITEMS.filter(k => S.items[k]).length + (works('hut') ? 2 : 0) + (S.projects.hearth.done ? 1 : 0);
+  return COMFORT_ITEMS.filter(k => S.items[k]).length + (works('lodge') ? 4 : works('hut') ? 2 : 0) + (S.projects.hearth.done ? 1 : 0);
 }
+/** Somewhere dry and solid to sleep and shelter: the lodge, or the shelter with stone walls. */
+export const indoors = () => works('lodge') || works('hut');
 
 /* ---------- walking surface: terrain, or the dock deck once it exists ---------- */
 const along = (p: Pt) => p.x * DOCK.dir.x + p.z * DOCK.dir.z;
