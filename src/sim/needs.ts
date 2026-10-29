@@ -1,17 +1,24 @@
-// Needs decay over game time, health follows from them, plus daily events.
+// Needs decay over game time, health follows from them, plus the slower
+// rhythms: weather, the garden, new goals and the daily recap.
+import { updateGarden } from './garden';
 import { maybeWish } from './gifts';
-import { dayNum, hooks, log, S, say, tr } from './state';
+import { endOfDay } from './memory';
+import { chooseGoal } from './projects';
+import { dayNum, hooks, hour, log, S, say, tr, type TaskId } from './state';
 import { interrupt, INTERRUPTIBLE } from './tasks';
 import { clamp } from './util';
+import { updateWeather } from './weather';
 
 /** @param dm game minutes elapsed */
 export function updateNeeds(dm: number) {
   const n = S.needs, asleep = S.task && S.task.id === 'sleep' && S.sitting;
+  const indoors = S.task && (S.task.id === 'sleep' || S.task.id === 'shelter') && S.sitting;
   n.food -= dm * (asleep ? 2 : 4) / 60;
   n.water -= dm * (asleep ? 3 : 6) / 60;
   n.fun -= dm * (asleep ? 0 : 4) / 60;
   n.company -= dm * (tr('social') ? 3 : 2) / 60;
   if (!asleep) n.energy -= dm * 4 / 60;
+  if (S.weather.raining && !indoors) n.fun -= dm * 2 / 60; // being soaked isn't fun
   for (const k in n) n[k as keyof typeof n] = clamp(n[k as keyof typeof n], 0, 100);
 
   if (n.food < 8) S.health -= dm * 6 / 60;
@@ -28,19 +35,33 @@ export function updateNeeds(dm: number) {
 
   // drop a hobby if she's about to starve, dehydrate or collapse
   const id = S.task && S.task.id;
-  const crit = (n.water < 12 && id !== 'drink') || (n.food < 12 && id !== 'forage' && id !== 'fish') || (n.energy < 6 && id !== 'sleep');
-  if (crit && id && INTERRUPTIBLE.has(id)) interrupt();
+  if (id && wouldBeCutShort(id)) interrupt();
 
-  // a new day starts at 07:00: bushes regrow and she may wish for something
+  updateWeather(dm);
+  updateGarden(dm);
+
+  // a new day starts at 07:00: recap yesterday, bushes regrow, she may wish for something
   const di = Math.floor((S.min - 420) / 1440);
   if (di > S.dayIdx) {
+    endOfDay(dayNum() - 1, happiness());
     S.dayIdx = di;
     S.berries = S.berries.map(b => clamp(b + 3, 0, 6));
     log(`Day ${dayNum()} begins.`);
     maybeWish(false);
   }
-  if (!S.firstWish && S.min >= 10 * 60) { S.firstWish = true; maybeWish(true); }
+  // first wish of her life: as soon as there's something she could wish for
+  if (!S.firstWish && S.min >= 10 * 60 && maybeWish(true)) S.firstWish = true;
+  // when she's comfortable during the day, she sometimes sets herself a project (~every 4 game hours)
+  const h = hour();
+  if (!S.goal && h >= 8 && h < 18 && n.food > 40 && n.water > 40 && Math.random() < dm / 240) chooseGoal();
   if (S.health <= 0) die();
+}
+
+/** True if this task would be interrupted right away because a need is critical. */
+export function wouldBeCutShort(id: TaskId) {
+  const n = S.needs;
+  const crit = (n.water < 12 && id !== 'drink') || (n.food < 12 && id !== 'forage' && id !== 'fish' && id !== 'eat' && id !== 'harvest') || (n.energy < 6 && id !== 'sleep');
+  return crit && INTERRUPTIBLE.has(id);
 }
 
 export function happiness() {

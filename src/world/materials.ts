@@ -1,7 +1,7 @@
 // Shared low-poly materials and a mesh helper used by every world builder.
 import { DoubleSide, Mesh, MeshBasicMaterial, MeshStandardMaterial, type BufferGeometry, type Material, type MeshStandardMaterialParameters } from 'three';
 
-const mat = (c: string, o?: MeshStandardMaterialParameters) =>
+export const mat = (c: string, o?: MeshStandardMaterialParameters) =>
   new MeshStandardMaterial({ color: c, flatShading: true, roughness: 0.9, metalness: 0, ...o });
 
 export const M = {

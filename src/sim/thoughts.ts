@@ -13,6 +13,15 @@ export const TH = {
   explore: ['What’s around that bend?', 'Maybe something washed up on the beach.', 'Footprints in the sand. Only mine.'],
   talk: ['Talking to the seagulls again. They’re good listeners.', 'I wrote my name in the sand. Hello, world.', 'Is anyone out there?'],
   read: ['One more chapter.', 'These pages take me far away from here.'],
+  chop: ['Swing, chop, swing, chop.', 'Every log is a step closer.', 'My arms are going to feel this tomorrow.'],
+  build: ['Measure twice, cut once. Or just cut.', 'It’s actually starting to look like something.', 'Nobody taught me this. I’m figuring it out.'],
+  plant: ['Grow, little ones.', 'A seed is just a promise.', 'Dirt under my nails again. Good dirt.'],
+  water: ['Drink up, plants.', 'Back and forth to the spring. Worth it.'],
+  harvest: ['Food I grew myself!', 'Look at these. I did that.'],
+  eat: ['Dried fish. Chewy, but it’s dinner.', 'Glad I saved this one.'],
+  shelter: ['I’ll wait it out under the roof.', 'Listening to the rain on the leaves.', 'At least the spring will be full.'],
+  sail: ['The island looks so small from out here.', 'Wind in my hair. I needed this.', 'I wonder what’s beyond the horizon.'],
+  stargaze: ['So many stars. More than at home.', 'Is that a planet? I think that’s a planet.', 'Somewhere out there, someone is looking up too.'],
 };
 
 const LOW: Record<NeedKey, string> = {

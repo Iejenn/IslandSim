@@ -6,14 +6,18 @@ import { Raycaster, Vector2, Vector3 } from 'three';
 import { createAnimator } from './character/animation';
 import { loadCharacter } from './character/model';
 import { createBody } from './character/movement';
+import { grant } from './sim/gifts';
 import { updateNeeds } from './sim/needs';
 import { runTask, settleHeight } from './sim/runner';
 import { hooks, hour, initState, log, say } from './sim/state';
+import { startTask, T } from './sim/tasks';
 import { createBubble } from './ui/bubble';
 import { createHud } from './ui/hud';
 import { createPanel } from './ui/panel';
+import { createBuildings } from './world/buildings';
 import { createGiftModels } from './world/giftModels';
 import { createProps } from './world/props';
+import { createRain } from './world/rain';
 import { createSky } from './world/sky';
 import { createStage } from './world/stage';
 import { createTerrain } from './world/terrain';
@@ -26,9 +30,14 @@ const animateWater = createWater(scene);
 const updateSky = createSky(scene);
 const props = createProps(scene);
 const giftModels = createGiftModels(scene);
+const updateBuildings = createBuildings(scene);
+const updateRain = createRain(scene);
 
 /* ---------- sim + her ---------- */
 const S = initState();
+// Dev only (stripped from the production build): poke at the state from the
+// browser console, e.g. __S.needs.food = 5 or __S.projects.dock.done = true.
+if (import.meta.env.DEV) Object.assign(window, { __S: S, __grant: grant, __startTask: (id: string) => { const t = T[id](); if (t) startTask(t); } });
 const body = createBody(scene);
 let ready = false;
 let animator: ReturnType<typeof createAnimator> | null = null;
@@ -95,10 +104,12 @@ function frame(now: number) {
   }
   animator?.mixer.update(S.dead ? dt : dt * animScale);
   if (ready) { settleHeight(); body.update(dt); }
-  giftModels.update(dt);
+  giftModels.update(dt, clockT, S, body.her);
   props.syncBerries(S.berries);
+  updateBuildings(S);
+  const rain = updateRain(dt, S.weather.raining, controls.target);
   animateWater(clockT);
-  updateSky(clockT, hour(), S.fire, props.campfire);
+  updateSky(clockT, hour(), S.fire, props.campfire, rain);
   if (hud.following && ready) {
     tmpV.copy(body.her.position);
     tmpV.y += 1;

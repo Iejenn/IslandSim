@@ -1,14 +1,18 @@
 // 3D models for gifts, built when the sim grants one, with a "beam from the
 // sky" pop-in effect. Where she stands to use them is decided in sim/gifts.ts.
-import { BoxGeometry, CylinderGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial, type Scene } from 'three';
-import { BOOKS_P, FIRE, ground, HAMMOCK_P, PIANO_P, SH, yawTo } from '../sim/island';
-import type { GiftKey } from '../sim/state';
+import { BoxGeometry, ConeGeometry, CylinderGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial, SphereGeometry, type Object3D, type Scene } from 'three';
+import { BOAT_DOCK, BOOKS_P, DOCK, FIRE, GARDEN_P, ground, HAMMOCK_P, PIANO_P, SH, TELESCOPE_P, yawTo } from '../sim/island';
+import type { GiftKey, SimState } from '../sim/state';
 import { clamp } from '../sim/util';
-import { M, mesh } from './materials';
+import { M, mat, mesh } from './materials';
+
+const sack = mat('#C9A86A'), tin = mat('#7FA7A8', { roughness: 0.4, metalness: 0.3 }), hull = mat('#B5653A'), brass = mat('#C79A3B', { roughness: 0.35, metalness: 0.5 });
+const WATER_Y = 0.12;
 import { v3 } from './stage';
 
 export function createGiftModels(scene: Scene) {
   const effects: { t: number; run(dt: number): boolean }[] = [];
+  let boat: Group | null = null;
 
   function popIn(g: Group) {
     g.scale.setScalar(0.01);
@@ -74,13 +78,72 @@ export function createGiftModels(scene: Scene) {
       });
       popIn(g);
     },
+    seeds() {
+      const g = new Group();
+      g.position.copy(v3(ground({ x: GARDEN_P.x + 1.75, y: 0, z: GARDEN_P.z - 1.2 })));
+      const bag = mesh(new SphereGeometry(0.2, 7, 5), sack, 0, 0.18, 0);
+      bag.scale.set(1, 1.2, 0.8);
+      g.add(bag, mesh(new ConeGeometry(0.1, 0.14, 6), sack, 0, 0.44, 0));
+      popIn(g);
+    },
+    can() {
+      const g = new Group();
+      g.position.copy(v3(ground({ x: GARDEN_P.x + 1.75, y: 0, z: GARDEN_P.z - 0.6 })));
+      g.add(mesh(new CylinderGeometry(0.14, 0.16, 0.3, 10), tin, 0, 0.15, 0));
+      const spout = mesh(new CylinderGeometry(0.02, 0.03, 0.36, 5), tin, 0.2, 0.25, 0);
+      spout.rotation.z = -0.9;
+      g.add(spout);
+      const handle = mesh(new BoxGeometry(0.04, 0.04, 0.24), tin, -0.05, 0.36, 0);
+      g.add(handle);
+      popIn(g);
+    },
+    boat() {
+      const g = new Group();
+      g.add(mesh(new BoxGeometry(0.85, 0.28, 1.7), hull, 0, 0.06, 0)); // hull
+      const bow = mesh(new ConeGeometry(0.6, 0.7, 4), hull, 0, 0.06, 1.18);
+      bow.rotation.set(Math.PI / 2, Math.PI / 4, 0);
+      bow.scale.set(1, 1, 0.45);
+      g.add(bow);
+      g.add(mesh(new BoxGeometry(0.85, 0.05, 0.25), M.wood, 0, 0.18, -0.2)); // seat
+      g.position.set(BOAT_DOCK.x, WATER_Y, BOAT_DOCK.z);
+      g.rotation.y = Math.atan2(DOCK.dir.x, DOCK.dir.z);
+      boat = g;
+      popIn(g);
+    },
+    telescope() {
+      const g = new Group();
+      g.position.copy(v3(TELESCOPE_P));
+      g.rotation.y = yawTo(FIRE, TELESCOPE_P); // pointing out to sea
+      for (let i = 0; i < 3; i++) {
+        const a = i / 3 * Math.PI * 2, leg = mesh(new CylinderGeometry(0.025, 0.025, 1.2, 4), M.wood, Math.cos(a) * 0.22, 0.56, Math.sin(a) * 0.22);
+        leg.rotation.set(Math.sin(a) * 0.35, 0, -Math.cos(a) * 0.35);
+        g.add(leg);
+      }
+      const tube = mesh(new CylinderGeometry(0.06, 0.09, 0.9, 10), brass, 0, 1.22, 0.1);
+      tube.rotation.x = 0.9; // tilted up at the sky
+      g.add(tube);
+      popIn(g);
+    },
   };
 
   return {
     build: (k: GiftKey) => BUILD[k](),
-    /** Advance pop-in effects (real seconds). */
-    update(dt: number) {
+    /**
+     * Advance pop-in effects and move the boat: moored at the dock, or under
+     * her while she's sailing.
+     * @param dt real seconds  @param t real seconds since start (bobbing)
+     */
+    update(dt: number, t: number, S: SimState, her: Object3D) {
       for (let i = effects.length - 1; i >= 0; i--) if (!effects[i].run(dt)) effects.splice(i, 1);
+      if (!boat) return;
+      if (S.sailing) {
+        boat.position.set(her.position.x, WATER_Y, her.position.z);
+        boat.rotation.y = her.rotation.y;
+      } else {
+        boat.position.set(BOAT_DOCK.x, WATER_Y, BOAT_DOCK.z);
+        boat.rotation.y = Math.atan2(DOCK.dir.x, DOCK.dir.z);
+      }
+      boat.position.y += 0.04 * Math.sin(t * 1.6);
     },
   };
 }
