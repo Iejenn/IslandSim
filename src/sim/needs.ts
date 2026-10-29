@@ -1,5 +1,6 @@
 // Needs decay over game time, health follows from them, plus the slower
 // rhythms: weather, the garden, new goals and the daily recap.
+import { updateAnimals } from './animals';
 import { maybeDogArrives } from './companion';
 import { updateGarden } from './garden';
 import { endOfDay } from './memory';
@@ -20,7 +21,7 @@ export function updateNeeds(dm: number) {
   n.fun -= dm * (asleep ? 0 : 4) / 60;
   n.company -= dm * (tr('social') ? 3 : 2) * (dog ? 0.5 : 1) / 60; // a dog is good company
   if (!asleep) n.energy -= dm * 4 / 60;
-  if (S.weather.raining && !indoors) n.fun -= dm * (S.weather.storm ? 4 : 2) / 60; // being soaked isn't fun
+  if (S.weather.raining && !indoors) n.fun -= dm * (S.weather.storm ? 4 : 2) * (S.items.sweater ? 0.5 : 1) / 60; // being soaked isn't fun (less so in a sweater)
   for (const k in n) n[k as keyof typeof n] = clamp(n[k as keyof typeof n], 0, 100);
 
   if (n.food < 8) S.health -= dm * 6 / 60;
@@ -44,6 +45,7 @@ export function updateNeeds(dm: number) {
   updateWeather(dm);
   updateGarden(dm);
   updateResources(dm);
+  updateAnimals(dm);
 
   // a new day starts at 07:00: recap yesterday, bushes regrow, she may wish for something
   const di = Math.floor((S.min - 420) / 1440);

@@ -2,12 +2,12 @@
 // woodpile, the rod against the shelter, the drum by the fire and so on.
 // Everything is built up front (hidden) and shown once the sim says she has it.
 import { BoxGeometry, ConeGeometry, CylinderGeometry, Group, TorusGeometry, type Object3D, type Scene } from 'three';
-import { CHAIR_P, FIRE, GARDEN_P, ground, HAMMOCK_P, JOURNAL_P, DRUM_P, LOOKOUT_DECK, LOOKOUT_P, SH, SHELF_P, TABLE_P, WOODPILE_P, yawTo } from '../sim/island';
+import { CHAIR_P, FIRE, LODGE_YAW, lodgeLocal, GARDEN_P, ground, HAMMOCK_P, JOURNAL_P, DRUM_P, LOOKOUT_DECK, LOOKOUT_P, SH, SHELF_P, TABLE_P, WOODPILE_P, yawTo } from '../sim/island';
 import type { CraftKey, SimState } from '../sim/state';
 import { M, mat, mesh } from './materials';
 import { v3 } from './stage';
 
-const fibre = mat('#B9A26A'), stone = mat('#8E979B'), hide = mat('#E3D3B0', { roughness: 0.7 }), tin = mat('#9C7A52');
+const wool = mat('#EDE6D6'), fibre = mat('#B9A26A'), stone = mat('#8E979B'), hide = mat('#E3D3B0', { roughness: 0.7 }), tin = mat('#9C7A52');
 
 /** A stone tool head on a wooden handle (axe or pick), standing upright. */
 export function toolModel(kind: 'axe' | 'pick') {
@@ -129,6 +129,43 @@ export function createCrafted(scene: Scene) {
       for (const y of [0.35, 0.75]) g.add(mesh(new BoxGeometry(1.06, 0.04, 0.3), M.wood, 0, y, 0));
       return place(g, SHELF_P.x, SHELF_P.z, yawTo(SHELF_P, FIRE));
     },
+    /* ---------- in the lodge ---------- */
+    realbed() {
+      const g = new Group();
+      g.add(mesh(new BoxGeometry(1.5, 0.3, 2.1), M.log, 0, 0.15, 0)); // frame
+      g.add(mesh(new BoxGeometry(1.4, 0.16, 2.0), wool, 0, 0.38, 0)); // wool mattress
+      g.add(mesh(new BoxGeometry(0.9, 0.12, 0.35), wool, 0, 0.5, -0.78)); // pillow
+      g.add(mesh(new BoxGeometry(1.5, 0.8, 0.1), M.log, 0, 0.4, -1.05)); // headboard
+      const p = lodgeLocal(-2.2, -0.9);
+      return place(g, p.x, p.z, LODGE_YAW);
+    },
+    sofa() {
+      const g = new Group();
+      g.add(mesh(new BoxGeometry(1.6, 0.4, 0.75), M.log, 0, 0.2, 0));
+      g.add(mesh(new BoxGeometry(1.5, 0.14, 0.65), wool, 0, 0.46, 0.03)); // cushion
+      g.add(mesh(new BoxGeometry(1.6, 0.55, 0.18), wool, 0, 0.67, -0.3)); // back
+      for (const x of [-0.78, 0.78]) g.add(mesh(new BoxGeometry(0.14, 0.55, 0.75), M.log, x, 0.42, 0)); // arms
+      const p = lodgeLocal(-0.1, -1.55);
+      return place(g, p.x, p.z, LODGE_YAW);
+    },
+    kitchen() {
+      const g = new Group();
+      g.add(mesh(new BoxGeometry(0.9, 0.85, 0.7), M.rock, -0.45, 0.42, 0)); // stone stove
+      g.add(mesh(new BoxGeometry(0.5, 0.05, 0.4), M.ebony, -0.45, 0.87, 0)); // hotplate
+      g.add(mesh(new BoxGeometry(0.9, 0.85, 0.7), M.wood, 0.5, 0.42, 0)); // counter
+      g.add(mesh(new CylinderGeometry(0.14, 0.11, 0.18, 8), tin, 0.45, 0.94, 0.05)); // a pot
+      const p = lodgeLocal(2.2, -1.75);
+      return place(g, p.x, p.z, LODGE_YAW);
+    },
+    blanket() {
+      const g = new Group();
+      g.add(mesh(new BoxGeometry(1.2, 0.05, 1.1), mat('#B5523B'), 0, 0, 0));
+      g.add(mesh(new BoxGeometry(1.2, 0.051, 0.12), mat('#E8D7B5'), 0, 0, 0.3)); // stripe
+      return place(g, SH.x, SH.z, yawTo(SH, FIRE));
+    },
+    sweater() {
+      return place(new Group(), 0, 0); // she wears it; nothing to show around camp
+    },
     rocker() {
       // on the lookout platform, facing out to sea
       const g = new Group();
@@ -163,6 +200,20 @@ export function createCrafted(scene: Scene) {
    */
   return function updateCrafted(S: SimState, held: CraftKey | null) {
     for (const k of Object.keys(models) as CraftKey[]) models[k].visible = !!S.items[k] && k !== held;
+    // moving house: once the lodge stands, the shelf comes inside, the old bed frame goes with the shelter,
+    // and the blanket lies on whichever bed she's using
+    const lodge = S.projects.lodge.done;
+    if (lodge) {
+      models.bed.visible = false;
+      const shelfIn = lodgeLocal(0.6, -1.95);
+      models.shelf.position.set(shelfIn.x, shelfIn.y, shelfIn.z);
+      models.shelf.rotation.y = LODGE_YAW;
+      const b = lodgeLocal(-2.2, -0.6);
+      models.blanket.position.set(b.x, b.y + (S.items.realbed ? 0.5 : 0.2), b.z);
+      models.blanket.rotation.y = LODGE_YAW;
+    } else {
+      models.blanket.position.set(SH.x, SH.y + (S.items.bed ? 0.25 : 0.12), SH.z);
+    }
     shells.forEach((sh, i) => { sh.visible = i < S.stock.shells; });
   };
 }

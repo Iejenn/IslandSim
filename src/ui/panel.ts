@@ -45,6 +45,8 @@ function renderCamp() {
   if (S.stock.raw) stock.push(['Fresh fish', `${S.stock.raw} (needs cooking)`]);
   if (S.stock.veg) stock.push(['Vegetables', String(S.stock.veg)]);
   if (S.stock.shells) stock.push(['Shells collected', String(S.stock.shells)]);
+  if (S.stock.eggs || S.projects.coop.done) stock.push(['Eggs', String(S.stock.eggs)]);
+  if (S.stock.wool || S.stats.shorn) stock.push(['Wool', String(S.stock.wool)]);
   if (S.projects.rack.done) stock.push(['Dried fish', String(S.stock.fish)]);
   if (S.projects.garden.done) stock.push(['Seeds', String(S.stock.seeds)]);
   stock.push(['Campfire', S.fire > 0 ? (S.fire < 20 ? 'burning low' : 'burning') : 'out']);
@@ -67,6 +69,9 @@ function renderCamp() {
   const friends: [string, string][] = [];
   if (S.dog.state === 'wild') friends.push(['A stray dog', S.dog.trust > 0.5 ? 'warming up to her' : S.dog.trust > 0 ? 'still wary' : 'keeps its distance']);
   if (S.dog.state === 'friend') friends.push([S.dog.name, 'her dog']);
+  const hens = S.chickens.filter(c => c.penned).length, flock = S.sheep.filter(c => c.penned).length;
+  if (hens) friends.push(['Chickens', `${hens} at home`]);
+  if (flock) friends.push(['Sheep', `${flock} at home${S.sheep.some(s => s.penned && s.wool >= 1) ? ' · ready to shear' : ''}`]);
 
   $('camp').innerHTML = section('Supplies', stock) + section('Made by hand', made) + section('Built', built) + section('Company', friends) + section('The island', island);
 }

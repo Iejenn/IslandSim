@@ -2,7 +2,7 @@
 // inspect and could later be saved/loaded. No Three.js or DOM in here: the
 // sim talks to the outside world only through `hooks`, which main.ts wires up.
 import type { AnimKey } from '../config/animations';
-import { BOULDERS, copy, FOREST, PLOTS, START, type Pt } from './island';
+import { BOULDERS, BUSHES, CHICKEN_HOMES, copy, FOREST, PLOTS, SHEEP_HOMES, START, type Pt } from './island';
 import { clamp, mergeInto, pick } from './util';
 
 export const NAMES = ['Mara', 'Lena', 'Iris', 'Noor', 'Sofie', 'Ava', 'Elin', 'Tess', 'Yara', 'Fenna'];
@@ -15,16 +15,18 @@ export type SkillKey = keyof typeof SKILLS;
 export type NeedKey = keyof typeof NEEDS;
 /** Things she makes in one sitting at the campfire. */
 export type CraftKey = 'axe' | 'pick' | 'rod' | 'basket' | 'hammock' | 'bucket' | 'drum' | 'journal'
-  | 'chair' | 'table' | 'bed' | 'shelf' | 'rocker'; // furniture, once her crafting is good enough
+  | 'chair' | 'table' | 'bed' | 'shelf' | 'rocker' // furniture, once her crafting is good enough
+  | 'realbed' | 'sofa' | 'kitchen' // for the lodge's rooms
+  | 'blanket' | 'sweater'; // from her sheep's wool
 /** Things she builds over several sessions on site. */
-export type ProjectKey = 'garden' | 'rack' | 'dock' | 'hut' | 'hearth' | 'lookout' | 'canoe';
+export type ProjectKey = 'garden' | 'rack' | 'dock' | 'hut' | 'hearth' | 'lookout' | 'canoe' | 'lodge' | 'fence' | 'coop';
 export type PlanKey = CraftKey | ProjectKey;
-export type Resource = 'wood' | 'stone' | 'fibre';
+export type Resource = 'wood' | 'stone' | 'fibre' | 'wool';
 export type TaskId =
   | 'forage' | 'fish' | 'cook' | 'eat' | 'drink' | 'wood' | 'sleep' | 'shelter' | 'relax' | 'explore' | 'talk'
   | 'sticks' | 'chop' | 'fibre' | 'stones' | 'mine' | 'replant' | 'craft' | 'build'
   | 'plant' | 'water' | 'harvest' | 'drum' | 'write' | 'sail' | 'stargaze' | 'watch'
-  | 'befriend' | 'play' | 'repair' | 'swim'
+  | 'befriend' | 'play' | 'repair' | 'swim' | 'herd' | 'shear' | 'collect'
   | 'celebrate' | 'stand';
 
 /* ---------- task steps ---------- */
@@ -58,6 +60,7 @@ export interface Task {
   started: boolean;
   el: number;
   celebrate?: boolean;
+  animal?: { kind: 'chicken' | 'sheep'; i: number }; // the animal she's herding home (so it can follow her)
 }
 
 export interface DiaryEntry { t: string; text: string }
@@ -93,7 +96,7 @@ function createState() {
     mood: 0,
     fire: 55,
     skills: Object.fromEntries(Object.keys(SKILLS).map(k => [k, { xp: 0, lvl: 0 }])) as Record<SkillKey, { xp: number; lvl: number }>,
-    berries: [6, 6, 6], // one count per bush in island.BUSHES
+    berries: BUSHES.map(() => 6), // one count per bush in island.BUSHES
     items: {} as Partial<Record<CraftKey, boolean>>, // things she has crafted
     diary: [] as DiaryEntry[],
     thought: '',
@@ -107,7 +110,7 @@ function createState() {
 
     /* ---------- island life ---------- */
     // logs on the woodpile, stones, plant fibre, saplings to replant, fresh fish to cook, dried fish, garden seeds
-    stock: { wood: 2, stone: 0, fibre: 0, saplings: 0, raw: 0, fish: 0, seeds: 0, veg: 0, shells: 0 }, // veg: stored garden vegetables; shells: her collection
+    stock: { wood: 2, stone: 0, fibre: 0, saplings: 0, raw: 0, fish: 0, seeds: 0, veg: 0, shells: 0, eggs: 0, wool: 0 }, // veg: stored garden vegetables; shells: her collection
     rawSince: 0, // game minute the oldest uncooked fish was caught
     lastMeal: 0, // game minute of her last cooked meal
     trees: FOREST.map(() => ({ state: 'tree' as 'tree' | 'stump' | 'sapling', growth: 1 })),
@@ -122,6 +125,9 @@ function createState() {
       hearth: { started: false, progress: 0, done: false },
       lookout: { started: false, progress: 0, done: false },
       canoe: { started: false, progress: 0, done: false },
+      lodge: { started: false, progress: 0, done: false },
+      fence: { started: false, progress: 0, done: false },
+      coop: { started: false, progress: 0, done: false },
     } as Record<ProjectKey, Project>,
     goal: null as PlanKey | null, // what she's working towards (something to craft or build)
     goalSince: 0, // game minute the goal was set
@@ -131,10 +137,14 @@ function createState() {
     likes: {} as Partial<Record<TaskId, number>>,
     feelingsNoted: [] as string[], // strong likes/dislikes already written in the diary
     // lifetime counters (unlock new plans)
-    stats: { forages: 0, fishTrips: 0, fishCaught: 0, nightsInShelter: 0, waterings: 0, harvests: 0, rainsSeen: 0, writeMin: 0, treesFelled: 0, stonesMined: 0, crafted: 0, meals: 0, storms: 0, repairs: 0 },
+    stats: { herded: 0, eggs: 0, shorn: 0, forages: 0, fishTrips: 0, fishCaught: 0, nightsInShelter: 0, waterings: 0, harvests: 0, rainsSeen: 0, writeMin: 0, treesFelled: 0, stonesMined: 0, crafted: 0, meals: 0, storms: 0, repairs: 0 },
     // highlights of the current day, summarised in the diary at dawn
     today: [] as string[],
     weather: { raining: false, until: 0, storm: false, hot: false },
+    // chickens and sheep roam wild until she fences her home and herds them in
+    chickens: CHICKEN_HOMES.map(() => ({ penned: false })),
+    sheep: SHEEP_HOMES.map(() => ({ penned: false, wool: 0 })), // wool: 0…1, ready to shear at 1
+    coopEggs: 0, // eggs waiting in the coop
     // a stray dog that may wash ashore; she has to win its trust
     dog: { state: 'none' as 'none' | 'wild' | 'friend', trust: 0, name: '', home: copy(START) },
     sailing: false, // in the boat
@@ -165,6 +175,8 @@ export function initState(saved?: Record<string, unknown>) {
     if (S.boulders.length !== fresh.boulders.length) S.boulders = fresh.boulders;
     if (S.plots.length !== fresh.plots.length) S.plots = fresh.plots;
     if (S.berries.length !== fresh.berries.length) S.berries = fresh.berries;
+    if (S.chickens.length !== fresh.chickens.length) S.chickens = fresh.chickens;
+    if (S.sheep.length !== fresh.sheep.length) S.sheep = fresh.sheep;
   }
   return S;
 }
