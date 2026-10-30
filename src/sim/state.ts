@@ -2,9 +2,9 @@
 // inspect and could later be saved/loaded. No Three.js or DOM in here: the
 // sim talks to the outside world only through `hooks`, which main.ts wires up.
 import type { AnimKey } from '../config/animations';
-import { ORCHARD, BOULDERS, BUSHES, CHICKEN_HOMES, copy, FOREST, FOREST_START, PLOTS, SHEEP_HOMES, START, type Pt } from './island';
+import { BAMBOO, ORCHARD, BOULDERS, BUSHES, CHICKEN_HOMES, copy, FOREST, FOREST_START, PLOTS, SHEEP_HOMES, START, type Pt } from './island';
 import { rollEvents } from './events';
-import { rollDream, rollTaste } from './taste';
+import { rollDream, rollStyle, rollTaste } from './taste';
 import { clamp, mergeInto, pick, rand } from './util';
 
 export const NAMES = ['Mara', 'Lena', 'Iris', 'Noor', 'Sofie', 'Ava', 'Elin', 'Tess', 'Yara', 'Fenna'];
@@ -21,15 +21,19 @@ export type CraftKey = 'axe' | 'pick' | 'rod' | 'spear' | 'snare' | 'basket' | '
   | 'realbed' | 'sofa' | 'kitchen' // for the lodge's rooms
   | 'blanket' | 'sweater' // from her sheep's wool
   | 'pots' | 'jug' | 'tiles' // fired in the kiln
-  | 'lanterns'; // along her paths
+  | 'lanterns' // along her paths
+  | 'flinttools' | 'chimes'; // from the cave's flint and the islet's bamboo
 /** Things she builds over several sessions on site. */
 export type ProjectKey = 'garden' | 'rack' | 'dock' | 'hut' | 'hearth' | 'lookout' | 'canoe' | 'lodge' | 'fence' | 'coop'
   | 'trap' | 'barrel' | 'treehouse' // other ways to get food, water and a home
   | 'houseboat' | 'shed' | 'bandstand' | 'orchard'
   | 'kiln' | 'oven' // working with clay
-  | 'beehive' | 'sundial' | 'mosaic' | 'bathhouse'; // rare: only some islands (see S.rare)
+  | 'beehive' | 'sundial' | 'mosaic' | 'bathhouse' // rare: only some islands (see S.rare)
+  | 'bridge' | 'cave' | 'pipe' | 'well'; // island growth: the islet, the cave, water at camp
 export type PlanKey = CraftKey | ProjectKey;
-export type Resource = 'wood' | 'stone' | 'fibre' | 'wool' | 'clay' | 'shells';
+export type Resource = 'wood' | 'stone' | 'fibre' | 'wool' | 'clay' | 'shells' | 'bamboo' | 'flint';
+/** What she likes to build things from (furniture, the fence, the bridge): a preference, not a rule. */
+export type Style = 'wood' | 'bamboo' | 'stone';
 export type TaskId =
   | 'forage' | 'fish' | 'cook' | 'eat' | 'drink' | 'wood' | 'sleep' | 'shelter' | 'relax' | 'explore' | 'talk'
   | 'sticks' | 'chop' | 'fibre' | 'stones' | 'mine' | 'replant' | 'craft' | 'build'
@@ -37,7 +41,7 @@ export type TaskId =
   | 'befriend' | 'play' | 'repair' | 'swim' | 'herd' | 'shear' | 'collect' | 'checktrap' | 'hunt' | 'checksnares' | 'mushrooms'
   | 'clay' | 'salvage' | 'turtles' | 'tendgull' | 'dig' | 'honey' | 'bathe'
   | 'cairn' | 'sandcastle' | 'clouds' | 'bouquet' | 'whittle' | 'dance'
-  | 'plantfruit' | 'pickfruit' | 'nightwalk' | 'beachstars' | 'tidepools'
+  | 'plantfruit' | 'pickfruit' | 'nightwalk' | 'beachstars' | 'tidepools' | 'bamboo' | 'flint'
   | 'celebrate' | 'stand';
 
 /* ---------- task steps ---------- */
@@ -118,6 +122,8 @@ function createState() {
     traits: rollTraits(),
     taste, // what kind of life she leans towards (see taste.ts)
     dream: rollDream(taste) as PlanKey | null, // the one big thing she's set on
+    style: rollStyle(taste), // what she likes to build from (see plans.ts styleFor)
+    madeStyle: {} as Partial<Record<PlanKey, Style>>, // what each styled thing was actually made from
     quirk: (Math.random() < 0.7 ? pick(QUIRKS) : null) as Quirk | null,
     favFood: pick(DISHES) as typeof DISHES[number],
     washedUp: (Math.random() < 0.6 ? pick(WASHED_UP) : null) as typeof WASHED_UP[number] | null,
@@ -151,7 +157,7 @@ function createState() {
 
     /* ---------- island life ---------- */
     // logs on the woodpile, stones, plant fibre, saplings to replant, fresh fish to cook, dried fish, garden seeds
-    stock: { wood: 2, stone: 0, fibre: 0, saplings: 0, raw: 0, fish: 0, seeds: 0, veg: 0, shells: 0, eggs: 0, wool: 0, meat: 0, clay: 0, honey: 0, fruit: 0 }, // veg: stored garden vegetables; shells: her collection
+    stock: { wood: 2, stone: 0, fibre: 0, saplings: 0, raw: 0, fish: 0, seeds: 0, veg: 0, shells: 0, eggs: 0, wool: 0, meat: 0, clay: 0, honey: 0, fruit: 0, bamboo: 0, flint: 0 }, // veg: stored garden vegetables; shells: her collection
     rawSince: 0, // game minute the oldest uncooked fish was caught
     meatSince: 0, // …and the oldest uncooked rabbit
     lastMeal: 0, // game minute of her last cooked meal
@@ -178,6 +184,10 @@ function createState() {
       shed: { started: false, progress: 0, done: false },
       bandstand: { started: false, progress: 0, done: false },
       orchard: { started: false, progress: 0, done: false },
+      bridge: { started: false, progress: 0, done: false },
+      cave: { started: false, progress: 0, done: false },
+      pipe: { started: false, progress: 0, done: false },
+      well: { started: false, progress: 0, done: false },
       kiln: { started: false, progress: 0, done: false },
       oven: { started: false, progress: 0, done: false },
       beehive: { started: false, progress: 0, done: false },
@@ -216,6 +226,8 @@ function createState() {
     hive: 0, // honey waiting in the beehive
     // fruit trees she planted in her orchard (one per spot in island.ORCHARD)
     orchard: ORCHARD.map(() => ({ kind: null as FruitKind | null, growth: 0, fruit: 0, planted: 0 })),
+    bamboo: BAMBOO.map(() => 4 + Math.floor(Math.random() * 3)), // canes ready to cut in each clump on the islet (they grow back fast)
+    isletFound: false, // has she waded out to the islet yet?
     // which rare projects this island allows (most islands get two of the four)
     rare: pickSome(['beehive', 'sundial', 'mosaic', 'bathhouse'] as ProjectKey[], Math.random() < 0.3 ? 3 : 2),
     // things that happen on this island, and when (see events.ts)
@@ -267,6 +279,7 @@ export function initState(saved?: Record<string, unknown>) {
     if (S.chickens.length !== fresh.chickens.length) S.chickens = fresh.chickens;
     if (S.sheep.length !== fresh.sheep.length) S.sheep = fresh.sheep;
     if (S.orchard.length !== fresh.orchard.length) S.orchard = fresh.orchard;
+    if (S.bamboo.length !== fresh.bamboo.length) S.bamboo = fresh.bamboo;
     // (saves from before "Her story": start it from the big moments still in the diary)
     if (!S.story.length) S.story = S.diary.filter(d => d.kind === 'big' && d.day && !/^(Spring has come|Summer is here|Autumn has come|Winter has come)/.test(d.text))
       .reverse().map(d => ({ day: d.day!, text: d.text }));

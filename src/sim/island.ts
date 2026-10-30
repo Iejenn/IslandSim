@@ -56,12 +56,37 @@ const HILL_H = 4.2, HILL_S = 3.0;
 const RIDGE_C = pointAt(ROCKS_A, 0.62);
 const bump = (x: number, z: number, c: Pt, s: number) => Math.exp(-((x - c.x) ** 2 + (z - c.z) ** 2) / (2 * s * s));
 
+/* ---------- the bamboo islet: a little island in the bay, joined by a sandbar that shows at low tide ---------- */
+export const ISLET_A = -1.72, ISLET_R = 5.5;
+const isletDir = V(Math.cos(ISLET_A), Math.sin(ISLET_A)), isletD = islandR(ISLET_A) * 1.02 + 3.4 + ISLET_R * 1.02;
+export const ISLET_C = V(isletDir.x * isletD, isletDir.z * isletD);
+/** Like tAt, but for the islet: 0 at its middle, 1 at its shore. */
+export const isletT = (x: number, z: number) => Math.hypot(x - ISLET_C.x, z - ISLET_C.z) / ISLET_R;
+export const onIslet = (p: { x: number; z: number }) => isletT(p.x, p.z) < 1.1;
+// the sandbar (and later her bridge) runs from her beach to the islet's
+const barA = V(Math.cos(ISLET_A) * islandR(ISLET_A) * 0.98, Math.sin(ISLET_A) * islandR(ISLET_A) * 0.98);
+const barB = V(ISLET_C.x - isletDir.x * ISLET_R * 0.98, ISLET_C.z - isletDir.z * ISLET_R * 0.98);
+/** How far (x, z) is from the sandbar's line. */
+function barDist(x: number, z: number) {
+  const dx = barB.x - barA.x, dz = barB.z - barA.z, l2 = dx * dx + dz * dz;
+  const k = Math.max(0, Math.min(1, ((x - barA.x) * dx + (z - barA.z) * dz) / l2));
+  return Math.hypot(x - barA.x - dx * k, z - barA.z - dz * k);
+}
+export const BAR_TOP = 0.085; // just above the sea at low tide (0.02), under it the rest of the time
+/** 0…1 along the sandbar for the terrain colours (wet sand), or Infinity off it. */
+export const barT = (x: number, z: number) => { const d = barDist(x, z); return d < 2.2 ? 1.0 + d * 0.05 : Infinity; };
+
+/** Height from the middle of an island (t = 0) out past its shore (t > 1). */
+function profile(t: number) {
+  if (t < 0.6) return 0.8 + 0.18 * (1 - t / 0.6);
+  if (t < 1.02) return lerp(0.8, 0.02, smooth((t - 0.6) / 0.42));
+  return 0.02 - Math.min(2.4, (t - 1.02) * 7);
+}
 export function height(x: number, z: number) {
   const t = tAt(x, z);
-  let h: number;
-  if (t < 0.6) h = 0.8 + 0.18 * (1 - t / 0.6);
-  else if (t < 1.02) h = lerp(0.8, 0.02, smooth((t - 0.6) / 0.42));
-  else h = 0.02 - Math.min(2.4, (t - 1.02) * 7);
+  let h = profile(t);
+  // the islet rises out of the bay with the same shape (grass, then beach), and the sandbar joins it
+  h = Math.max(h, profile(isletT(x, z) * 1.0), BAR_TOP - 0.45 * Math.max(0, barDist(x, z) - 0.9));
   if (t < 0.95) h += 0.05 * Math.sin(x * 1.3) * Math.cos(z * 1.1) * (1 - smooth((t - 0.8) / 0.15));
   // gentle rolling hills inland, fading out towards the camp (kept flat) and the beaches
   const inland = smooth((Math.hypot(x, z) - 11) / 7) * (1 - smooth((t - 0.55) / 0.3));
@@ -349,3 +374,32 @@ const outsideFence = (pts: Pt[]) => pts.filter(p => Math.hypot(p.x, p.z) > FENCE
 export const CHICKEN_HOMES = outsideFence(scatter(17, 8, 0.3, 1.5, 0.48, 0.66, 1.4, 1.6)).slice(0, 4);
 export const SHEEP_HOMES = outsideFence(scatter(19, 8, POND_A - 0.55, POND_A + 0.55, 0.5, 0.7, 2.0, 1.8)).slice(0, 3);
 reserve(...CHICKEN_HOMES, ...SHEEP_HOMES);
+
+/* ---------- island growth: the islet's bamboo, the bridge, the cave, water at camp ---------- */
+/** Bridge ends: up on dry sand on her beach and on the islet's (also the sandbar's ends). */
+export const BAR_A = ground(V(Math.cos(ISLET_A) * islandR(ISLET_A) * 0.9, Math.sin(ISLET_A) * islandR(ISLET_A) * 0.9));
+export const BAR_B = ground(V(ISLET_C.x - isletDir.x * ISLET_R * 0.88, ISLET_C.z - isletDir.z * ISLET_R * 0.88));
+export const BRIDGE_Y = 0.36; // the deck's height above the water
+/** Is (x, z) on the bridge (where it'd be, once built)? */
+export const onBridgeLine = (x: number, z: number) => {
+  const dx = BAR_B.x - BAR_A.x, dz = BAR_B.z - BAR_A.z, l2 = dx * dx + dz * dz;
+  const k = ((x - BAR_A.x) * dx + (z - BAR_A.z) * dz) / l2;
+  return k > -0.02 && k < 1.02 && Math.hypot(x - BAR_A.x - dx * k, z - BAR_A.z - dz * k) < 0.7;
+};
+// clumps of bamboo across the islet's grassy middle
+export const BAMBOO = [[0, 0.3], [1.2, 0.45], [2.3, 0.4], [3.4, 0.5], [4.5, 0.35], [5.5, 0.48]].map(([a, r]) => {
+  const pos = ground(V(ISLET_C.x + Math.cos(a) * ISLET_R * r, ISLET_C.z + Math.sin(a) * ISLET_R * r));
+  return { pos, stand: standNear(pos, 0.8, BAR_B) };
+});
+// a cave in the side of the pond's hill, half hidden behind rocks
+const hillOut = dirXZ(POND_C, HILL_C), hillSide = V(-hillOut.z, hillOut.x);
+export const CAVE_P = ground(V(HILL_C.x + hillSide.x * 3.4 + hillOut.x * 0.8, HILL_C.z + hillSide.z * 3.4 + hillOut.z * 0.8));
+export const CAVE_FACE = dirXZ(HILL_C, CAVE_P); // the way the mouth looks out
+export const CAVE_STAND = ground(addScaled(CAVE_P, CAVE_FACE, 1.3));
+// water at camp: a stone well (in the clearest spot in camp), or a bamboo pipe
+// from the pond that pours into a basin just inside the fence on the pond side
+export const WELL_P = ground(V(7.27, 1.86));
+export const WELL_STAND = standNear(WELL_P, 0.9);
+export const SPOUT_P = ground(V(-2.85, -7.69));
+export const SPOUT_STAND = standNear(SPOUT_P, 0.9);
+export const PIPE_FROM = ground(addScaled(SP, dirXZ(SP, SPOUT_P), POND_R + 0.3));

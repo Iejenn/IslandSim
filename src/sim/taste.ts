@@ -3,7 +3,7 @@
 // order. Leanings only tilt the odds (x0.5 … x2), they never forbid anything: an
 // animal lover can still end up building a lodge, just less likely first.
 // She also has one dream: a bigger thing she's set on from the start.
-import { log, S, say, type PlanKey, type TaskId } from './state';
+import { log, S, say, type PlanKey, type Style, type TaskId } from './state';
 import { pick, rand } from './util';
 
 export const LEANINGS = ['comfort', 'practical', 'animals', 'green', 'sea', 'creative', 'adventure'] as const;
@@ -22,15 +22,30 @@ export function rollTaste(): Taste {
 // what someone with each passion might dream of building
 const DREAMS: Record<Leaning, PlanKey[]> = {
   comfort: ['lodge', 'sofa', 'realbed'],
-  practical: ['lodge', 'hearth', 'dock', 'shed'],
+  practical: ['lodge', 'hearth', 'dock', 'shed', 'well'],
   animals: ['coop', 'blanket'],
-  green: ['garden', 'barrel', 'orchard'],
+  green: ['garden', 'barrel', 'orchard', 'pipe'],
   sea: ['canoe', 'dock', 'trap', 'houseboat'],
   creative: ['shelf', 'drum', 'treehouse', 'kiln', 'bandstand'],
-  adventure: ['treehouse', 'lookout', 'canoe', 'houseboat'],
+  adventure: ['treehouse', 'lookout', 'canoe', 'houseboat', 'bridge', 'cave'],
 };
 export function rollDream(t: Taste): PlanKey {
   return pick(DREAMS[strongest(t)]);
+}
+/**
+ * What she likes to build with: bamboo for green and adventurous souls, stone
+ * for practical ones, wood for the cosy and creative. Rolled with plenty of
+ * randomness, and only ever a preference (see styleFor in plans.ts).
+ */
+export function rollStyle(t: Taste): Style {
+  const w: Record<Style, number> = {
+    bamboo: 0.3 + 0.8 * t.green + 0.4 * t.adventure + 0.2 * t.sea,
+    wood: 0.7 + t.comfort + 0.6 * t.creative,
+    stone: 0.45 + t.practical + 0.3 * t.animals,
+  };
+  let r = Math.random() * (w.bamboo + w.wood + w.stone);
+  for (const k of ['bamboo', 'wood', 'stone'] as Style[]) if ((r -= w[k]) < 0) return k;
+  return 'wood';
 }
 export const strongest = (t: Taste) => LEANINGS.reduce((a, b) => t[b] > t[a] ? b : a);
 
@@ -52,7 +67,7 @@ const TASK_LEANING: Partial<Record<TaskId, Leaning>> = {
   herd: 'animals', collect: 'animals', shear: 'animals', befriend: 'animals', play: 'animals',
   plant: 'green', water: 'green', harvest: 'green', replant: 'green',
   drum: 'creative', write: 'creative',
-  tidepools: 'sea', nightwalk: 'adventure', beachstars: 'adventure', plantfruit: 'green', pickfruit: 'green', dance: 'creative', cairn: 'adventure', sandcastle: 'sea', clouds: 'comfort', bouquet: 'green', whittle: 'creative', mushrooms: 'green', turtles: 'animals', tendgull: 'animals', honey: 'green', bathe: 'comfort', dig: 'adventure', salvage: 'adventure', explore: 'adventure', hunt: 'adventure', checksnares: 'practical', watch: 'adventure', stargaze: 'adventure',
+  bamboo: 'adventure', flint: 'practical', tidepools: 'sea', nightwalk: 'adventure', beachstars: 'adventure', plantfruit: 'green', pickfruit: 'green', dance: 'creative', cairn: 'adventure', sandcastle: 'sea', clouds: 'comfort', bouquet: 'green', whittle: 'creative', mushrooms: 'green', turtles: 'animals', tendgull: 'animals', honey: 'green', bathe: 'comfort', dig: 'adventure', salvage: 'adventure', explore: 'adventure', hunt: 'adventure', checksnares: 'practical', watch: 'adventure', stargaze: 'adventure',
   relax: 'comfort',
 };
 /** −0.05 … +0.1 extra score for activities that match her taste. */
@@ -94,6 +109,10 @@ const DREAM_SAY: Partial<Record<PlanKey, string>> = {
   bandstand: 'One day I’ll have a little stage, and play my music to the whole island.',
   kiln: 'One day I’ll fire my own pottery. There must be clay somewhere.',
   shed: 'One day every tool I make will have its own hook on a wall.',
+  bridge: 'One day I’ll build a bridge out to that little island. Whatever the tide says.',
+  cave: 'There’s a cave in that hill. One day I’ll clear the way in.',
+  pipe: 'Water that comes to me, instead of me going to it. One day.',
+  well: 'A well of my own, right in the middle of camp. That’s the dream.',
 };
 
 // what washed ashore with her, and the little quirks the player can spot
@@ -102,6 +121,11 @@ const WASHED: Record<string, [string, string]> = {
   line: ['Tangled in the seaweed: a real fishing line with a hook.', 'A fishing line… with a hook!'],
   pot: ['A dented cooking pot washed up with her.', 'A pot! Proper cooking.'],
   tarp: ['A big sheet of tarp washed up on the beach. Good for a roof.', 'A tarp. That’ll keep the rain off.'],
+};
+const STYLE_HINT: Record<Style, string> = {
+  wood: 'She ran her hand along a piece of driftwood, admiring the grain. Wood has always felt like home to her.',
+  bamboo: 'She keeps eyeing the bamboo across the bay. Light, strong, beautiful: her favourite thing to build with.',
+  stone: 'She stacked a few flat stones just to see them fit together. Things made of stone last forever, she says.',
 };
 const QUIRK_HINT: Record<string, string> = {
   earlybird: 'She was up before the sun again. Always the early riser.',
@@ -118,6 +142,7 @@ export function noteTaste(dayNum: number) {
   if (S.washedUp && S.min > 7.5 * 60 && note('washed', WASHED[S.washedUp][0])) say(WASHED[S.washedUp][1]);
   if (S.quirk && dayNum >= 2 && S.min % 1440 > 9 * 60) note('quirk', QUIRK_HINT[S.quirk]);
   const line = dreamLine();
+  if (dayNum >= 2 && S.min % 1440 > 13 * 60) note('style', STYLE_HINT[S.style ?? 'wood']);
   if (dayNum >= 2 && line && note('dream', `She told the island about her dream: “${line}”`)) say(line);
 }
 export const dreamLine = () => (S.dream && DREAM_SAY[S.dream]) || '';

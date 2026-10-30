@@ -4,13 +4,15 @@
 import { BoxGeometry, ConeGeometry, CylinderGeometry, Group, SphereGeometry, TorusGeometry, type Object3D, type Scene } from 'three';
 import { addScaled, BAND_SPOTS, BANDSTAND_FLOOR, BANDSTAND_YAW, dirXZ, MARIMBA_P, SHED_P, V, KILN_P, BURROWS, WARREN_P, CHAIR_P, FIRE, LODGE_YAW, lodgeLocal, GARDEN_P, ground, HAMMOCK_P, JOURNAL_P, DRUM_P, LOOKOUT_DECK, LOOKOUT_P, SH, SHELF_P, TABLE_P, WOODPILE_P, yawTo } from '../sim/island';
 import { PLANS } from '../sim/plans';
-import type { CraftKey, SimState } from '../sim/state';
+import type { CraftKey, SimState, Style } from '../sim/state';
 import { cap, onDay, pickable } from './inspect';
 import { M, mat, mesh } from './materials';
 import { v3 } from './stage';
 
 const potMat = mat('#B8643E');
 const SEATS_JUG = { x: -0.9, z: 2.3 }; // beside the log seat by the fire
+// (tool heads share one material, so flint tools can darken them all, in her hands too)
+export const toolHead = mat('#8E979B');
 const wool = M.cushion, fibre = mat('#B9A26A'), stone = mat('#8E979B'), hide = mat('#E3D3B0', { roughness: 0.7 }), tin = mat('#9C7A52');
 
 /** A stone tool head on a wooden handle (axe or pick), standing upright. */
@@ -19,16 +21,91 @@ export function toolModel(kind: 'axe' | 'pick') {
   const handle = mesh(new CylinderGeometry(0.025, 0.03, 0.75, 5), M.log, 0, 0.375, 0);
   g.add(handle);
   if (kind === 'axe') {
-    const head = mesh(new BoxGeometry(0.2, 0.12, 0.05), stone, 0.08, 0.68, 0);
+    const head = mesh(new BoxGeometry(0.2, 0.12, 0.05), toolHead, 0.08, 0.68, 0);
     g.add(head);
   } else {
-    const head = mesh(new ConeGeometry(0.035, 0.42, 4), stone, 0, 0.7, 0);
+    const head = mesh(new ConeGeometry(0.035, 0.42, 4), toolHead, 0, 0.7, 0);
     head.rotation.z = Math.PI / 2;
     g.add(head);
   }
   g.add(mesh(new TorusGeometry(0.035, 0.012, 4, 8), fibre, 0, 0.62, 0)); // lashing
   return g;
 }
+
+/* ---------- furniture in three styles: wood, bamboo or stone ---------- */
+const bambooCane = mat('#C9B26B'), rockMat = M.rock;
+/** A bamboo cane from a to b (both [x, y, z]). */
+function cane(g: Group, r: number, a: number[], b: number[]) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], l = Math.hypot(dx, dy, dz);
+  const c = mesh(new CylinderGeometry(r, r, l, 6), bambooCane, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
+  c.lookAt(c.position.x + dx, c.position.y + dy, c.position.z + dz);
+  c.rotateX(Math.PI / 2);
+  g.add(c);
+}
+const FURNITURE: Record<'chair' | 'table' | 'bed' | 'shelf', Record<Style, (g: Group) => void>> = {
+  chair: {
+    wood(g) {
+      for (const [x, z] of [[-0.22, -0.2], [0.22, -0.2], [-0.22, 0.2], [0.22, 0.2]]) g.add(mesh(new CylinderGeometry(0.03, 0.03, 0.42, 5), M.log, x, 0.21, z));
+      g.add(mesh(new BoxGeometry(0.52, 0.05, 0.48), M.wood, 0, 0.44, 0)); // seat
+      g.add(mesh(new BoxGeometry(0.52, 0.5, 0.05), M.wood, 0, 0.72, -0.24)); // back, away from the fire
+    },
+    bamboo(g) {
+      for (const [x, z] of [[-0.22, -0.2], [0.22, -0.2], [-0.22, 0.2], [0.22, 0.2]]) cane(g, 0.03, [x, 0, z], [x, 0.44, z]);
+      for (let i = 0; i < 6; i++) cane(g, 0.035, [-0.26, 0.45, -0.2 + i * 0.08], [0.26, 0.45, -0.2 + i * 0.08]); // slatted seat
+      for (const x of [-0.22, 0.22]) cane(g, 0.03, [x, 0.44, -0.24], [x, 0.98, -0.27]);
+      for (const y of [0.62, 0.78, 0.94]) cane(g, 0.025, [-0.24, y, -0.25], [0.24, y, -0.26]);
+    },
+    stone(g) {
+      g.add(mesh(new BoxGeometry(0.55, 0.42, 0.48), rockMat, 0, 0.21, 0)); // a stone seat
+      g.add(mesh(new BoxGeometry(0.55, 0.5, 0.12), rockMat, 0, 0.66, -0.2)); // and a slab for a back
+    },
+  },
+  table: {
+    wood(g) {
+      for (const [x, z] of [[-0.45, -0.3], [0.45, -0.3], [-0.45, 0.3], [0.45, 0.3]]) g.add(mesh(new CylinderGeometry(0.04, 0.04, 0.68, 5), M.log, x, 0.34, z));
+      g.add(mesh(new BoxGeometry(1.1, 0.06, 0.75), M.wood, 0, 0.7, 0));
+    },
+    bamboo(g) {
+      for (const [x, z] of [[-0.45, -0.3], [0.45, -0.3], [-0.45, 0.3], [0.45, 0.3]]) cane(g, 0.035, [x, 0, z], [x, 0.68, z]);
+      for (let i = 0; i < 9; i++) cane(g, 0.04, [-0.56, 0.71, -0.34 + i * 0.085], [0.56, 0.71, -0.34 + i * 0.085]);
+    },
+    stone(g) {
+      for (const x of [-0.38, 0.38]) g.add(mesh(new BoxGeometry(0.24, 0.64, 0.55), rockMat, x, 0.32, 0));
+      g.add(mesh(new BoxGeometry(1.15, 0.1, 0.8), rockMat, 0, 0.69, 0)); // one big flat slab
+    },
+  },
+  bed: {
+    // (lengthwise under her mat, like the mat itself)
+    wood(g) {
+      for (const [x, z] of [[-0.45, -0.9], [0.45, -0.9], [-0.45, 0.6], [0.45, 0.6]]) g.add(mesh(new BoxGeometry(0.08, 0.2, 0.08), M.log, x, 0.1, z));
+      for (const x of [-0.47, 0.47]) g.add(mesh(new BoxGeometry(0.06, 0.08, 1.6), M.log, x, 0.16, -0.15));
+      for (const z of [-0.92, 0.62]) g.add(mesh(new BoxGeometry(1.0, 0.08, 0.06), M.log, 0, 0.16, z));
+    },
+    bamboo(g) {
+      for (const x of [-0.47, 0.47]) cane(g, 0.045, [x, 0.14, -0.98], [x, 0.14, 0.68]);
+      for (const z of [-0.92, 0.62]) cane(g, 0.04, [-0.5, 0.1, z], [0.5, 0.1, z]);
+      for (const [x, z] of [[-0.45, -0.9], [0.45, -0.9], [-0.45, 0.6], [0.45, 0.6]]) cane(g, 0.04, [x, 0, z], [x, 0.18, z]);
+    },
+    stone(g) {
+      g.add(mesh(new BoxGeometry(1.0, 0.18, 1.75), rockMat, 0, 0.09, -0.15)); // a low stone platform
+    },
+  },
+  shelf: {
+    wood(g) {
+      for (const x of [-0.5, 0.5]) g.add(mesh(new BoxGeometry(0.06, 1.0, 0.3), M.log, x, 0.5, 0));
+      for (const y of [0.35, 0.75]) g.add(mesh(new BoxGeometry(1.06, 0.04, 0.3), M.wood, 0, y, 0));
+    },
+    bamboo(g) {
+      for (const x of [-0.5, 0.5]) for (const z of [-0.1, 0.1]) cane(g, 0.03, [x, 0, z], [x, 1.0, z]);
+      for (const y of [0.35, 0.75]) for (let i = 0; i < 4; i++) cane(g, 0.03, [-0.53, y, -0.11 + i * 0.075], [0.53, y, -0.11 + i * 0.075]);
+    },
+    stone(g) {
+      // stacked stones for sides, with wooden boards between
+      for (const x of [-0.5, 0.5]) for (let i = 0; i < 3; i++) g.add(mesh(new BoxGeometry(0.16, 0.3, 0.3), rockMat, x + (i % 2 ? 0.01 : -0.01), 0.16 + i * 0.31, 0));
+      for (const y of [0.35, 0.75]) g.add(mesh(new BoxGeometry(1.0, 0.04, 0.3), M.wood, 0, y, 0));
+    },
+  },
+};
 
 /* ---------- instruments (also used for the ones in her hands, see character/perform.ts) ---------- */
 const bamboo = mat('#C9B26B'), node = mat('#8A7A3E'), dark = mat('#2B211A');
@@ -85,6 +162,16 @@ export function createCrafted(scene: Scene) {
     return g;
   };
   const pileYaw = yawTo(WOODPILE_P, FIRE);
+  // a holder with all three styles of a piece of furniture (the update shows the right one)
+  const pendingStyled: [CraftKey, Record<Style, Group>][] = [];
+  function styledModel(k: 'chair' | 'table' | 'bed' | 'shelf') {
+    const holder = new Group(), v = {} as Record<Style, Group>;
+    for (const st of ['wood', 'bamboo', 'stone'] as Style[]) { v[st] = new Group(); FURNITURE[k][st](v[st]); holder.add(v[st]); }
+    if (k === 'table') holder.add(mesh(new CylinderGeometry(0.12, 0.08, 0.06, 8), tin, 0.15, 0.76, 0.05)); // a bowl
+    if (k === 'bed') holder.add(mesh(new BoxGeometry(0.9, 0.08, 1.75), M.bed, 0, 0.22, -0.15)); // her mat, now up on the frame
+    pendingStyled.push([k, v]);
+    return holder;
+  }
 
   const BUILD: Record<CraftKey, () => Group> = {
     axe() {
@@ -213,36 +300,28 @@ export function createCrafted(scene: Scene) {
       return place(g, JOURNAL_P.x + 0.7, JOURNAL_P.z + 0.15);
     },
 
-    /* ---------- furniture ---------- */
-    chair() {
+    /* ---------- furniture (in her style: see FURNITURE below) ---------- */
+    chair: () => place(styledModel('chair'), CHAIR_P.x, CHAIR_P.z, yawTo(CHAIR_P, FIRE)),
+    table: () => place(styledModel('table'), TABLE_P.x, TABLE_P.z, yawTo(TABLE_P, FIRE)),
+    bed: () => place(styledModel('bed'), SH.x, SH.z, yawTo(SH, FIRE)), // a raised frame under her sleeping mat, inside the shelter
+    shelf: () => place(styledModel('shelf'), SHELF_P.x, SHELF_P.z, yawTo(SHELF_P, FIRE)),
+    flinttools: () => new Group(), // (not a thing of its own: her axe and pick get flint heads)
+    chimes() {
+      // bamboo tubes and a shell on strings, hung from a little post by the shelter
       const g = new Group();
-      for (const [x, z] of [[-0.22, -0.2], [0.22, -0.2], [-0.22, 0.2], [0.22, 0.2]]) g.add(mesh(new CylinderGeometry(0.03, 0.03, 0.42, 5), M.log, x, 0.21, z));
-      g.add(mesh(new BoxGeometry(0.52, 0.05, 0.48), M.wood, 0, 0.44, 0)); // seat
-      g.add(mesh(new BoxGeometry(0.52, 0.5, 0.05), M.wood, 0, 0.72, -0.24)); // back, away from the fire
-      return place(g, CHAIR_P.x, CHAIR_P.z, yawTo(CHAIR_P, FIRE));
-    },
-    table() {
-      const g = new Group();
-      for (const [x, z] of [[-0.45, -0.3], [0.45, -0.3], [-0.45, 0.3], [0.45, 0.3]]) g.add(mesh(new CylinderGeometry(0.04, 0.04, 0.68, 5), M.log, x, 0.34, z));
-      g.add(mesh(new BoxGeometry(1.1, 0.06, 0.75), M.wood, 0, 0.7, 0));
-      g.add(mesh(new CylinderGeometry(0.12, 0.08, 0.06, 8), tin, 0.15, 0.76, 0.05)); // a bowl
-      return place(g, TABLE_P.x, TABLE_P.z, yawTo(TABLE_P, FIRE));
-    },
-    bed() {
-      // a raised frame under her sleeping mat, inside the shelter
-      const g = new Group();
-      // (lengthwise under her mat, like the mat itself)
-      for (const [x, z] of [[-0.45, -0.9], [0.45, -0.9], [-0.45, 0.6], [0.45, 0.6]]) g.add(mesh(new BoxGeometry(0.08, 0.2, 0.08), M.log, x, 0.1, z));
-      for (const x of [-0.47, 0.47]) g.add(mesh(new BoxGeometry(0.06, 0.08, 1.6), M.log, x, 0.16, -0.15));
-      for (const z of [-0.92, 0.62]) g.add(mesh(new BoxGeometry(1.0, 0.08, 0.06), M.log, 0, 0.16, z));
-      g.add(mesh(new BoxGeometry(0.9, 0.08, 1.75), M.bed, 0, 0.22, -0.15)); // her mat, now up on the frame
-      return place(g, SH.x, SH.z, yawTo(SH, FIRE));
-    },
-    shelf() {
-      const g = new Group();
-      for (const x of [-0.5, 0.5]) g.add(mesh(new BoxGeometry(0.06, 1.0, 0.3), M.log, x, 0.5, 0));
-      for (const y of [0.35, 0.75]) g.add(mesh(new BoxGeometry(1.06, 0.04, 0.3), M.wood, 0, y, 0));
-      return place(g, SHELF_P.x, SHELF_P.z, yawTo(SHELF_P, FIRE));
+      g.add(mesh(new CylinderGeometry(0.035, 0.04, 1.9, 5), M.log, 0, 0.95, 0));
+      g.add(mesh(new BoxGeometry(0.5, 0.04, 0.04), M.log, 0.22, 1.85, 0));
+      const tubes = new Group();
+      tubes.position.set(0.38, 1.83, 0);
+      [0.34, 0.28, 0.24, 0.3, 0.2].forEach((l, i) => {
+        const x = (i - 2) * 0.06;
+        tubes.add(mesh(new CylinderGeometry(0.004, 0.004, 0.12, 3), fibre, x, -0.06, 0, false));
+        tubes.add(mesh(new CylinderGeometry(0.022, 0.022, l, 6), bamboo, x, -0.12 - l / 2, 0));
+      });
+      tubes.add(mesh(new ConeGeometry(0.04, 0.06, 6), mat('#F2D8C9'), 0, -0.5, 0, false)); // the shell, as a clapper
+      tubes.name = 'tubes';
+      g.add(tubes);
+      return place(g, SH.x - 1.4, SH.z + 1.3);
     },
     /* ---------- in the lodge ---------- */
     realbed() {
@@ -373,5 +452,13 @@ export function createCrafted(scene: Scene) {
       models.blanket.position.set(SH.x, SH.y + (S.items.bed ? 0.28 : 0.12), SH.z);
     }
     shells.forEach((sh, i) => { sh.visible = i < S.stock.shells; });
+    // each styled piece holds all three versions; only the one she made it from shows
+    for (const [k, v] of pendingStyled) {
+      const st = S.madeStyle[k] ?? 'wood';
+      for (const s of ['wood', 'bamboo', 'stone'] as Style[]) v[s].visible = s === st;
+    }
+    toolHead.color.set(S.items.flinttools ? '#3A3D44' : '#8E979B'); // dark, glassy flint
+    const tubes = models.chimes.getObjectByName('tubes');
+    if (tubes) tubes.rotation.z = 0.06 * Math.sin(performance.now() / 700) * Math.sin(performance.now() / 1900); // stirring in the breeze
   };
 }

@@ -3,14 +3,14 @@
 import { ONE_SHOT_SECONDS } from '../config/animations';
 import { chooseCrop, CROP_YIELD, freePlots, growingPlots, ripePlots } from './garden';
 import {
-  ORCHARD, ORCHARD_P, BANDSTAND_FLOOR, BANDSTAND_P, BAND_SPOTS, bandLocal, MARIMBA_P, type Instrument, SHED_P, TABLE_P, addScaled, dirXZ, SP, BATH_P, CLAY_P, CLAY_STAND, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SUNDIAL_P, BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
+  BAMBOO, BAR_A, BAR_B, CAVE_P, CAVE_STAND, PIPE_FROM, SPOUT_P, SPOUT_STAND, WELL_P, WELL_STAND, ORCHARD, ORCHARD_P, BANDSTAND_FLOOR, BANDSTAND_P, BAND_SPOTS, bandLocal, MARIMBA_P, type Instrument, SHED_P, TABLE_P, addScaled, dirXZ, SP, BATH_P, CLAY_P, CLAY_STAND, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SUNDIAL_P, BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
   HAMMOCK_BED, SHELTER_BED, LOOKOUT_DECK, LOOKOUT_P, pointAt, RACK_P, SAIL_ROUTE, SCREE_P, SCREE_STAND, SEATS, SH, SHELTER, SPRING, standNear,
   V, WOODPILE_P, type Pt,
 } from './island';
 import { feelingAbout, remember } from './memory';
 import { nextToHerd, sheepToShear } from './animals';
 import { gainTrust } from './companion';
-import { INSTRUMENTS, storageCap, checkFinished, damaged, indoors, minutesLeft, PLANS, REPAIRABLE, startPlan, workOn, works } from './plans';
+import { toolSpeed, INSTRUMENTS, storageCap, checkFinished, damaged, indoors, minutesLeft, PLANS, REPAIRABLE, startPlan, workOn, works } from './plans';
 import { addMeat, addRawFish, nearestBoulder, nearestTree } from './resources';
 import { addXp } from './skills';
 import {
@@ -18,6 +18,7 @@ import {
   type CraftKey, type Crop, type DoStep, type GoStep, type PlanKey, type Resource, type Step, type Task, type TaskId, type WaitStep,
 } from './state';
 import { fullMoon, glowingSea } from './night';
+import { lowTide } from './tide';
 import { fx, season } from './seasons';
 import { TH, thoughtFor } from './thoughts';
 import { clamp, pick, rand } from './util';
@@ -117,6 +118,10 @@ const SITE: Record<string, { stand: Pt; face: Pt }> = {
   mosaic: { stand: standNear(MOSAIC_P, 1.0, FIRE), face: MOSAIC_P },
   bathhouse: { stand: standNear(BATH_P, 1.3, SP), face: BATH_P },
   orchard: { stand: standNear(ORCHARD_P, 1.2), face: ORCHARD_P },
+  bridge: { stand: BAR_A, face: BAR_B }, // (built out from her own beach)
+  cave: { stand: CAVE_STAND, face: CAVE_P },
+  pipe: { stand: standNear(V((PIPE_FROM.x + SPOUT_P.x) / 2, (PIPE_FROM.z + SPOUT_P.z) / 2), 0.9), face: V((PIPE_FROM.x + SPOUT_P.x) / 2, (PIPE_FROM.z + SPOUT_P.z) / 2) },
+  well: { stand: WELL_STAND, face: WELL_P },
   bandstand: { stand: bandLocal(0, 2.2), face: BANDSTAND_P },
 };
 /* where event things are: on the beach at the event's angle */
@@ -281,6 +286,13 @@ export const T: Record<string, () => Task | null> = {
     })]);
   },
   drink() {
+    // water at camp (her well, or the pipe's spout) when it's nearer than the pond
+    const camp = works('well') ? { stand: WELL_STAND, face: WELL_P, what: 'Drinking from her well' } : works('pipe') ? { stand: SPOUT_STAND, face: SPOUT_P, what: 'Drinking from the pipe' } : null;
+    if (camp && dist(camp.stand, S.pos) < dist(SPRING.spot, S.pos)) {
+      return mk('drink', camp.what, pick(['Ahh. Cold and clean.', 'Best thing I ever built.', 'No more walking to the pond!']), [go(camp.stand, false, urgent(S.needs.water)), act({
+        pose: 'gather', face: camp.face, min: 8, done() { feed('water', 55); addXp('survival', 1); },
+      })]);
+    }
     // rainwater from the barrel when it's nearer than the pond
     if (S.barrel >= 1 && works('barrel') && dist(BARREL_STAND, S.pos) < dist(SPRING.spot, S.pos)) {
       return mk('drink', 'Drinking rainwater from the barrel', pick(['Rainwater. Free delivery.', 'Best idea I ever had, this barrel.']), [go(BARREL_STAND, false, urgent(S.needs.water)), act({
@@ -327,7 +339,7 @@ export const T: Record<string, () => Task | null> = {
     if (!has('axe') || i < 0) return null;
     const t = FOREST[i];
     return mk('chop', 'Chopping down a tree', pick(TH.chop), [go(t.stand), act({
-      pose: 'chop', face: t.pos, min: 50, done() {
+      pose: 'chop', face: t.pos, min: 50 / toolSpeed(), done() {
         S.trees[i] = { state: 'stump', growth: 0, planted: 0 };
         S.stats.treesFelled++;
         if (Math.random() < 0.7) S.stock.saplings++; // a seedling from the forest floor to replant
@@ -378,7 +390,7 @@ export const T: Record<string, () => Task | null> = {
     if (!has('pick') || i < 0) return null;
     const b = BOULDERS[i];
     return mk('mine', 'Breaking stones off a boulder', pick(TH.mine), [go(b.stand), act({
-      pose: 'chop', face: b.pos, min: 45, done() {
+      pose: 'chop', face: b.pos, min: 45 / toolSpeed(), done() {
         const n = Math.min(3, S.boulders[i]);
         S.boulders[i] -= n;
         S.stock.stone = Math.min(storageCap('stone'), S.stock.stone + n);
@@ -667,6 +679,40 @@ export const T: Record<string, () => Task | null> = {
         S.cairns.push(a);
         remember('cairn', 0.05);
         highlight('stacked stones on the beach');
+      },
+    })]);
+  },
+  bamboo() {
+    // cut canes on the islet: over her bridge, or across the sandbar while the tide is out
+    if (!works('bridge') && !lowTide()) return null;
+    let i = -1;
+    S.bamboo.forEach((n, k) => { if (n >= 1 && (i < 0 || n > S.bamboo[i])) i = k; });
+    if (i < 0) return null;
+    const c = BAMBOO[i], first = !S.isletFound;
+    return mk('bamboo', first ? 'Wading out to the little islet' : works('bridge') ? 'Cutting bamboo on the islet' : 'Wading out for bamboo',
+      first ? 'The sea’s gone out… I can walk to that little island!' : pick(['Tall and straight. Perfect.', 'It grows back so fast.', 'Hollow and strong. I love this stuff.']), [go(c.stand), act({
+        pose: 'chop', face: c.pos, min: 35 / toolSpeed(), done() {
+          // (a long walk, so she brings back a good bundle: from this clump and the next one)
+          let n = 0;
+          for (let k = 0; k < S.bamboo.length && n < 4 + (has('basket') ? 1 : 0); k++) { const c = (i + k) % S.bamboo.length, take = Math.min(Math.floor(S.bamboo[c]), 4 + (has('basket') ? 1 : 0) - n); S.bamboo[c] -= take; n += take; }
+          S.stock.bamboo = Math.min(storageCap('bamboo'), S.stock.bamboo + n);
+          addXp('survival', 2);
+          if (first) {
+            S.isletFound = true;
+            log('At low tide a sandbar rose out of the bay, and she walked across it to a little islet full of bamboo.', 'big');
+            highlight('found the bamboo islet');
+          } else highlight('cut bamboo on the islet');
+        },
+      })]);
+  },
+  flint() {
+    // knock flint nodules out of the cave wall
+    if (!works('cave')) return null;
+    return mk('flint', 'Digging flint in the cave', pick(['It’s cool in here.', 'There, a fat nodule of flint.', 'Echo! …echo.']), [go(CAVE_STAND), act({
+      pose: 'chop', face: CAVE_P, min: 40 / toolSpeed(), done() {
+        S.stock.flint = Math.min(storageCap('flint'), S.stock.flint + 2);
+        addXp('survival', 2);
+        highlight('dug flint in the cave');
       },
     })]);
   },
@@ -1003,9 +1049,9 @@ export const T: Record<string, () => Task | null> = {
 };
 
 // Tasks that urgent needs (or something new to try) are allowed to cut short.
-export const INTERRUPTIBLE = new Set<TaskId>(['tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'honey', 'bathe', 'salvage', 'turtles', 'tendgull', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
+export const INTERRUPTIBLE = new Set<TaskId>(['bamboo', 'flint', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'honey', 'bathe', 'salvage', 'turtles', 'tendgull', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
 // Outdoor tasks a sudden shower sends her away from.
-export const RAIN_STOPS = new Set<TaskId>(['tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'salvage', 'turtles', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
+export const RAIN_STOPS = new Set<TaskId>(['bamboo', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'salvage', 'turtles', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
 // Which task "tries out" each newly made thing.
 export const CURIOUS_TASK: Partial<Record<CraftKey, TaskId>> = { rod: 'fish', spear: 'fish', drum: 'drum', flute: 'drum', ukulele: 'drum', marimba: 'drum', journal: 'write', axe: 'chop', pick: 'mine', chair: 'relax', rocker: 'watch' };
 

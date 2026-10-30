@@ -2,10 +2,10 @@
 // and projects (built on site over several sessions, e.g. the dock). She sets
 // one as her goal once it fits her life (see `unlocked`), gathers the
 // resources, then makes it. Nothing is listed for the player in advance.
-import { DOCK, height, type Pt } from './island';
+import { BRIDGE_Y, DOCK, height, onBridgeLine, type Pt } from './island';
 import { remember } from './memory';
 import { addXp } from './skills';
-import { dayNum, highlight, log, S, say, tr, type CraftKey, type PlanKey, type ProjectKey, type Resource } from './state';
+import { dayNum, highlight, log, S, say, tr, type CraftKey, type PlanKey, type ProjectKey, type Resource, type Style } from './state';
 import { growTaste, tasteFor, type Leaning } from './taste';
 
 interface PlanDef {
@@ -20,6 +20,36 @@ interface PlanDef {
   weight: () => number; // how much she wants it compared to the other options
   tags: Leaning[]; // which of her leanings it appeals to (see taste.ts)
 }
+
+/* ---------- building styles ---------- */
+// Furniture, the fence and the bridge come in her favourite material: bamboo,
+// wood or stone. Each has its own cost; the look follows (world/crafted.ts, buildings.ts).
+const STYLE_COST: Partial<Record<PlanKey, Record<Style, Partial<Record<Resource, number>>>>> = {
+  chair: { wood: { wood: 3 }, bamboo: { bamboo: 3, fibre: 1 }, stone: { stone: 4 } },
+  table: { wood: { wood: 4, stone: 2 }, bamboo: { bamboo: 4, fibre: 2 }, stone: { stone: 5, wood: 1 } },
+  bed: { wood: { wood: 4, fibre: 3 }, bamboo: { bamboo: 4, fibre: 3 }, stone: { stone: 4, fibre: 3 } },
+  shelf: { wood: { wood: 3 }, bamboo: { bamboo: 3, fibre: 1 }, stone: { stone: 3, wood: 1 } },
+  fence: { wood: { wood: 10 }, bamboo: { bamboo: 10, fibre: 3 }, stone: { stone: 16 } },
+  bridge: { wood: { wood: 9, fibre: 2 }, bamboo: { bamboo: 8, fibre: 3 }, stone: { stone: 14 } },
+};
+export const STYLED = Object.keys(STYLE_COST) as PlanKey[];
+/**
+ * What she'll make this from: once started, whatever she started it in;
+ * otherwise her favourite material if she can get it (no bamboo before she's
+ * found the islet), else wood.
+ */
+export function styleFor(k: PlanKey): Style {
+  const made = S.madeStyle[k];
+  if (made && progressOf(k).started) return made;
+  // a preference, not a rule: about one piece in five she makes from something else
+  // (fixed per piece, from her name, so it doesn't change while she gathers for it)
+  let h = 0;
+  for (const c of S.name + k) h = (h * 31 + c.charCodeAt(0)) % 1000;
+  const others = (['wood', 'bamboo', 'stone'] as Style[]).filter(x => x !== S.style);
+  const want = h < 200 ? others[h % 2] : S.style ?? 'wood';
+  return want === 'bamboo' && !S.isletFound ? 'wood' : want;
+}
+const styledCost = (k: PlanKey) => STYLE_COST[k]![styleFor(k)];
 
 export const PLANS: Record<PlanKey, PlanDef> = {
   /* ---------- crafts ---------- */
@@ -147,7 +177,7 @@ export const PLANS: Record<PlanKey, PlanDef> = {
 
   /* ---------- furniture: she only thinks of these once her crafting is good enough ---------- */
   chair: {
-    kind: 'craft', name: 'chair', a: 'a chair', cost: { wood: 3 }, minutes: 70,
+    kind: 'craft', name: 'chair', a: 'a chair', get cost() { return styledCost('chair'); }, minutes: 70,
     unlocked: () => S.skills.crafting.lvl >= 1,
     want: 'I’m sick of sitting on logs. A real chair by the fire, that’s the dream.',
     done: 'A chair! An actual chair. I feel like a queen.',
@@ -156,7 +186,7 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     tags: ['comfort'],
   },
   table: {
-    kind: 'craft', name: 'table', a: 'a table', cost: { wood: 4, stone: 2 }, minutes: 90,
+    kind: 'craft', name: 'table', a: 'a table', get cost() { return styledCost('table'); }, minutes: 90,
     unlocked: () => S.skills.crafting.lvl >= 2,
     want: 'Eating off my knees gets old. A table would make meals feel civilised.',
     done: 'A table! Dinner is served. Properly.',
@@ -165,7 +195,7 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     tags: ['comfort'],
   },
   bed: {
-    kind: 'craft', name: 'bed frame', a: 'a bed frame', cost: { wood: 4, fibre: 3 }, minutes: 100,
+    kind: 'craft', name: 'bed frame', a: 'a bed frame', get cost() { return styledCost('bed'); }, minutes: 100,
     unlocked: () => S.skills.crafting.lvl >= 3 && S.stats.nightsInShelter >= 3,
     want: 'If I raised my bed off the ground, maybe I’d stop waking up with sand everywhere.',
     done: 'A proper bed frame. Goodbye, sand.',
@@ -174,7 +204,7 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     tags: ['comfort'],
   },
   shelf: {
-    kind: 'craft', name: 'shelf', a: 'a shelf', cost: { wood: 3 }, minutes: 60,
+    kind: 'craft', name: 'shelf', a: 'a shelf', get cost() { return styledCost('shelf'); }, minutes: 60,
     unlocked: () => S.skills.crafting.lvl >= 3 && (S.stock.shells >= 3 || !!S.items.journal),
     want: 'My shells and story boards deserve a proper place. A shelf!',
     done: 'Everything has its place now. It looks like someone lives here.',
@@ -332,7 +362,7 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     tags: ['adventure'],
   },
   fence: {
-    kind: 'build', name: 'fence', a: 'a fence around her home', cost: { wood: 10 }, minutes: 200,
+    kind: 'build', name: 'fence', a: 'a fence around her home', get cost() { return styledCost('fence'); }, minutes: 200,
     // not on day one: 10 logs that early starve her of everything else (an animal lover still gets there first)
     unlocked: () => dayNum() >= 4,
     want: 'If I fenced in the camp, I could keep those chickens and sheep.',
@@ -479,6 +509,58 @@ export const PLANS: Record<PlanKey, PlanDef> = {
 
     tags: ['sea', 'adventure'],
   },
+
+  /* ---------- island growth (v1.4): the islet, the cave, water at camp ---------- */
+  bridge: {
+    kind: 'build', name: 'bridge', a: 'a bridge to the islet', get cost() { return styledCost('bridge'); }, minutes: 240,
+    unlocked: () => S.isletFound && dayNum() >= 6,
+    want: 'Wading out at low tide is fun, but a bridge would get me to that islet any time.',
+    done: 'A bridge to my very own little island!',
+    weight: () => 1.4 + 0.8 * S.taste.adventure + (S.style === 'bamboo' ? 0.8 : 0),
+    tags: ['adventure'],
+  },
+  cave: {
+    kind: 'build', name: 'cave entrance', a: 'a way into the cave', cost: { wood: 2 }, minutes: 150,
+    unlocked: () => !!S.items.pick && dayNum() >= 5,
+    want: 'There’s a cave in the hillside, choked with rubble. With my pick I could clear the way in.',
+    done: 'The cave is open! Cool and dark inside, and the walls are full of flint.',
+    weight: () => 1.2 + 0.8 * S.taste.adventure + 0.4 * S.taste.practical,
+    tags: ['adventure', 'practical'],
+  },
+  pipe: {
+    // water at camp, one way or the other: a bamboo pipe from the pond…
+    kind: 'build', name: 'water pipe', a: 'a bamboo water pipe', cost: { bamboo: 6, fibre: 2 }, minutes: 180,
+    unlocked: () => S.isletFound && !progressOf('well').started,
+    want: 'If I ran bamboo pipes down from the pond, the water would come to me.',
+    done: 'Water, pouring right into camp! I’m a genius.',
+    weight: () => 1.2 + 0.8 * S.taste.green + (S.style === 'bamboo' ? 0.8 : 0) + (tr('lazy') ? 0.5 : 0),
+    tags: ['green', 'practical'],
+  },
+  well: {
+    // …or a stone well in camp
+    kind: 'build', name: 'well', a: 'a well', cost: { stone: 12, wood: 3 }, minutes: 260,
+    unlocked: () => !!S.items.pick && dayNum() >= 7 && !progressOf('pipe').started,
+    want: 'If I dug a well right here in camp, I’d never have to walk to the pond again.',
+    done: 'A well! Cold, clean water, right on my doorstep.',
+    weight: () => 1.1 + 0.8 * S.taste.practical + (S.style === 'stone' ? 0.8 : 0) + (tr('lazy') ? 0.5 : 0),
+    tags: ['practical'],
+  },
+  flinttools: {
+    kind: 'craft', name: 'flint tools', a: 'flint tools', cost: { flint: 4, wood: 2, fibre: 2 }, minutes: 90,
+    unlocked: () => !!S.items.axe && !!S.items.pick && S.projects.cave.done,
+    want: 'Flint flakes sharper than any stone. New heads for my axe and pick!',
+    done: 'Flint tools! They bite twice as deep.',
+    weight: () => 2.2,
+    tags: ['practical'],
+  },
+  chimes: {
+    kind: 'craft', name: 'wind chimes', a: 'wind chimes', cost: { bamboo: 3, fibre: 1, shells: 1 }, minutes: 50,
+    unlocked: () => S.isletFound && S.skills.crafting.lvl >= 2 && S.stock.shells >= 1,
+    want: 'Bamboo tubes and a shell, hung where the wind can find them… wind chimes!',
+    done: 'Listen to that. The wind’s playing music.',
+    weight: () => 0.8 + 0.8 * S.taste.creative + (S.style === 'bamboo' ? 0.6 : 0),
+    tags: ['creative', 'comfort'],
+  },
 };
 
 const isProject = (k: PlanKey): k is ProjectKey => PLANS[k].kind === 'build';
@@ -532,8 +614,8 @@ export function chooseGoal() {
 export const INSTRUMENTS = ['drum', 'flute', 'ukulele', 'marimba'] as const;
 const TOOLS: CraftKey[] = ['axe', 'pick', 'rod', 'spear', 'bucket', 'basket', 'snare'];
 /** How much of a material she can keep: a tool shed gives room for half as much again. */
-export function storageCap(r: 'wood' | 'stone' | 'fibre' | 'clay') {
-  return (r === 'stone' ? 30 : 20) * (works('shed') ? 1.5 : 1);
+export function storageCap(r: 'wood' | 'stone' | 'fibre' | 'clay' | 'bamboo' | 'flint') {
+  return (r === 'stone' ? 30 : r === 'flint' ? 12 : 20) * (works('shed') ? 1.5 : 1);
 }
 
 // Logs she always keeps back for the campfire; projects can't use these.
@@ -541,7 +623,7 @@ export const FIREWOOD_RESERVE = 2;
 
 /** How much of each resource she still has to gather before she can start her goal. */
 export function missing(): Record<Resource, number> {
-  const out = { wood: 0, stone: 0, fibre: 0, wool: 0, clay: 0, shells: 0 }, k = S.goal;
+  const out = { wood: 0, stone: 0, fibre: 0, wool: 0, clay: 0, shells: 0, bamboo: 0, flint: 0 }, k = S.goal;
   if (!k || progressOf(k).started) return out;
   for (const r of Object.keys(out) as Resource[]) {
     const cost = PLANS[k].cost[r] ?? 0;
@@ -552,7 +634,10 @@ export function missing(): Record<Resource, number> {
 export const canWork = () => !!S.goal && Object.values(missing()).every(v => v === 0);
 
 // (a knife that washed ashore with her makes all crafting quicker)
-const workSpeed = (k: PlanKey) => (1 + 0.08 * S.skills[PLANS[k].kind === 'craft' ? 'crafting' : 'building'].lvl) * (S.washedUp === 'knife' && PLANS[k].kind === 'craft' ? 1.2 : 1);
+// (and flint tools make everything a little quicker)
+const workSpeed = (k: PlanKey) => (1 + 0.08 * S.skills[PLANS[k].kind === 'craft' ? 'crafting' : 'building'].lvl) * (S.washedUp === 'knife' && PLANS[k].kind === 'craft' ? 1.2 : 1) * (S.items.flinttools ? 1.15 : 1);
+/** How much quicker chopping and breaking stone go with flint tools. */
+export const toolSpeed = () => S.items.flinttools ? 1.35 : 1;
 /** Game minutes of work left on the current goal (faster with skill). */
 export function minutesLeft() {
   const k = S.goal!;
@@ -563,6 +648,7 @@ export function minutesLeft() {
 export function startPlan(k: PlanKey) {
   const p = progressOf(k);
   if (p.started) return;
+  if (STYLED.includes(k)) S.madeStyle[k] = styleFor(k); // (decided now, so the cost and the look stay put)
   p.started = true;
   for (const [r, n] of Object.entries(PLANS[k].cost) as [Resource, number][]) S.stock[r] -= n;
   if (isProject(k)) log(`She started building the ${PLANS[k].name}.`);
@@ -635,5 +721,8 @@ export function onDock(p: Pt) {
 }
 export function surfaceY(x: number, z: number) {
   const p = { x, y: 0, z };
-  return onDock(p) ? DOCK.deckY : height(x, z);
+  if (onDock(p)) return DOCK.deckY;
+  // on her bridge to the islet (the deck, or a stone causeway at the same height)
+  if (S.projects.bridge?.done && onBridgeLine(x, z)) return Math.max(height(x, z), BRIDGE_Y);
+  return height(x, z);
 }

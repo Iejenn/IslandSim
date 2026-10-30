@@ -106,6 +106,11 @@ export function decide() {
     if (S.deadwood >= 1) add('sticks', base - 0.06 - (canChop ? 0.15 : 0));
   }
   if (need.fibre > 0) add('fibre', 0.6 + busy - dark - wet);
+  // bamboo from the islet (over the bridge, or across the sandbar at low tide), flint from the cave
+  const toIslet = works('bridge') || lowTide();
+  if (need.bamboo > 0 && toIslet) add('bamboo', 0.6 + busy - dark - wet);
+  if (!S.isletFound && lowTide() && dayNum() >= 3 && !night) add('bamboo', 0.75 + 0.4 * S.taste.adventure + (S.style === 'bamboo' ? 0.2 : 0) + 0.2 * u(n.fun) - wet); // curious about that islet
+  if (need.flint > 0) add('flint', 0.6 + busy - dark);
   if (need.clay > 0) add('clay', 0.6 + busy - dark - wet);
   if (need.shells > 0) add('explore', 0.55 + busy - dark - wet); // beachcombing for the mosaic
   /* island events: things that turned up and want her attention */

@@ -48,6 +48,8 @@ function renderCamp() {
   if (S.stock.veg) stock.push(['Vegetables', String(S.stock.veg)]);
   if (S.stock.shells) stock.push(['Shells collected', String(S.stock.shells)]);
   if (S.stock.clay) stock.push(['Clay', String(S.stock.clay)]);
+  if (S.stock.bamboo || S.isletFound) stock.push(['Bamboo', String(S.stock.bamboo)]);
+  if (S.stock.flint || S.projects.cave.done) stock.push(['Flint', String(S.stock.flint)]);
   if (S.stock.honey || S.projects.beehive.done) stock.push(['Honey', S.stock.honey ? n(S.stock.honey, 'jar', 'jars') : 'none yet']);
   if (S.stock.fruit || S.orchard.some(t => t.kind)) stock.push(['Fruit', S.stock.fruit ? n(S.stock.fruit, 'piece', 'pieces') : 'none ripe yet']);
   if (S.stock.eggs || S.projects.coop.done) stock.push(['Eggs', String(S.stock.eggs)]);
@@ -58,8 +60,9 @@ function renderCamp() {
   if (S.projects.garden.done) stock.push(['Seeds', String(S.stock.seeds)]);
   stock.push(['Campfire', S.fire > 0 ? (S.fire < 20 ? 'burning low' : 'burning') : 'out']);
 
-  const made = (Object.keys(S.items) as CraftKey[]).filter(k => S.items[k]).map(k => [cap(PLANS[k].name), ''] as [string, string]);
-  const built = (Object.keys(S.projects) as ProjectKey[]).filter(k => S.projects[k].done).map(k => [cap(PLANS[k].name), S.projects[k].damaged ? 'storm-damaged' : ''] as [string, string]);
+  // (styled things say what she made them from)
+  const made = (Object.keys(S.items) as CraftKey[]).filter(k => S.items[k]).map(k => [cap(PLANS[k].name), S.madeStyle[k] ?? ''] as [string, string]);
+  const built = (Object.keys(S.projects) as ProjectKey[]).filter(k => S.projects[k].done).map(k => [cap(PLANS[k].name), S.projects[k].damaged ? 'storm-damaged' : S.madeStyle[k] ?? ''] as [string, string]);
   if (S.projects.garden.done) {
     const growing = growingPlots().length, ripe = ripePlots().length, dead = S.plots.filter(p => p.state === 'withered').length;
     const parts = [growing && `${growing} growing`, ripe && `${ripe} ripe`, dead && `${dead} withered`].filter(Boolean);
@@ -72,6 +75,8 @@ function renderCamp() {
   if (stumps || saplings) island.push(['Forest', [n(trees, 'tree', 'trees'), stumps && n(stumps, 'stump', 'stumps'), saplings && n(saplings, 'young tree', 'young trees')].filter(Boolean).join(' · ')]);
   const mined = S.boulders.filter(b => b < 8).length;
   if (mined) island.push(['Boulders', `${S.boulders.filter(b => b > 0).length} left`]);
+  if (S.isletFound) island.push(['Bamboo islet', `${S.bamboo.reduce((a, b) => a + Math.floor(b), 0)} canes · ${S.projects.bridge.done ? 'bridged' : 'reached at low tide'}`]);
+  if (S.min > 1440 * 1.5) island.push(['She likes building with', S.style ?? 'wood']);
 
   const friends: [string, string][] = [];
   if (S.dog.state === 'wild') friends.push(['A stray dog', S.dog.trust > 0.5 ? 'warming up to her' : S.dog.trust > 0 ? 'still wary' : 'keeps its distance']);
