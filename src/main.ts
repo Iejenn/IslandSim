@@ -3,6 +3,7 @@
 // Three.js or the DOM; everything that connects them lives here.
 import './style.css';
 import { Raycaster, Vector2, Vector3 } from 'three';
+import { createSound } from './audio/sound';
 import { createAnimator } from './character/animation';
 import { loadCharacter } from './character/model';
 import { createHeldTools, type HeldTool } from './character/heldTools';
@@ -21,6 +22,8 @@ import { createDog } from './world/dog';
 import { createForest } from './world/forest';
 import { createLivestock } from './world/livestock';
 import { createProps } from './world/props';
+import { createFlowers } from './world/flowers';
+import { createPaths } from './world/paths';
 import { createRabbits } from './world/rabbits';
 import { createRain } from './world/rain';
 import { createEvents } from './world/events';
@@ -42,10 +45,12 @@ const seed = save?.seed ?? newSeed();
 
 /* ---------- world: scattered from the saved seed, so a reload shows the same island ---------- */
 const { renderer, scene, camera, controls } = createStage(document.getElementById('scene')!);
-const { animateWater, updateSky, props, terrainMat } = withSeed(seed, () => {
-  const terrainMat = createTerrain(scene);
-  return { animateWater: createWater(scene), updateSky: createSky(scene), props: createProps(scene), terrainMat };
+const { animateWater, updateSky, props, terrain } = withSeed(seed, () => {
+  const terrain = createTerrain(scene);
+  return { animateWater: createWater(scene), updateSky: createSky(scene), props: createProps(scene), terrain };
 });
+const updatePaths = createPaths(terrain);
+const updateFlowers = createFlowers(scene);
 const updateForest = createForest(scene);
 const updateCrafted = createCrafted(scene);
 const updateBuildings = createBuildings(scene);
@@ -54,7 +59,7 @@ const updateDog = createDog(scene);
 const updateAnimals = createAnimals(scene);
 const updateLivestock = createLivestock(scene);
 const updateRabbits = createRabbits(scene);
-const updateSeasons = createSeasons(scene, terrainMat);
+const updateSeasons = createSeasons(scene, terrain.material);
 const updateEvents = createEvents(scene);
 
 /* ---------- sim + her ---------- */
@@ -74,6 +79,15 @@ const body = createBody(scene);
 const heldTools = createHeldTools(scene);
 let ready = false;
 let animator: ReturnType<typeof createAnimator> | null = null;
+
+/* ---------- sound (made in the browser, off until the player turns it on) ---------- */
+const sound = createSound();
+const soundBtn = document.getElementById('sound')!;
+const showSound = () => { soundBtn.textContent = sound.on ? 'Sound on' : 'Sound off'; soundBtn.setAttribute('aria-pressed', String(sound.on)); };
+soundBtn.addEventListener('click', () => { sound.toggle(); showSound(); });
+showSound();
+// browsers only start audio after a click: if it was on last time, the first click anywhere brings it back
+addEventListener('pointerdown', () => sound.resumeOnGesture(), { once: true });
 
 /* ---------- UI ---------- */
 const hud = createHud();
@@ -169,6 +183,8 @@ function frame(now: number) {
   updateLivestock(S, body.her, dt, clockT);
   updateRabbits(S, dt);
   updateSeasons(S);
+  updatePaths(S, clockT);
+  updateFlowers(S);
   updateEvents(S, body.her, clockT);
   const dry = drought() ? 0.55 : 1; // the pond shrinks in a drought
   props.pond.scale.set(dry, 1, dry);
@@ -177,6 +193,7 @@ function frame(now: number) {
   const storm = S.weather.storm;
   const rain = updateRain(dt, S.weather.raining, controls.target, storm);
   props.sway(storm ? rain : rain * 0.3, clockT);
+  sound.update(S, camera, body.her, rain, ready ? S.speed : 0);
   animateWater(clockT);
   updateSky(clockT, hour(), S.fire, props.campfire, rain, storm, dt);
   if (hud.following && ready) {

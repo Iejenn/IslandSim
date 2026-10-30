@@ -33,7 +33,7 @@ export function startEvents() {
   // a nest hatches about ten days after it's laid
   if (S.turtle.state === 'nest' && S.min >= S.turtle.hatchAt) {
     S.turtle.state = 'hatched';
-    log(S.turtle.visits >= 2 ? 'The turtle eggs hatched! She watched dozens of tiny turtles scramble to the sea.' : 'The turtle eggs hatched while she wasn’t looking. Tiny tracks lead to the sea.');
+    log(S.turtle.visits >= 2 ? 'The turtle eggs hatched! She watched dozens of tiny turtles scramble to the sea.' : 'The turtle eggs hatched while she wasn’t looking. Tiny tracks lead to the sea.', 'big');
     if (S.turtle.visits >= 2) { S.mood = 40; say('Go, little ones! Go!'); highlight('watched baby turtles hatch'); }
   }
   if (S.droughtUntil && S.min >= S.droughtUntil) { S.droughtUntil = 0; log('The drought is over. The pond is filling up again.'); }
@@ -42,43 +42,43 @@ export function startEvents() {
 const START: Record<EventKey, () => void> = {
   shipwreck() {
     S.wreck = { state: 'ashore', a: beachAngle() };
-    log('Overnight, the wreck of a small boat washed up on the beach, crates and all.');
+    log('Overnight, the wreck of a small boat washed up on the beach, crates and all.', 'big');
     say('A shipwreck! There might be something useful in those crates.');
     highlight('found a shipwreck');
   },
   turtle() {
     S.turtle = { state: 'nest', a: beachAngle(), hatchAt: S.min + 10 * 1440, visits: 0 };
-    log('A sea turtle crawled up the beach in the night and buried her eggs in the sand.');
+    log('A sea turtle crawled up the beach in the night and buried her eggs in the sand.', 'big');
     say('A turtle nest! I’ll keep an eye on it.');
     highlight('found a turtle nest');
   },
   gull() {
     S.gull = { state: 'hurt', care: 0 };
-    log('A seagull with a hurt wing is hopping around the camp.');
+    log('A seagull with a hurt wing is hopping around the camp.', 'big');
     say('Oh, you poor thing. Let me help.');
   },
   drought() {
     if (S.weather.raining) S.weather.until = S.min;
     S.droughtUntil = S.min + 7 * 1440;
-    log('A drought has begun. Not a cloud in the sky, and the pond is shrinking.');
+    log('A drought has begun. Not a cloud in the sky, and the pond is shrinking.', 'big');
     say('No rain for days now… I’ll have to be careful with water.');
     highlight('felt the drought');
   },
   landslide() {
     S.loose = 10;
     S.boulders = S.boulders.map(b => Math.max(b, 6)); // fresh rock exposed
-    log('Part of the rocky slope slid down in the night, exposing fresh stone.');
+    log('Part of the rocky slope slid down in the night, exposing fresh stone.', 'big');
     say('The rocks came down! Plenty of stone now, at least.');
   },
   treasure() {
     S.treasure = { found: 0, spots: [beachAngle(), beachAngle() + 0.8, beachAngle() - 0.9] };
-    log('A bottle washed up with a map inside: three crosses along this very beach.');
+    log('A bottle washed up with a map inside: three crosses along this very beach.', 'big');
     say('A treasure map?! X marks the spot… three times.');
     highlight('found a treasure map');
   },
   sprain() {
     S.injuredUntil = S.min + 3 * 1440;
-    log('She twisted her ankle on a root. A few days of taking it easy.');
+    log('She twisted her ankle on a root. A few days of taking it easy.', 'big');
     say('Ow, ow, ow. That’s going to swell up.');
     highlight('sprained her ankle');
   },

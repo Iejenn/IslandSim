@@ -27,7 +27,11 @@ export function createBody(scene: Scene) {
     attach(m: Object3D) { model = m; baseY = m.position.y; her.add(m); },
     /** @param dt real seconds */
     update(dt: number) {
-      her.position.set(S.pos.x, S.pos.y, S.pos.z);
+      // follow the sim's position; heights glide (onto the dock, into bed, up the lookout)
+      // instead of popping, unless it's a big jump like loading a save
+      const dy = S.pos.y - her.position.y;
+      const glide = Math.abs(dy) > 3 || Math.hypot(S.pos.x - her.position.x, S.pos.z - her.position.z) > 3;
+      her.position.set(S.pos.x, glide ? S.pos.y : her.position.y + dy * Math.min(1, dt * 7), S.pos.z);
       const st = S.task?.steps[S.task.i];
       const lying = S.sitting && st?.type === 'do' && st.pose === 'lie';
       lyingFor = lying ? lyingFor + dt : 0;
@@ -43,7 +47,8 @@ export function createBody(scene: Scene) {
         const want = Math.atan2(t.x - her.position.x, t.z - her.position.z);
         let diff = want - her.rotation.y;
         diff = Math.atan2(Math.sin(diff), Math.cos(diff)); // shortest way round
-        her.rotation.y += diff * Math.min(1, dt * 8);
+        // ease into turns: quick for small corrections, a touch slower for turning round
+        her.rotation.y += diff * Math.min(1, dt * (Math.abs(diff) > 1.5 ? 6 : 9));
       }
     },
   };

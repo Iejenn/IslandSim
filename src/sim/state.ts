@@ -71,7 +71,8 @@ export interface Task {
   animal?: { kind: 'chicken' | 'sheep'; i: number }; // the animal she's herding home (so it can follow her)
 }
 
-export interface DiaryEntry { t: string; text: string }
+// kind: 'big' = a moment worth highlighting, 'recap' = the summary of a day (shown at the top of that day)
+export interface DiaryEntry { t: string; text: string; day?: number; kind?: 'big' | 'recap' }
 
 /** One garden bed. growth 0→1 is ripe; water 0→100 drains over time. */
 export interface Plot {
@@ -81,7 +82,8 @@ export interface Plot {
   dryMin: number; // game minutes spent completely dry
 }
 
-export interface Project { started: boolean; progress: number; done: boolean; damaged?: boolean }
+// builtAt: game minute it was finished (or last repaired), so the world can weather it
+export interface Project { started: boolean; progress: number; done: boolean; damaged?: boolean; builtAt?: number }
 
 function rollTraits(): [Trait, Trait] {
   const k = Object.keys(TRAITS) as Trait[];
@@ -204,6 +206,8 @@ function createState() {
     turtle: { state: 'none' as 'none' | 'nest' | 'hatched', a: 0, hatchAt: 0, visits: 0 },
     gull: { state: 'none' as 'none' | 'hurt' | 'pet' | 'gone', care: 0 },
     droughtUntil: 0, // game minute a drought ends
+    wear: {} as Record<string, number>, // trodden paths: how worn each grid cell is, 0…1 (see paths.ts)
+    wearVersion: 0, // bumped whenever wear changes, so the world knows to redraw
     injuredUntil: 0, // game minute her sprained ankle has healed
     treasure: { found: 0, spots: [] as number[] }, // spots: beach angles still to dig (0 = none)
     // a stray dog that may wash ashore; she has to win its trust
@@ -263,9 +267,9 @@ export const clock = () => {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
-export function log(text: string) {
-  S.diary.unshift({ t: `Day ${dayNum()}, ${clock()}`, text });
-  S.diary.length = Math.min(S.diary.length, 120);
+export function log(text: string, kind?: DiaryEntry['kind'], day = dayNum()) {
+  S.diary.unshift({ t: clock(), text, day, kind });
+  S.diary.length = Math.min(S.diary.length, 200);
   S.diaryDirty = true;
 }
 export function say(text: string) {

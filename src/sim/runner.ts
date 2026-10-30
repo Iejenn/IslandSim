@@ -2,37 +2,25 @@
 // fast-forward moves her at the right speed; character/movement.ts only
 // mirrors the result onto the 3D model.
 import { decide } from './decide';
-import { DOCK_START, ground, PACE, V, type Pt } from './island';
+import { DOCK_START, PACE, type Pt } from './island';
 import { onDock, surfaceY } from './plans';
 import { hooks, S, type Step } from './state';
 import { injured } from './events';
 import { endTask } from './tasks';
-import { clamp } from './util';
+import { route } from './pathing';
+import { wearPath } from './paths';
 
 // units per game minute; scaled with the island so a bigger island doesn't
 // mean she spends her whole day walking
 const WALK = 0.4 * PACE, RUN = 0.75 * PACE, ROW = 0.9 * PACE;
 const BOAT_FLOOR_Y = 0.24; // her feet when sitting in the boat on the water
 
-/** Path from a to b that detours around the campfire instead of walking through it. */
-function avoidFire(a: Pt, b: Pt): Pt[] {
-  const ab = { x: b.x - a.x, z: b.z - a.z }, L2 = ab.x * ab.x + ab.z * ab.z;
-  if (L2 < 1e-4) return [b];
-  const t = clamp(-(a.x * ab.x + a.z * ab.z) / L2, 0, 1), cp = V(a.x + ab.x * t, a.z + ab.z * t);
-  const cpLen = Math.hypot(cp.x, cp.z);
-  if (cpLen < 1.3 && Math.hypot(a.x, a.z) > 1.3 && Math.hypot(b.x, b.z) > 1.3) {
-    const n = cpLen < 0.01 ? V(-ab.z, ab.x) : cp, l = Math.hypot(n.x, n.z);
-    return [ground(V(n.x / l * 1.9, n.z / l * 1.9)), b];
-  }
-  return [b];
-}
-
-/** Walking path: around the fire, and on/off the dock only via its landward end (never through the sea). */
+/** Walking path: around whatever is in the way (pathing.ts), and on/off the dock only via its landward end (never through the sea). */
 function walkPath(a: Pt, b: Pt): Pt[] {
   const fromDock = onDock(a), toDock = onDock(b);
-  if (fromDock && !toDock) return [DOCK_START, ...avoidFire(DOCK_START, b)];
-  if (!fromDock && toDock) return [...avoidFire(a, DOCK_START), b];
-  return avoidFire(a, b);
+  if (fromDock && !toDock) return [DOCK_START, ...route(DOCK_START, b)];
+  if (!fromDock && toDock) return [...route(a, DOCK_START), b];
+  return route(a, b);
 }
 
 function enterStep(st: Step) {
@@ -93,6 +81,7 @@ export function runTask(dtAnim: number, dm: number) {
     } else {
       pos.x += dx / d * step; pos.z += dz / d * step;
     }
+    if (!st.ride && !onDock(pos)) wearPath(pos, dm); // her feet wear a path into the grass
   } else if (st.type === 'do') {
     task.el += dm;
     if (st.tick) st.tick(dm);

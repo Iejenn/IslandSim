@@ -510,7 +510,7 @@ export function checkFinished(k: PlanKey) {
   const p = progressOf(k), def = PLANS[k];
   if (def.kind === 'build') highlight(`worked on the ${def.name}`);
   if (p.progress < 0.999) return;
-  if (isProject(k)) { S.projects[k].done = true; S.projects[k].progress = 1; }
+  if (isProject(k)) { S.projects[k].done = true; S.projects[k].progress = 1; S.projects[k].builtAt = S.min; }
   else {
     S.items[k as CraftKey] = true;
     S.stats.crafted++;
@@ -523,12 +523,12 @@ export function checkFinished(k: PlanKey) {
   if (S.dream === k) {
     S.dream = null;
     S.mood = 40;
-    log(`Her dream came true: ${def.a}.`);
+    log(`Her dream came true: ${def.a}.`, 'big');
     highlight('made her dream come true');
   }
   S.mood = Math.min(40, S.mood + 20);
   say(def.done);
-  log(def.kind === 'craft' ? `She made ${def.a}.` : `She finished the ${def.name}.`);
+  log(def.kind === 'craft' ? `She made ${def.a}.` : `She finished the ${def.name}.`, 'big');
   highlight(def.kind === 'craft' ? `made ${def.a}` : `finished the ${def.name}`);
   remember(def.kind === 'craft' ? 'craft' : 'build', 0.2);
   if (S.task) S.task.celebrate = true;

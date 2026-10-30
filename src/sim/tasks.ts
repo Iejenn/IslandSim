@@ -629,7 +629,7 @@ export const T: Record<string, () => Task | null> = {
         S.stock.seeds += 4;
         S.stock.shells += 1;
         const extra = pick(['a lantern', 'a frying pan', 'a little tin of tea', 'an old compass']);
-        log(`She salvaged planks, rope and seeds from the wreck, and ${extra}.`);
+        log(`She salvaged planks, rope and seeds from the wreck, and ${extra}.`, 'big');
         say(`Look at all this! And ${extra}!`);
         highlight('salvaged the shipwreck');
         S.mood = Math.min(40, S.mood + 15);
@@ -656,7 +656,7 @@ export const T: Record<string, () => Task | null> = {
         // healed: does it stay?
         const stays = Math.random() < 0.4 + 0.4 * S.taste.animals;
         S.gull.state = stays ? 'pet' : 'gone';
-        log(stays ? 'The seagull’s wing has healed, but it decided to stay with her.' : 'The seagull’s wing has healed. It circled her once, and flew off over the sea.');
+        log(stays ? 'The seagull’s wing has healed, but it decided to stay with her.' : 'The seagull’s wing has healed. It circled her once, and flew off over the sea.', 'big');
         say(stays ? 'You’re staying? Then you need a name… Captain.' : 'Goodbye! Fly safe!');
         highlight(stays ? 'gained a feathered friend' : 'set a healed seagull free');
         S.mood = Math.min(40, S.mood + 15);
@@ -678,7 +678,7 @@ export const T: Record<string, () => Task | null> = {
         S.stock.shells += 6;
         S.mood = 40;
         say('A chest! Coins, beads, a ring… I’m rich! On an island. Ha!');
-        log('At the last cross she dug up a little chest full of old coins and beads.');
+        log('At the last cross she dug up a little chest full of old coins and beads.', 'big');
         highlight('found buried treasure');
         if (S.task) S.task.celebrate = true;
       },
@@ -784,6 +784,7 @@ export const T: Record<string, () => Task | null> = {
       begin() { for (const [r, n] of Object.entries(REPAIRABLE[k] ?? {})) S.stock[r as Resource] -= n!; },
       done() {
         S.projects[k].damaged = false;
+        S.projects[k].builtAt = Math.max(S.projects[k].builtAt ?? 0, S.min - 8 * 1440); // patched up: looks a lot fresher
         S.stats.repairs++;
         addXp('building', 6);
         log(`She repaired the ${PLANS[k].name}.`);
