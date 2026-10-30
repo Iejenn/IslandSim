@@ -307,6 +307,7 @@ export function createCrafted(scene: Scene) {
     shelf: () => place(styledModel('shelf'), SHELF_P.x, SHELF_P.z, yawTo(SHELF_P, FIRE)),
     flinttools: () => new Group(), // (not a thing of its own: her axe and pick get flint heads)
     rework: () => new Group(), // (remakes another piece; see the styled holders)
+    irontools: () => new Group(), // (her axe and pick get iron heads)
     chimes() {
       // bamboo tubes and a shell on strings, hung from a little post by the shelter
       const g = new Group();
@@ -458,7 +459,7 @@ export function createCrafted(scene: Scene) {
       const st = S.madeStyle[k] ?? 'wood';
       for (const s of ['wood', 'bamboo', 'stone'] as Style[]) v[s].visible = s === st;
     }
-    toolHead.color.set(S.items.flinttools ? '#3A3D44' : '#8E979B'); // dark, glassy flint
+    toolHead.color.set(S.items.irontools ? '#B4BCC2' : S.items.flinttools ? '#3A3D44' : '#8E979B'); // bright iron, dark glassy flint, or grey stone
     const tubes = models.chimes.getObjectByName('tubes');
     if (tubes) tubes.rotation.z = 0.06 * Math.sin(performance.now() / 700) * Math.sin(performance.now() / 1900); // stirring in the breeze
   };

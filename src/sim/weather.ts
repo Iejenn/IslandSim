@@ -3,7 +3,7 @@
 // scorching hot. Rain waters the garden, damps the fire and sends her to shelter.
 // Clouds gather for an hour or two before each shower, so you can see it
 // coming (darker and angrier before a storm).
-import { damaged, PLANS, REPAIRABLE } from './plans';
+import { damaged, PLANS, REPAIRABLE, works } from './plans';
 import { dayNum, highlight, hour, log, S, say, type ProjectKey } from './state';
 import { interrupt, RAIN_STOPS } from './tasks';
 import { drought } from './events';
@@ -18,7 +18,8 @@ export function updateWeather(dm: number) {
   const w = S.weather;
   if (w.hot && (hour() >= 19 || w.raining)) w.hot = false; // the heat breaks in the evening
   if (w.raining) {
-    S.fire = Math.max(0, S.fire - dm * (w.storm ? 10 : 4) / 60);
+    // (a roof over the fire keeps most of the rain off it)
+    S.fire = Math.max(0, S.fire - dm * (w.storm ? 10 : 4) / 60 * (works('firecover') ? 0.15 : 1));
     if (S.min >= w.until) {
       const wasStorm = w.storm;
       w.raining = false;

@@ -412,3 +412,20 @@ export const WELL_STAND = standNear(WELL_P, 0.9);
 export const SPOUT_P = ground(V(-2.85, -7.69));
 export const SPOUT_STAND = standNear(SPOUT_P, 0.9);
 export const PIPE_FROM = ground(addScaled(SP, dirXZ(SP, SPOUT_P), POND_R + 0.3));
+
+/* ---------- v1.5: salt, smoke, the workshop, and metal ---------- */
+// salt pans on the rocky headland's shore, where the sea washes in and the sun dries it
+export const SALT_P = ground(pointAt(ROCKS_A + 0.3, 0.93));
+export const SALT_STAND = standNear(SALT_P, 1.3);
+// a hood over the campfire on two posts, so the rain can't drown it
+export const FIRECOVER_POSTS = [-0.5, 2.64].map(a => ground(V(Math.cos(a) * 1.25, Math.sin(a) * 1.25)));
+export const SMOKE_P = ground(V(7.45, -3.18)); // the smokehouse, inside the fence on the east side
+export const SMOKE_STAND = standNear(SMOKE_P, 1.1);
+// the workshop and the furnace stand just outside the fence (the furnace well away, it's smoky)
+export const WORKSHOP_P = ground(V(1.22, -13.95));
+export const WORKSHOP_STAND = standNear(WORKSHOP_P, 1.0);
+export const FURNACE_P = ground(V(-14.54, -3.69));
+export const FURNACE_STAND = standNear(FURNACE_P, 1.2);
+// a seam of red, iron-rich rock in the ridge
+export const ORE_P = ground(pointAt(ROCKS_A, 0.5));
+export const ORE_STAND = standNear(ORE_P, 1.0);

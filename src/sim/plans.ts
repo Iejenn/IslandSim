@@ -31,6 +31,7 @@ const STYLE_COST: Partial<Record<PlanKey, Record<Style, Partial<Record<Resource,
   shelf: { wood: { wood: 3 }, bamboo: { bamboo: 3, fibre: 1 }, stone: { stone: 3, wood: 1 } },
   fence: { wood: { wood: 10 }, bamboo: { bamboo: 10, fibre: 3 }, stone: { stone: 16 } },
   bridge: { wood: { wood: 9, fibre: 2 }, bamboo: { bamboo: 8, fibre: 3 }, stone: { stone: 14 } },
+  firecover: { wood: { wood: 5, fibre: 2 }, bamboo: { bamboo: 5, fibre: 2 }, stone: { stone: 6, wood: 2 } },
 };
 export const STYLED = Object.keys(STYLE_COST) as PlanKey[];
 /**
@@ -591,6 +592,55 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     weight: () => 1.4 + 0.5 * S.taste.creative + 0.7 * STYLED.filter(k => isMade(k) && intendedStyle(k) === S.style && (S.madeStyle[k] ?? 'wood') !== S.style).length + (tr('lazy') ? -0.3 : 0),
     tags: ['creative', 'comfort'],
   },
+  /* ---------- v1.5: food that keeps, a workshop, and metal ---------- */
+  saltpans: {
+    kind: 'build', name: 'salt pans', a: 'salt pans', cost: { stone: 6, wood: 1 }, minutes: 140,
+    unlocked: () => dayNum() >= 6 && (S.stats.fishCaught >= 3 || S.stats.hunted >= 1),
+    want: 'If I let seawater dry in shallow pans, I’d have salt. Salted fish keeps for ages.',
+    done: 'Salt pans! Now the sun does the work.',
+    weight: () => 1.2 + 0.5 * S.taste.practical + 0.5 * S.taste.sea,
+    tags: ['practical', 'sea'],
+  },
+  firecover: {
+    kind: 'build', name: 'fire hood', a: 'a roof over the fire', get cost() { return styledCost('firecover'); }, minutes: 120,
+    unlocked: () => S.stats.rainsSeen >= 3 && dayNum() >= 5,
+    want: 'Every time it rains, my fire drowns. A little roof over it, that’s what I need.',
+    done: 'Let it rain! My fire stays dry now.',
+    weight: () => 1.4 + 0.5 * S.taste.comfort + 0.4 * S.taste.practical,
+    tags: ['comfort', 'practical'],
+  },
+  smokehouse: {
+    kind: 'build', name: 'smokehouse', a: 'a smokehouse', cost: { wood: 6, stone: 3 }, minutes: 180,
+    unlocked: () => S.projects.rack.done && S.stats.fishCaught >= 6,
+    want: 'Smoked fish is better than dried, and it keeps all winter. A smokehouse!',
+    done: 'The smokehouse is done. It already smells amazing.',
+    weight: () => 1.1 + 0.6 * S.taste.sea + 0.3 * S.taste.practical,
+    tags: ['sea', 'practical'],
+  },
+  workshop: {
+    kind: 'build', name: 'workshop', a: 'a workshop', cost: { wood: 8, stone: 2, fibre: 2 }, minutes: 220,
+    unlocked: () => S.skills.crafting.lvl >= 3 && S.stats.crafted >= 5,
+    want: 'Crafting on my knees by the fire… I want a proper workbench, with a roof over it.',
+    done: 'My own workshop! Everything within reach.',
+    weight: () => 1.3 + 0.6 * S.taste.creative + 0.4 * S.taste.practical + (tr('hardworking') ? 0.4 : 0),
+    tags: ['creative', 'practical'],
+  },
+  furnace: {
+    kind: 'build', name: 'furnace', a: 'a furnace', cost: { stone: 10, clay: 4 }, minutes: 240,
+    unlocked: () => works('kiln') && dayNum() >= 18 && !!S.items.pick,
+    want: 'There’s rock on the ridge streaked with red. Iron! With a hot enough furnace…',
+    done: 'The furnace roars. Now, let’s see if I can make iron.',
+    weight: () => 1.0 + 0.8 * S.taste.practical,
+    tags: ['practical'],
+  },
+  irontools: {
+    kind: 'craft', name: 'iron tools', a: 'iron tools', cost: { iron: 3, wood: 2 }, minutes: 120,
+    unlocked: () => S.projects.furnace.done && !!S.items.axe && !!S.items.pick,
+    want: 'Iron heads for my axe and pick. Real tools, made from my own island.',
+    done: 'Iron tools! Nothing on this island can stand up to them.',
+    weight: () => 2.4,
+    tags: ['practical'],
+  },
   chimes: {
     kind: 'craft', name: 'wind chimes', a: 'wind chimes', cost: { bamboo: 3, fibre: 1, shells: 1 }, minutes: 50,
     unlocked: () => S.isletFound && S.skills.crafting.lvl >= 2 && S.stock.shells >= 1,
@@ -655,8 +705,8 @@ export function chooseGoal() {
 export const INSTRUMENTS = ['drum', 'flute', 'ukulele', 'marimba'] as const;
 const TOOLS: CraftKey[] = ['axe', 'pick', 'rod', 'spear', 'bucket', 'basket', 'snare'];
 /** How much of a material she can keep: a tool shed gives room for half as much again. */
-export function storageCap(r: 'wood' | 'stone' | 'fibre' | 'clay' | 'bamboo' | 'flint') {
-  return (r === 'stone' ? 30 : r === 'flint' ? 12 : 20) * (works('shed') ? 1.5 : 1);
+export function storageCap(r: 'wood' | 'stone' | 'fibre' | 'clay' | 'bamboo' | 'flint' | 'salt' | 'ore' | 'iron') {
+  return (r === 'stone' ? 30 : r === 'flint' || r === 'salt' ? 12 : r === 'ore' ? 10 : r === 'iron' ? 6 : 20) * (works('shed') ? 1.5 : 1);
 }
 
 // Logs she always keeps back for the campfire; projects can't use these.
@@ -664,7 +714,7 @@ export const FIREWOOD_RESERVE = 2;
 
 /** How much of each resource she still has to gather before she can start her goal. */
 export function missing(): Record<Resource, number> {
-  const out = { wood: 0, stone: 0, fibre: 0, wool: 0, clay: 0, shells: 0, bamboo: 0, flint: 0 }, k = S.goal;
+  const out = { wood: 0, stone: 0, fibre: 0, wool: 0, clay: 0, shells: 0, bamboo: 0, flint: 0, salt: 0, ore: 0, iron: 0 }, k = S.goal;
   if (!k || progressOf(k).started) return out;
   for (const r of Object.keys(out) as Resource[]) {
     const cost = PLANS[k].cost[r] ?? 0;
@@ -676,9 +726,10 @@ export const canWork = () => !!S.goal && Object.values(missing()).every(v => v =
 
 // (a knife that washed ashore with her makes all crafting quicker)
 // (and flint tools make everything a little quicker)
-const workSpeed = (k: PlanKey) => (1 + 0.08 * S.skills[PLANS[k].kind === 'craft' ? 'crafting' : 'building'].lvl) * (S.washedUp === 'knife' && PLANS[k].kind === 'craft' ? 1.2 : 1) * (S.items.flinttools ? 1.15 : 1);
-/** How much quicker chopping and breaking stone go with flint tools. */
-export const toolSpeed = () => S.items.flinttools ? 1.35 : 1;
+const workSpeed = (k: PlanKey) => (1 + 0.08 * S.skills[PLANS[k].kind === 'craft' ? 'crafting' : 'building'].lvl) * (S.washedUp === 'knife' && PLANS[k].kind === 'craft' ? 1.2 : 1) * (S.items.irontools ? 1.3 : S.items.flinttools ? 1.15 : 1)
+  * (PLANS[k].kind === 'craft' && works('workshop') ? 1.2 : 1); // (and a proper workbench)
+/** How much quicker chopping and breaking stone go with flint (and later iron) tools. */
+export const toolSpeed = () => S.items.irontools ? 1.7 : S.items.flinttools ? 1.35 : 1;
 /** Game minutes of work left on the current goal (faster with skill). */
 export function minutesLeft() {
   const k = S.goal!;

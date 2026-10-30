@@ -4,7 +4,7 @@
 // gates). Most walks are a straight line; only when that's blocked does she
 // search a small grid around the obstacle (A*) and smooth the result.
 import {
-  BAR_A, BAR_B, onIslet, SPOUT_P, WELL_P, ORCHARD, BANDSTAND_P, MARIMBA_P, POND_R, SHED_P, BARREL_P, BATH_P, BOULDERS, COOP_P, DRUM_P, FENCE_GATES, FENCE_R, FIRE, FOREST, GARDEN_P, HIVE_P, KILN_P, LODGE_SIZE,
+  FIRECOVER_POSTS, SMOKE_P, WORKSHOP_P, FURNACE_P, BAR_A, BAR_B, onIslet, SPOUT_P, WELL_P, ORCHARD, BANDSTAND_P, MARIMBA_P, POND_R, SHED_P, BARREL_P, BATH_P, BOULDERS, COOP_P, DRUM_P, FENCE_GATES, FENCE_R, FIRE, FOREST, GARDEN_P, HIVE_P, KILN_P, LODGE_SIZE,
   lodgeLocal, LOOKOUT_P, OVEN_P, RACK_P, SH, SP, SUNDIAL_P, TABLE_P, V, WARREN_P, WOODPILE_P, yawTo, type Pt,
 } from './island';
 import { S } from './state';
@@ -47,6 +47,10 @@ function rebuild() {
   if (done('bathhouse')) c(BATH_P, 0.85);
   if (done('lookout')) c(LOOKOUT_P, 0.85);
   if (done('well')) c(WELL_P, 0.6);
+  if (done('firecover')) for (const p of FIRECOVER_POSTS) c(p, 0.15);
+  if (done('smokehouse')) c(SMOKE_P, 0.85);
+  if (done('workshop')) c(WORKSHOP_P, 1.2);
+  if (done('furnace')) c(FURNACE_P, 0.85);
   if (done('pipe')) c(SPOUT_P, 0.4);
   S.orchard.forEach((t, i) => { if (t.kind && t.growth > 0.3) c(ORCHARD[i].pos, 0.25); }); // fruit trees, once they're more than a twig
   if (done('garden')) { // the little fence around the beds (open on the side she works from)
