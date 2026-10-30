@@ -11,11 +11,12 @@ import { dayNum, hour, isNight, S, tr, type TaskId } from './state';
 import { activityBias } from './taste';
 import { injured } from './events';
 import { fullMoon, glowingSea } from './night';
+import { lowTide } from './tide';
 import { fx, season } from './seasons';
 import { catchChance as gearCatch, CURIOUS_TASK, sleepShift, startTask, T } from './tasks';
 
 // Hobbies her memories can make more (or less) appealing.
-const HOBBIES = new Set<TaskId>(['nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'bathe', 'turtles', 'mushrooms', 'hunt', 'checktrap', 'fish', 'explore', 'talk', 'relax', 'drum', 'write', 'chop', 'mine', 'build', 'craft', 'cook', 'sail', 'stargaze', 'watch', 'plant', 'harvest', 'play', 'swim']);
+const HOBBIES = new Set<TaskId>(['tidepools', 'nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'bathe', 'turtles', 'mushrooms', 'hunt', 'checktrap', 'fish', 'explore', 'talk', 'relax', 'drum', 'write', 'chop', 'mine', 'build', 'craft', 'cook', 'sail', 'stargaze', 'watch', 'plant', 'harvest', 'play', 'swim']);
 // What a sprained ankle keeps her from (mostly).
 const STRENUOUS = new Set<TaskId>(['chop', 'mine', 'build', 'hunt', 'swim', 'play', 'explore', 'sail', 'dig', 'salvage', 'herd', 'stones', 'repair', 'clay']);
 // Chores she doesn't mind doing twice in a row.
@@ -161,6 +162,7 @@ export function decide() {
   const bloom = season() === 'spring' || season() === 'summer';
   // (a steady little pull like drumming or storytelling has, so they get their turn)
   if (!night) add('cairn', 0.7 * u(n.fun) + 0.3 - wet);
+  if (!night && !wet && lowTide()) add('tidepools', 0.4 + 0.45 * u(n.fun) + 0.2 * S.taste.sea + (S.quirk === 'collector' ? 0.15 : 0) - dark);
   if (!night && !S.sandcastle) add('sandcastle', 0.75 * u(n.fun) + 0.3 + (season() === 'summer' ? 0.1 : 0) - 0.3 * fx().cold - wet);
   if (!night && !rain) add('clouds', 0.75 * u(n.fun) + 0.3 * u(n.energy) + 0.3 - 0.3 * fx().cold);
   if (bloom && dayNum() >= 3 && S.min - S.bouquetAt > 2 * 1440 && !night) add('bouquet', 0.55 * u(n.fun) + 0.45 - wet);

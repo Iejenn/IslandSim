@@ -7,6 +7,7 @@ import {
 } from 'three';
 import { glowingSea, moonAge, moonLight } from '../sim/night';
 import { pointAt } from '../sim/island';
+import { seaLevel } from '../sim/tide';
 import { clamp } from '../sim/util';
 
 const SKY_R = 140;
@@ -166,7 +167,7 @@ export function createNight(scene: Scene, moonLightSrc: DirectionalLight, camera
       const pos = glowGeo.attributes.position;
       for (let i = 0; i < N; i++) {
         const x = pos.getX(i), z = pos.getZ(i);
-        pos.setY(i, 0.2 + 0.07 * Math.sin(x * 0.35 + t * 1.1) + 0.05 * Math.cos(z * 0.4 + t * 0.8));
+        pos.setY(i, seaLevel() + 0.08 + 0.07 * Math.sin(x * 0.35 + t * 1.1) + 0.05 * Math.cos(z * 0.4 + t * 0.8));
       }
       pos.needsUpdate = true;
     }

@@ -1,6 +1,8 @@
 // Weather: rain showers come and go at random, some turn into storms that
 // strip the berry bushes and can damage what she's built, and some days are
 // scorching hot. Rain waters the garden, damps the fire and sends her to shelter.
+// Clouds gather for an hour or two before each shower, so you can see it
+// coming (darker and angrier before a storm).
 import { damaged, PLANS, REPAIRABLE } from './plans';
 import { dayNum, highlight, hour, log, S, say, type ProjectKey } from './state';
 import { interrupt, RAIN_STOPS } from './tasks';
@@ -26,11 +28,25 @@ export function updateWeather(dm: number) {
     }
     return;
   }
+  if (w.coming) {
+    if (S.min >= w.coming) startRain();
+    return;
+  }
   // no rain on the first morning, she has enough to deal with
   // the season and the island's own climate decide how often it rains (and a drought, whether at all)
   if (drought() || S.min < 20 * 60 || Math.random() >= dm * fx().rain * S.island.rain / AVG_GAP_MIN) return;
+  w.coming = S.min + rand(60, 120);
+  w.comingStorm = dayNum() >= 3 && Math.random() < STORM_CHANCE * fx().storm;
+  if (w.comingStorm) say(pick(['Those clouds look angry.', 'The sky’s going dark out there…', 'I don’t like the look of that sky.']));
+  else if (Math.random() < 0.4) say(pick(['Looks like rain.', 'Clouds coming in.', 'I can smell rain.']));
+}
+
+/** The clouds have gathered: it starts to rain (or storm). */
+function startRain() {
+  const w = S.weather;
   w.raining = true;
-  w.storm = dayNum() >= 3 && Math.random() < STORM_CHANCE * fx().storm;
+  w.storm = w.comingStorm;
+  w.coming = 0;
   w.until = S.min + (w.storm ? rand(120, 300) : rand(60, 240));
   S.stats.rainsSeen++;
   if (w.storm) startStorm();

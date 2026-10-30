@@ -29,6 +29,9 @@ import { createFlowers } from './world/flowers';
 import { createJoys } from './world/joys';
 import { createWaterfall } from './world/waterfall';
 import { createCritters } from './world/critters';
+import { createClouds } from './world/clouds';
+import { createShore } from './world/shore';
+import { createSmoke } from './world/smoke';
 import { createPaths } from './world/paths';
 import { createRabbits } from './world/rabbits';
 import { createRain } from './world/rain';
@@ -73,6 +76,7 @@ const updateAtmosphere = createAtmosphere(scene);
 const updateJoys = createJoys(scene);
 const updateWaterfall = createWaterfall(scene);
 const updateCritters = createCritters(scene);
+const updateClouds = createClouds(scene), updateShore = createShore(scene), updateSmoke = createSmoke(scene);
 
 /* ---------- sim + her ---------- */
 const S = initState(save?.state);
@@ -257,6 +261,8 @@ function frame(now: number) {
   updateEvents(S, body.her, clockT);
   updateJoys(S);
   updateCritters(S, dt, clockT);
+  // the sky and the shore: clouds, surf and footprints, smoke from the fire
+  const sunUp = Math.sin((hour() - 6) / 12 * Math.PI), light = Math.min(1, Math.max(0, (sunUp + 0.1) / 0.4));
   const dry = drought() ? 0.75 : 1; // the pond shrinks in a drought (and the waterfall dwindles)
   props.pond.scale.set(dry, 1, dry);
   updateWaterfall(clockT, drought() ? 1 : 0);
@@ -264,6 +270,9 @@ function frame(now: number) {
   updateAnimals(dt, clockT, isNight());
   const storm = S.weather.storm;
   const rain = updateRain(dt, S.weather.raining, controls.target, storm);
+  updateClouds(S, dt * animScale, rain);
+  updateShore(S, body.her, clockT, light);
+  updateSmoke(S, dt * animScale, rain, storm ? 1 : rain * 0.3, light);
   props.sway(storm ? rain : rain * 0.3, clockT);
   sound.update(S, camera, body.her, rain, ready ? S.speed : 0);
   animateWater(clockT);
