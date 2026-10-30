@@ -56,6 +56,22 @@ const HILL_H = 4.2, HILL_S = 3.0;
 const RIDGE_C = pointAt(ROCKS_A, 0.62);
 const bump = (x: number, z: number, c: Pt, s: number) => Math.exp(-((x - c.x) ** 2 + (z - c.z) ** 2) / (2 * s * s));
 
+/* ---------- a cave in the side of the pond's hill ---------- */
+// (worked out before height(), which raises a shoulder of rock around it)
+const hillOut = dirXZ(POND_C, HILL_C), hillSide = V(-hillOut.z, hillOut.x);
+const CAVE_XZ = V(HILL_C.x + hillSide.x * 3.4 + hillOut.x * 0.8, HILL_C.z + hillSide.z * 3.4 + hillOut.z * 0.8);
+export const CAVE_FACE = dirXZ(HILL_C, CAVE_XZ); // the way the mouth looks out
+const caveBack = V(CAVE_XZ.x - CAVE_FACE.x * 1.3, CAVE_XZ.z - CAVE_FACE.z * 1.3);
+/** The hill's rocky shoulder around the cave: it rises steeply behind the mouth (and to its sides), so the cave is cut into the slope; the ground in front stays as it was. */
+function caveShoulder(x: number, z: number) {
+  // how far behind the mouth; beside the opening the rock wraps forward a little, so the cave sits in a notch
+  const side = Math.abs((x - CAVE_XZ.x) * CAVE_FACE.z - (z - CAVE_XZ.z) * CAVE_FACE.x);
+  const behind = -((x - CAVE_XZ.x) * CAVE_FACE.x + (z - CAVE_XZ.z) * CAVE_FACE.z) + 0.9 * Math.min(1.2, Math.max(0, side - 1.2));
+  if (behind <= 0) return 0;
+  const k = Math.min(1, behind / 0.5);
+  return 1.9 * bump(x, z, caveBack, 1.6) * k * k * (3 - 2 * k);
+}
+
 /* ---------- the bamboo islet: a little island in the bay, joined by a sandbar that shows at low tide ---------- */
 export const ISLET_A = -1.72, ISLET_R = 5.5;
 const isletDir = V(Math.cos(ISLET_A), Math.sin(ISLET_A)), isletD = islandR(ISLET_A) * 1.02 + 3.4 + ISLET_R * 1.02;
@@ -103,6 +119,7 @@ export function height(x: number, z: number) {
   // a rocky ridge in the stone area, and the pond's hill
   h += 1.3 * bump(x, z, RIDGE_C, 7) * (1 - smooth((t - 0.75) / 0.25));
   h += HILL_H * bump(x, z, HILL_C, HILL_S) * (1 - smooth((t - 0.85) / 0.15));
+  h += caveShoulder(x, z);
   // the pond: a flat basin (with a steep bank where it meets the hill)
   const dp = Math.hypot(x - POND_C.x, z - POND_C.z);
   if (dp < POND_R + 1.6) h = lerp(h, POND_LEVEL - (dp < POND_R ? 0.15 : 0), smooth(1 - (dp - POND_R) / 1.6));
@@ -401,9 +418,7 @@ export const BAMBOO = [[0, 0.3], [1.2, 0.45], [2.3, 0.4], [3.4, 0.5], [4.5, 0.35
   return { pos, stand: standNear(pos, 0.8, BAR_B) };
 });
 // a cave in the side of the pond's hill, half hidden behind rocks
-const hillOut = dirXZ(POND_C, HILL_C), hillSide = V(-hillOut.z, hillOut.x);
-export const CAVE_P = ground(V(HILL_C.x + hillSide.x * 3.4 + hillOut.x * 0.8, HILL_C.z + hillSide.z * 3.4 + hillOut.z * 0.8));
-export const CAVE_FACE = dirXZ(HILL_C, CAVE_P); // the way the mouth looks out
+export const CAVE_P = ground(copy(CAVE_XZ));
 export const CAVE_STAND = ground(addScaled(CAVE_P, CAVE_FACE, 1.3));
 // water at camp: a stone well (in the clearest spot in camp), or a bamboo pipe
 // from the pond that pours into a basin just inside the fence on the pond side
