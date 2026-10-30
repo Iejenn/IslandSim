@@ -122,6 +122,8 @@ const SITE: Record<string, { stand: Pt; face: Pt }> = {
   cave: { stand: CAVE_STAND, face: CAVE_P },
   pipe: { stand: standNear(V((PIPE_FROM.x + SPOUT_P.x) / 2, (PIPE_FROM.z + SPOUT_P.z) / 2), 0.9), face: V((PIPE_FROM.x + SPOUT_P.x) / 2, (PIPE_FROM.z + SPOUT_P.z) / 2) },
   well: { stand: WELL_STAND, face: WELL_P },
+  // remaking the fence or the bridge happens where it stands
+  get rework() { return SITE[S.reworkOf === 'bridge' ? 'bridge' : 'fence']; },
   bandstand: { stand: bandLocal(0, 2.2), face: BANDSTAND_P },
 };
 /* where event things are: on the beach at the event's angle */

@@ -41,15 +41,38 @@ export const STYLED = Object.keys(STYLE_COST) as PlanKey[];
 export function styleFor(k: PlanKey): Style {
   const made = S.madeStyle[k];
   if (made && progressOf(k).started) return made;
-  // a preference, not a rule: about one piece in five she makes from something else
-  // (fixed per piece, from her name, so it doesn't change while she gathers for it)
+  const want = intendedStyle(k);
+  // bamboo only when it's at hand: already in her stock, or a bridge away. Otherwise she
+  // builds in wood now (she never waits for the tide) and may rework it later (see 'rework')
+  return want === 'bamboo' && !bambooAtHand(STYLE_COST[k]!.bamboo.bamboo ?? 0) ? 'wood' : want;
+}
+/**
+ * What she'd make this piece from, given the choice: her favourite, though a
+ * preference, not a rule: about one piece in five she makes from something else
+ * (fixed per piece, from her name, so it doesn't change while she gathers for it).
+ */
+function intendedStyle(k: PlanKey): Style {
   let h = 0;
   for (const c of S.name + k) h = (h * 31 + c.charCodeAt(0)) % 1000;
   const others = (['wood', 'bamboo', 'stone'] as Style[]).filter(x => x !== S.style);
-  const want = h < 200 ? others[h % 2] : S.style ?? 'wood';
-  return want === 'bamboo' && !S.isletFound ? 'wood' : want;
+  return h < 200 ? others[h % 2] : S.style ?? 'wood';
 }
+const bambooAtHand = (n: number) => S.isletFound && (works('bridge') || S.stock.bamboo >= n);
 const styledCost = (k: PlanKey) => STYLE_COST[k]![styleFor(k)];
+const isMade = (k: PlanKey) => isProject(k) ? S.projects[k].done : !!S.items[k as CraftKey];
+/** A piece she'd like to remake: built in wood only because her favourite wasn't at hand then. */
+function reworkTarget(): PlanKey | null {
+  if (S.goal === 'rework' && S.reworkOf) return S.reworkOf;
+  return STYLED.find(k => isMade(k) && intendedStyle(k) === S.style && (S.madeStyle[k] ?? 'wood') !== S.style) ?? null;
+}
+/** What reworking costs: three quarters of making it new (the old piece gives some back). */
+function reworkCost() {
+  const k = reworkTarget(), out: Partial<Record<Resource, number>> = {};
+  if (!k) return out;
+  for (const [r, n] of Object.entries(STYLE_COST[k]![S.style]) as [Resource, number][]) out[r] = Math.max(1, Math.ceil(n * 0.75));
+  return out;
+}
+const reworkName = () => { const k = reworkTarget(); return k ? `${S.style} ${PLANS[k].name}` : 'piece'; };
 
 export const PLANS: Record<PlanKey, PlanDef> = {
   /* ---------- crafts ---------- */
@@ -553,6 +576,21 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     weight: () => 2.2,
     tags: ['practical'],
   },
+  rework: {
+    // remake a piece (furniture at the fire, the fence or bridge on site) in her favourite
+    // material, once it's at hand. Repeatable: it's never "done" (see checkFinished)
+    get kind() { const k = reworkTarget(); return k && isProject(k) ? 'build' : 'craft'; },
+    get name() { return reworkName(); },
+    get a() { return `a new ${reworkName()}`; },
+    get cost() { return reworkCost(); },
+    get minutes() { const k = reworkTarget(); return k ? Math.round(PLANS[k].minutes * 0.6) : 60; },
+    unlocked: () => S.style !== 'wood' && !!reworkTarget() && (S.style !== 'bamboo' || bambooAtHand(Math.ceil((STYLE_COST[reworkTarget()!]!.bamboo.bamboo ?? 0) * 0.75))),
+    get want() { const k = reworkTarget(); return k ? `I like my ${PLANS[k].name}, but it’d be so much nicer in ${S.style}.` : ''; },
+    get done() { return `There. Made over in ${S.style}, the way I always wanted.`; },
+    // (more appealing the more of her things aren't in the material she loves)
+    weight: () => 1.4 + 0.5 * S.taste.creative + 0.7 * STYLED.filter(k => isMade(k) && intendedStyle(k) === S.style && (S.madeStyle[k] ?? 'wood') !== S.style).length + (tr('lazy') ? -0.3 : 0),
+    tags: ['creative', 'comfort'],
+  },
   chimes: {
     kind: 'craft', name: 'wind chimes', a: 'wind chimes', cost: { bamboo: 3, fibre: 1, shells: 1 }, minutes: 50,
     unlocked: () => S.isletFound && S.skills.crafting.lvl >= 2 && S.stock.shells >= 1,
@@ -563,7 +601,8 @@ export const PLANS: Record<PlanKey, PlanDef> = {
   },
 };
 
-const isProject = (k: PlanKey): k is ProjectKey => PLANS[k].kind === 'build';
+// (by whether it has a project slot: 'rework' can be built on site, but its progress lives with the crafts)
+const isProject = (k: PlanKey): k is ProjectKey => k in S.projects;
 export const isDone = (k: PlanKey) => isProject(k) ? S.projects[k].done : !!S.items[k as CraftKey];
 const progressOf = (k: PlanKey) => isProject(k) ? S.projects[k] : S.crafting;
 
@@ -588,6 +627,7 @@ export function maybeGiveUp() {
   const chance = 0.4 + (tr('lazy') ? 0.2 : 0) - (tr('hardworking') ? 0.2 : 0) - (S.dream === k ? 0.3 : 0);
   if (Math.random() > chance) return;
   S.goal = null;
+  S.reworkOf = null;
   S.gaveUp[k] = dayNum();
   say(GIVE_UP_LINES[Math.floor(Math.random() * GIVE_UP_LINES.length)]);
   log(`She gave up on ${PLANS[k].a}, for now.`);
@@ -605,6 +645,7 @@ export function chooseGoal() {
   for (const c of cand) { r -= desire(c); if (r <= 0) { k = c; break; } }
   S.goal = k;
   S.goalSince = S.min;
+  S.reworkOf = k === 'rework' ? reworkTarget() : null; // (fixed now, so the cost and site stay put)
   S.crafting = { started: false, progress: 0 };
   say(PLANS[k].want);
   log(`She decided to ${PLANS[k].kind === 'craft' ? 'make' : 'build'} ${PLANS[k].a}.`);
@@ -662,10 +703,27 @@ export function workOn(k: PlanKey, dm: number) {
 }
 
 /** Called when a work session ends; finishes the plan if it's complete. */
+/** The made-over piece now shows (and counts as) her favourite material. */
+function finishRework() {
+  const k = S.reworkOf ?? reworkTarget();
+  S.goal = null; S.reworkOf = null;
+  S.crafting = { started: false, progress: 0 };
+  if (!k) return;
+  S.madeStyle[k] = S.style;
+  S.stats.reworks = (S.stats.reworks ?? 0) + 1;
+  if (isProject(k)) S.projects[k].builtAt = S.min; // (fresh, unweathered)
+  addXp(isProject(k) ? 'building' : 'crafting', 15);
+  S.mood = Math.min(40, S.mood + 15);
+  say(PLANS.rework.done);
+  log(`She remade her ${PLANS[k].name} in ${S.style}.`);
+  highlight(`remade her ${PLANS[k].name} in ${S.style}`);
+}
+
 export function checkFinished(k: PlanKey) {
   const p = progressOf(k), def = PLANS[k];
   if (def.kind === 'build') highlight(`worked on the ${def.name}`);
   if (p.progress < 0.999) return;
+  if (k === 'rework') { finishRework(); return; }
   if (isProject(k)) { S.projects[k].done = true; S.projects[k].progress = 1; S.projects[k].builtAt = S.min; }
   else {
     S.items[k as CraftKey] = true;

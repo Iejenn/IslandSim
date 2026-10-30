@@ -22,7 +22,8 @@ export type CraftKey = 'axe' | 'pick' | 'rod' | 'spear' | 'snare' | 'basket' | '
   | 'blanket' | 'sweater' // from her sheep's wool
   | 'pots' | 'jug' | 'tiles' // fired in the kiln
   | 'lanterns' // along her paths
-  | 'flinttools' | 'chimes'; // from the cave's flint and the islet's bamboo
+  | 'flinttools' | 'chimes' // from the cave's flint and the islet's bamboo
+  | 'rework'; // remaking a piece she already has in her favourite material (repeatable, see plans.ts)
 /** Things she builds over several sessions on site. */
 export type ProjectKey = 'garden' | 'rack' | 'dock' | 'hut' | 'hearth' | 'lookout' | 'canoe' | 'lodge' | 'fence' | 'coop'
   | 'trap' | 'barrel' | 'treehouse' // other ways to get food, water and a home
@@ -124,6 +125,7 @@ function createState() {
     dream: rollDream(taste) as PlanKey | null, // the one big thing she's set on
     style: rollStyle(taste), // what she likes to build from (see plans.ts styleFor)
     madeStyle: {} as Partial<Record<PlanKey, Style>>, // what each styled thing was actually made from
+    reworkOf: null as PlanKey | null, // which piece her 'rework' goal is remaking
     quirk: (Math.random() < 0.7 ? pick(QUIRKS) : null) as Quirk | null,
     favFood: pick(DISHES) as typeof DISHES[number],
     washedUp: (Math.random() < 0.6 ? pick(WASHED_UP) : null) as typeof WASHED_UP[number] | null,
@@ -204,7 +206,7 @@ function createState() {
     likes: {} as Partial<Record<TaskId, number>>,
     feelingsNoted: [] as string[], // strong likes/dislikes already written in the diary
     // lifetime counters (unlock new plans)
-    stats: { hunted: 0, freed: 0, herded: 0, eggs: 0, shorn: 0, forages: 0, fishTrips: 0, fishCaught: 0, nightsInShelter: 0, waterings: 0, harvests: 0, rainsSeen: 0, writeMin: 0, treesFelled: 0, stonesMined: 0, crafted: 0, meals: 0, storms: 0, repairs: 0 },
+    stats: { hunted: 0, freed: 0, herded: 0, eggs: 0, shorn: 0, forages: 0, fishTrips: 0, fishCaught: 0, nightsInShelter: 0, waterings: 0, harvests: 0, rainsSeen: 0, writeMin: 0, treesFelled: 0, stonesMined: 0, crafted: 0, meals: 0, storms: 0, repairs: 0, reworks: 0 },
     // highlights of the current day, summarised in the diary at dawn
     today: [] as string[],
     // coming: when the clouds that have been gathering will start to rain (0 = none on the way)

@@ -100,7 +100,8 @@ longer in its cool. Water comes to camp through a bamboo pipe from the pond, or
 from a stone well. Every castaway has a favourite material (bamboo, wood or
 stone) and most of what she builds follows it: bamboo chairs and a lashed
 bamboo fence, a plank bridge, or a dry-stone wall and stone benches, with the
-odd piece in something else.
+odd piece in something else. She never waits for the tide to build: without
+bamboo at hand she builds in wood, and later remakes those pieces in bamboo.
 
 The nights have their own life. The moon waxes and wanes over eight days,
 shooting stars streak low over the sea, and two island constellations (the

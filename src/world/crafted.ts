@@ -306,6 +306,7 @@ export function createCrafted(scene: Scene) {
     bed: () => place(styledModel('bed'), SH.x, SH.z, yawTo(SH, FIRE)), // a raised frame under her sleeping mat, inside the shelter
     shelf: () => place(styledModel('shelf'), SHELF_P.x, SHELF_P.z, yawTo(SHELF_P, FIRE)),
     flinttools: () => new Group(), // (not a thing of its own: her axe and pick get flint heads)
+    rework: () => new Group(), // (remakes another piece; see the styled holders)
     chimes() {
       // bamboo tubes and a shell on strings, hung from a little post by the shelter
       const g = new Group();

@@ -109,6 +109,8 @@ export function decide() {
   // bamboo from the islet (over the bridge, or across the sandbar at low tide), flint from the cave
   const toIslet = works('bridge') || lowTide();
   if (need.bamboo > 0 && toIslet) add('bamboo', 0.6 + busy - dark - wet);
+  // a bamboo lover keeps a little stock in hand, fetched whenever the tide's out (never holds up a goal)
+  else if (S.style === 'bamboo' && S.isletFound && toIslet && S.stock.bamboo < 5) add('bamboo', 0.3 + 0.15 * S.taste.green - dark - wet);
   if (!S.isletFound && lowTide() && dayNum() >= 3 && !night) add('bamboo', 0.75 + 0.4 * S.taste.adventure + (S.style === 'bamboo' ? 0.2 : 0) + 0.2 * u(n.fun) - wet); // curious about that islet
   if (need.flint > 0) add('flint', 0.6 + busy - dark);
   if (need.clay > 0) add('clay', 0.6 + busy - dark - wet);
