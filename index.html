@@ -23,8 +23,17 @@
     <button data-speed="10" aria-pressed="false">10×</button>
   </div>
   <div class="pill"><button id="follow" aria-pressed="false">Follow her</button></div>
-  <div class="pill"><button id="sound" aria-pressed="false">Sound off</button></div>
-  <div class="pill"><button id="openMenu">Menu</button></div>
+</div>
+
+<!-- settings: a gear in the top-right corner, opening a small menu -->
+<div class="settings">
+  <button class="gear" id="gear" aria-label="Settings" aria-expanded="false" aria-controls="settingsMenu">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4L10.7 6a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1c.5.4 1.1.7 1.7 1l.3 2.5h4l.3-2.5c.6-.3 1.2-.6 1.7-1l2.4 1 2-3.4-2-1.6ZM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" transform="translate(-1 0)"/></svg>
+  </button>
+  <div class="settings-menu" id="settingsMenu" role="menu" hidden>
+    <button role="menuitem" id="openMenu">Save &amp; back to menu</button>
+    <button role="menuitemcheckbox" id="sound" aria-checked="false"><span>Sound</span><i class="switch" aria-hidden="true"></i></button>
+  </div>
 </div>
 
 <!-- the start menu, over the blurred island -->

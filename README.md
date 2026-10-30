@@ -61,7 +61,7 @@ freshens them up), and wildflowers spread around her camp a little more each
 spring. She walks around things now (the fire, trees, walls, the fence via
 its gates) instead of through them. Sound is generated in the browser (waves,
 wind, rain, the fire, birds, crickets, footsteps, chopping, her drum); turn it
-on with the Sound button.
+on under the gear in the top-right corner.
 
 Nature carries on around her: the forest seeds itself and creeps towards
 the camp wherever she doesn't chop, chicks hatch and lambs are born in spring,
@@ -112,7 +112,7 @@ new, or switch between three save slots, so a few islands can live side by
 side. Progress is saved in the browser (localStorage), so a refresh continues
 the same life. To move an island to another device, export it from the menu
 (as a file, or a code to paste) and import it into an empty slot there. The
-Menu button in the top bar brings it back; "Start over on a new island" at the
+gear in the top-right corner brings it back (and turns sound on or off); "Start over on a new island" at the
 bottom of the Diary resets the island you're on.
 
 Built with [Vite](https://vite.dev), TypeScript and [three.js](https://threejs.org).
@@ -185,7 +185,7 @@ src/
                    tools in her hand
   save.ts          localStorage save slots, import/export, and the island's layout seed
   ui/              start menu (slots, what's new in updates.ts), observer panel,
-                   HUD (clock/speed/follow/sound/menu), thought bubble, the tap-to-look info card
+                   HUD (clock/speed/follow), the settings gear (menu, sound), thought bubble, the tap-to-look info card
 scripts/
   simulate.ts      headless balance check (npm run simulate)
 ```
