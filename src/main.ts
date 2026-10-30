@@ -33,6 +33,7 @@ import { createClouds } from './world/clouds';
 import { createShore } from './world/shore';
 import { createIslet } from './world/islet';
 import { createLifeProps } from './world/life';
+import { createDecor } from './world/decor';
 import { createSmoke } from './world/smoke';
 import { createPaths } from './world/paths';
 import { createRabbits } from './world/rabbits';
@@ -78,7 +79,7 @@ const updateAtmosphere = createAtmosphere(scene);
 const updateJoys = createJoys(scene);
 const updateWaterfall = createWaterfall(scene);
 const updateCritters = createCritters(scene);
-const updateClouds = createClouds(scene), updateShore = createShore(scene), updateSmoke = createSmoke(scene), updateIslet = createIslet(scene), updateLifeProps = createLifeProps(scene);
+const updateClouds = createClouds(scene), updateShore = createShore(scene), updateSmoke = createSmoke(scene), updateIslet = createIslet(scene), updateLifeProps = createLifeProps(scene), updateDecor = createDecor(scene);
 
 /* ---------- sim + her ---------- */
 const S = initState(save?.state);
@@ -277,6 +278,7 @@ function frame(now: number) {
   updateSmoke(S, dt * animScale, rain, storm ? 1 : rain * 0.3, light);
   updateIslet(S, clockT, storm ? 1 : rain * 0.4);
   updateLifeProps(S);
+  updateDecor(S);
   props.sway(storm ? rain : rain * 0.3, clockT);
   sound.update(S, camera, body.her, rain, ready ? S.speed : 0);
   animateWater(clockT);

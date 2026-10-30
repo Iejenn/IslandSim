@@ -11,6 +11,7 @@ import { dayNum, hour, isNight, S, tr, type TaskId } from './state';
 import { activityBias } from './taste';
 import { injured } from './events';
 import { ill, isMaster, moodBias, partyTime } from './life';
+import { decorating } from './decor';
 import { fullMoon, glowingSea } from './night';
 import { lowTide } from './tide';
 import { fx, season } from './seasons';
@@ -119,6 +120,8 @@ export function decide() {
   // her life: tea when she's ill, a party on her birthday, totem poles once she's a master carver
   if (ill() && S.stock.herbs >= 1 && S.fire > 0) add('tea', 0.9);
   if (partyTime()) add('party', 1.1);
+  // making her camp pretty, once it's established (decor.ts)
+  if (decorating() && !night && n.food > 40 && n.energy > 30) add('decorate', 0.45 + 0.3 * S.taste.creative + 0.2 * S.taste.comfort - wet);
   if (isMaster('crafting') && S.totems < 3 && !night && S.stock.wood >= 3 + FIREWOOD_RESERVE) add('totem', 0.6 + 0.3 * S.taste.creative - wet);
   // salt from the pans, fish into the smokehouse, iron from ore
   if (works('saltpans') && S.saltPans >= 3) add('salt', 0.42 + busy + (S.saltPans >= 5 ? 0.15 : 0) - dark - wet);

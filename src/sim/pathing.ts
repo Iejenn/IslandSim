@@ -4,7 +4,7 @@
 // gates). Most walks are a straight line; only when that's blocked does she
 // search a small grid around the obstacle (A*) and smooth the result.
 import {
-  FIRECOVER_POSTS, SMOKE_P, WORKSHOP_P, FURNACE_P, BAR_A, BAR_B, onIslet, SPOUT_P, WELL_P, ORCHARD, BANDSTAND_P, MARIMBA_P, POND_R, SHED_P, BARREL_P, BATH_P, BOULDERS, COOP_P, DRUM_P, FENCE_GATES, FENCE_R, FIRE, FOREST, GARDEN_P, HIVE_P, KILN_P, LODGE_SIZE,
+  DECOR_SPOTS, TOTEM_SPOTS, FIRECOVER_POSTS, SMOKE_P, WORKSHOP_P, FURNACE_P, BAR_A, BAR_B, onIslet, SPOUT_P, WELL_P, ORCHARD, BANDSTAND_P, MARIMBA_P, POND_R, SHED_P, BARREL_P, BATH_P, BOULDERS, COOP_P, DRUM_P, FENCE_GATES, FENCE_R, FIRE, FOREST, GARDEN_P, HIVE_P, KILN_P, LODGE_SIZE,
   lodgeLocal, LOOKOUT_P, OVEN_P, RACK_P, SH, SP, SUNDIAL_P, TABLE_P, V, WARREN_P, WOODPILE_P, yawTo, type Pt,
 } from './island';
 import { S } from './state';
@@ -47,6 +47,8 @@ function rebuild() {
   if (done('bathhouse')) c(BATH_P, 0.85);
   if (done('lookout')) c(LOOKOUT_P, 0.85);
   if (done('well')) c(WELL_P, 0.6);
+  for (const d of S.decor ?? []) c(DECOR_SPOTS[d.spot], 0.45); // her decorations
+  S.totems && TOTEM_SPOTS.slice(0, S.totems).forEach(p => c(p, 0.3));
   if (done('firecover')) for (const p of FIRECOVER_POSTS) c(p, 0.15);
   if (done('smokehouse')) c(SMOKE_P, 0.85);
   if (done('workshop')) c(WORKSHOP_P, 1.2);
@@ -79,7 +81,7 @@ function rebuild() {
   }
 }
 function refresh() {
-  const key = Object.values(S.projects).map(p => p.done ? 1 : 0).join('') + S.orchard.map(t => t.kind && t.growth > 0.3 ? 1 : 0).join('') + S.trees.map(t => t.state[1]).join('') + S.boulders.map(b => b > 0 ? 1 : 0).join('')
+  const key = `${S.decor?.length ?? 0}:${S.totems ?? 0}:` + Object.values(S.projects).map(p => p.done ? 1 : 0).join('') + S.orchard.map(t => t.kind && t.growth > 0.3 ? 1 : 0).join('') + S.trees.map(t => t.state[1]).join('') + S.boulders.map(b => b > 0 ? 1 : 0).join('')
     + (S.items.drum ? 'd' : '') + (S.items.table ? 't' : '');
   if (key !== cacheKey) { cacheKey = key; rebuild(); }
 }

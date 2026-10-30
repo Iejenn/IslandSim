@@ -121,6 +121,10 @@ spends her time on, she gets good at: a master carver carves totem poles for
 her camp, an island angler mounts her record fish, a master builder carves a
 sign naming her island, a green thumb grows a prize pumpkin, a storyteller
 finishes her book, and a troubadour writes her own songs.
+Once her camp is established she decorates it, a piece at a time, with what
+suits her: flower planters, bunting, painted stones, nets and floats, a bird
+feeder, a driftwood bench, a carved owl, a stone border, a shell garland, or a
+kennel for her dog.
 
 The nights have their own life. The moon waxes and wanes over eight days,
 shooting stars streak low over the sea, and two island constellations (the

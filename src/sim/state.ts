@@ -6,6 +6,7 @@ import { BAMBOO, ORCHARD, BOULDERS, BUSHES, CHICKEN_HOMES, copy, FOREST, FOREST_
 import { rollEvents } from './events';
 import { rollDream, rollStyle, rollTaste } from './taste';
 import { YEAR_DAYS, type DayMood, type Illness } from './life';
+import type { DecorKey } from './decor';
 import { clamp, mergeInto, pick, rand } from './util';
 
 export const NAMES = ['Mara', 'Lena', 'Iris', 'Noor', 'Sofie', 'Ava', 'Elin', 'Tess', 'Yara', 'Fenna'];
@@ -45,7 +46,7 @@ export type TaskId =
   | 'befriend' | 'play' | 'repair' | 'swim' | 'herd' | 'shear' | 'collect' | 'checktrap' | 'hunt' | 'checksnares' | 'mushrooms'
   | 'clay' | 'salvage' | 'turtles' | 'tendgull' | 'dig' | 'honey' | 'bathe'
   | 'cairn' | 'sandcastle' | 'clouds' | 'bouquet' | 'whittle' | 'dance'
-  | 'plantfruit' | 'pickfruit' | 'nightwalk' | 'beachstars' | 'tidepools' | 'bamboo' | 'flint' | 'salt' | 'smoke' | 'ore' | 'smelt' | 'tea' | 'party' | 'totem'
+  | 'plantfruit' | 'pickfruit' | 'nightwalk' | 'beachstars' | 'tidepools' | 'bamboo' | 'flint' | 'salt' | 'smoke' | 'ore' | 'smelt' | 'tea' | 'party' | 'totem' | 'decorate'
   | 'celebrate' | 'stand';
 
 /* ---------- task steps ---------- */
@@ -264,6 +265,7 @@ function createState() {
     partied: false, // has she celebrated today's birthday yet?
     mastery: {} as Partial<Record<SkillKey, number>>, // day she became known for each skill
     song: '', book: '', islandName: '', recordFish: 0, totems: 0, // what she has to show for it
+    decor: [] as { key: DecorKey; spot: number; at: number }[], // how she's decorated her camp (decor.ts)
     treasure: { found: 0, spots: [] as number[] }, // spots: beach angles still to dig (0 = none)
     // a stray dog that may wash ashore; she has to win its trust
     dog: { state: 'none' as 'none' | 'wild' | 'friend', trust: 0, name: '', home: copy(START), since: 0 },
