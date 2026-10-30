@@ -103,6 +103,14 @@ bamboo fence, a plank bridge, or a dry-stone wall and stone benches, with the
 odd piece in something else. She never waits for the tide to build: without
 bamboo at hand she builds in wood, and later remakes those pieces in bamboo.
 
+Her camp keeps improving too. Salt pans on the rocky shore give her salt for
+salting down fish that would otherwise go bad (and a pinch in her cooking); a
+roof over the fire keeps the rain from drowning it; a smokehouse turns spare
+fish into smoked fish that keeps all winter; and a workshop gives her a proper
+workbench to craft at. Much later, once she has a kiln, she may build a stone
+furnace, dig red ore from a seam in the ridge and smelt it into iron for iron
+tools, the best she'll ever have.
+
 The nights have their own life. The moon waxes and wanes over eight days,
 shooting stars streak low over the sea, and two island constellations (the
 turtle and the canoe) hang over the horizon; tilt the camera up to see them.

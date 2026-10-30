@@ -707,7 +707,7 @@ export function createBuildings(scene: Scene) {
     const roof = (m: Material, list: Object3D[]) => {
       for (const side of [-1, 1]) {
         const r = mesh(new BoxGeometry(1.25, 0.06, 2.9), m, FIRE.x + Math.cos(yaw) * side * 0.55, FIRE.y + 2.85, FIRE.z - Math.sin(yaw) * side * 0.55);
-        r.rotation.set(0, yaw, side * 0.45, 'YXZ'); list.push(r);
+        r.rotation.set(0, yaw, -side * 0.45, 'YXZ'); list.push(r); // (each half slopes down, away from the ridge)
       }
     };
     roof(M.wood, out.wood); roof(bambooMat, out.bamboo); roof(M.thatch, out.stone);
@@ -719,8 +719,8 @@ export function createBuildings(scene: Scene) {
   /* the smokehouse: a little plank hut with a chimney */
   const smokehouse = (() => {
     const g = (o: Object3D, x: number, y: number, z: number) => { o.position.set(SMOKE_P.x + x, SMOKE_P.y + y, SMOKE_P.z + z); return o; };
-    const roofL = g(mesh(new BoxGeometry(1.7, 0.06, 1.0), M.thatch), 0, 1.55, -0.4); roofL.rotation.x = 0.6;
-    const roofR = g(mesh(new BoxGeometry(1.7, 0.06, 1.0), M.thatch), 0, 1.55, 0.4); roofR.rotation.x = -0.6;
+    const roofL = g(mesh(new BoxGeometry(1.7, 0.06, 1.0), M.thatch), 0, 1.55, -0.4); roofL.rotation.x = -0.6; // (sloping down, away from the ridge)
+    const roofR = g(mesh(new BoxGeometry(1.7, 0.06, 1.0), M.thatch), 0, 1.55, 0.4); roofR.rotation.x = 0.6;
     return staged([
       g(mesh(new BoxGeometry(1.5, 0.12, 1.5), M.rock), 0, 0.06, 0),
       g(mesh(new BoxGeometry(1.4, 1.3, 1.4), M.wood), 0, 0.75, 0),
