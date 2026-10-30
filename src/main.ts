@@ -41,7 +41,8 @@ import { createStage } from './world/stage';
 import { createTerrain } from './world/terrain';
 import { applyLook } from './world/materials';
 import { createWater } from './world/water';
-import { clearSave, newSeed, readSave, withSeed, writeSave } from './save';
+import { clearSave, newSeed, playActiveSlot, readSave, takeSkipMenu, withSeed, writeSave } from './save';
+import { createMenu } from './ui/menu';
 import { snapshot } from './sim/persist';
 import type { CraftKey } from './sim/state';
 import type { AnimKey } from './config/animations';
@@ -112,6 +113,22 @@ const infoCard = createInfoCard();
 const hud = createHud();
 const bubble = createBubble(body.her, camera);
 const panel = createPanel(newIsland);
+/* the start menu: the island waits (and the camera slowly circles it) while it's open */
+let started = false; // has she been let loose yet? (the sim doesn't run until the menu's first closed)
+const menu = createMenu({
+  play() { started = true; begin(); },
+  saveNow,
+  started: () => started,
+  onToggle(open) {
+    document.body.classList.toggle('menu-open', open);
+    controls.autoRotate = open;
+    controls.autoRotateSpeed = 0.35;
+    if (open) hud.setFollow(false);
+  },
+});
+document.getElementById('openMenu')!.addEventListener('click', () => menu.open());
+if (takeSkipMenu()) { document.getElementById('menu')!.hidden = true; started = true; } // (just switched islands from the menu)
+else menu.open();
 function renderUI() {
   hud.render();
   panel.render();
@@ -120,13 +137,13 @@ function renderUI() {
 /* ---------- saving ---------- */
 let leaving = false; // set when starting over, so the unload handlers don't save the old island again
 function saveNow() {
-  if (!ready || S.dead || leaving) return;
+  if (!ready || !started || S.dead || leaving) return;
   writeSave(seed, snapshot(S));
 }
 function newIsland() {
   leaving = true;
   clearSave();
-  location.reload();
+  playActiveSlot(); // (straight into the new island, no menu)
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); });
 addEventListener('pagehide', saveNow);
@@ -171,15 +188,23 @@ function loadModel() {
     animator.play('idle');
     ready = true;
     loading.style.opacity = '0';
-    if (save) say('Oh, you’re back.');
-    else {
-      say('Where… am I?');
-      log('She woke up on a beach. No boat, no people. Just her and this island.', 'big');
-    }
+    begin();
   }, err => {
     loading.textContent = 'Couldn’t load her model. Try reloading the page.';
     console.error(err);
   });
+}
+
+/** Her first words, once the model is in and the menu has let her go. */
+let begun = false;
+function begin() {
+  if (begun || !ready || !started) return;
+  begun = true;
+  if (save) say('Oh, you’re back.');
+  else {
+    say('Where… am I?');
+    log('She woke up on a beach. No boat, no people. Just her and this island.', 'big');
+  }
 }
 
 /* ---------- main loop ---------- */
@@ -190,7 +215,7 @@ function frame(now: number) {
   last = now;
   clockT += dt;
   const sp = S.speed, animScale = sp > 0 ? Math.min(sp, 6) : 0; // animations stop speeding up past 6×
-  if (ready && !S.dead && sp > 0) {
+  if (ready && started && !menu.isOpen && !S.dead && sp > 0) {
     const dm = dt * 4 * sp; // 1 real second = 4 game minutes at 1×
     S.min += dm;
     updateNeeds(dm);
