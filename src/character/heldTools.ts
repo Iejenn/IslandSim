@@ -18,6 +18,7 @@ const TOOL_TILT = new Quaternion().setFromAxisAngle(X, 1.1); // tool head out in
 const SPEAR_TILT = new Quaternion().setFromAxisAngle(X, 2.2); // point down into the water in front of her
 
 export type HeldTool = Extract<CraftKey, 'rod' | 'axe' | 'pick' | 'spear'>;
+// (instruments in her hands are handled by character/perform.ts)
 
 export function createHeldTools(scene: Scene) {
   const rodGeo = new CylinderGeometry(0.018, 0.03, ROD_LENGTH, 5);

@@ -5,7 +5,7 @@ import {
   BoxGeometry, Color, CylinderGeometry, ExtrudeGeometry, TorusGeometry, type MeshStandardMaterial, Group, IcosahedronGeometry, Shape, SphereGeometry,
   type Material, type Mesh, type Object3D, type Scene, ConeGeometry, DodecahedronGeometry,
 } from 'three';
-import { SHED_P, BATH_P, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SP, SUNDIAL_P, HOUSEBOAT_P, HOUSEBOAT_YAW, BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
+import { BANDSTAND_FLOOR, BANDSTAND_P, SHED_P, BATH_P, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SP, SUNDIAL_P, HOUSEBOAT_P, HOUSEBOAT_YAW, BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
 import { PLANS } from '../sim/plans';
 import type { ProjectKey, SimState } from '../sim/state';
 import { cap, onDay, pickable } from './inspect';
@@ -347,6 +347,27 @@ export function createBuildings(scene: Scene) {
     return parts;
   }
 
+  /* bandstand: a raised octagonal stage with eight posts, a railing (open at
+     the front, with steps) and a pointed roof */
+  const bandstand = site(BANDSTAND_P, parts => {
+    const R = 1.6, H = BANDSTAND_FLOOR;
+    parts.push(mesh(new CylinderGeometry(R, R + 0.05, H, 8), M.rock, 0, H / 2, 0)); // stone base
+    parts.push(mesh(new CylinderGeometry(R - 0.05, R - 0.05, 0.06, 8), M.wood, 0, H + 0.03, 0)); // floorboards
+    const post = (i: number) => { const a = (i + 0.5) / 8 * Math.PI * 2; return [Math.sin(a) * (R - 0.15), Math.cos(a) * (R - 0.15)]; };
+    for (let i = 0; i < 8; i++) { const [x, z] = post(i); parts.push(mesh(new CylinderGeometry(0.06, 0.07, 2.2, 6), M.log, x, H + 1.1, z)); }
+    for (let i = 0; i < 8; i++) {
+      if (i === 0 || i === 7) continue; // (open at the front, towards the fire)
+      const [x1, z1] = post(i), [x2, z2] = post(i + 1), rail = mesh(new BoxGeometry(Math.hypot(x2 - x1, z2 - z1), 0.05, 0.05), M.wood, (x1 + x2) / 2, H + 0.6, (z1 + z2) / 2);
+      rail.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
+      parts.push(rail);
+    }
+    for (let s = 0; s < 2; s++) parts.push(mesh(new BoxGeometry(0.9, 0.12, 0.3), M.wood, 0, 0.06 + s * 0.12, R + 0.3 - s * 0.25)); // steps
+    const roof = mesh(new ConeGeometry(R + 0.45, 1.0, 8), M.thatch, 0, H + 2.7, 0);
+    roof.rotation.y = Math.PI / 8;
+    parts.push(roof);
+    parts.push(mesh(new SphereGeometry(0.08, 6, 4), M.log, 0, H + 3.25, 0)); // finial
+  });
+
   /* tool shed: a lean-to open towards the fire, with a rail on the back wall
      for her tools (crafted.ts hangs them there) and a shelf */
   const shed = site(SHED_P, parts => {
@@ -468,7 +489,7 @@ export function createBuildings(scene: Scene) {
     const n = started ? Math.max(1, Math.ceil(progress * (damaged ? 0.7 : 1) * parts.length)) : 0;
     parts.forEach((p, i) => { p.visible = i < n; });
   };
-  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop, trap: trap.parts, barrel: barrel.parts, treehouse, houseboat: houseboat.parts, shed, kiln, oven, beehive, sundial, mosaic, bathhouse };
+  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop, trap: trap.parts, barrel: barrel.parts, treehouse, houseboat: houseboat.parts, shed, bandstand, kiln, oven, beehive, sundial, mosaic, bathhouse };
   /* ---------- weathering: wood greys, stone gathers moss, fabric fades ---------- */
   // Each building gets its own copies of the shared materials (made on the
   // first update, after the island's colours are applied), which drift towards

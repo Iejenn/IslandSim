@@ -2,7 +2,7 @@
 // woodpile, the rod against the shelter, the drum by the fire and so on.
 // Everything is built up front (hidden) and shown once the sim says she has it.
 import { BoxGeometry, ConeGeometry, CylinderGeometry, Group, SphereGeometry, TorusGeometry, type Object3D, type Scene } from 'three';
-import { SHED_P, V, KILN_P, BURROWS, WARREN_P, CHAIR_P, FIRE, LODGE_YAW, lodgeLocal, GARDEN_P, ground, HAMMOCK_P, JOURNAL_P, DRUM_P, LOOKOUT_DECK, LOOKOUT_P, SH, SHELF_P, TABLE_P, WOODPILE_P, yawTo } from '../sim/island';
+import { addScaled, BAND_SPOTS, BANDSTAND_FLOOR, BANDSTAND_YAW, dirXZ, MARIMBA_P, SHED_P, V, KILN_P, BURROWS, WARREN_P, CHAIR_P, FIRE, LODGE_YAW, lodgeLocal, GARDEN_P, ground, HAMMOCK_P, JOURNAL_P, DRUM_P, LOOKOUT_DECK, LOOKOUT_P, SH, SHELF_P, TABLE_P, WOODPILE_P, yawTo } from '../sim/island';
 import { PLANS } from '../sim/plans';
 import type { CraftKey, SimState } from '../sim/state';
 import { cap, onDay, pickable } from './inspect';
@@ -27,6 +27,43 @@ export function toolModel(kind: 'axe' | 'pick') {
     g.add(head);
   }
   g.add(mesh(new TorusGeometry(0.035, 0.012, 4, 8), fibre, 0, 0.62, 0)); // lashing
+  return g;
+}
+
+/* ---------- instruments (also used for the ones in her hands, see character/perform.ts) ---------- */
+const bamboo = mat('#C9B26B'), node = mat('#8A7A3E'), dark = mat('#2B211A');
+/** A bamboo flute lying along x, centred on the origin. */
+export function fluteModel() {
+  const g = new Group(), tube = mesh(new CylinderGeometry(0.018, 0.018, 0.5, 6), bamboo);
+  tube.rotation.z = Math.PI / 2;
+  g.add(tube);
+  for (const x of [-0.12, 0.08]) { const n = mesh(new CylinderGeometry(0.021, 0.021, 0.015, 6), node, x, 0, 0); n.rotation.z = Math.PI / 2; g.add(n); }
+  for (let i = 0; i < 4; i++) g.add(mesh(new SphereGeometry(0.006, 4, 3), dark, -0.05 - i * 0.04, 0.016, 0, false)); // finger holes
+  return g;
+}
+/** A ukulele: body at the origin, neck towards +x, face towards +z. */
+export function ukuleleModel() {
+  const g = new Group(), wood = mat('#B9814A'), neckWood = mat('#7A5638');
+  const lower = mesh(new SphereGeometry(0.1, 10, 6), wood, -0.03, 0, 0); lower.scale.set(1, 1, 0.35);
+  const upper = mesh(new SphereGeometry(0.075, 10, 6), wood, 0.08, 0, 0); upper.scale.set(1, 1, 0.35);
+  g.add(lower, upper);
+  g.add(mesh(new CylinderGeometry(0.022, 0.022, 0.005, 10), dark, 0.02, 0, 0.036, false)); // sound hole
+  (g.children[g.children.length - 1] as Object3D).rotation.x = Math.PI / 2;
+  g.add(mesh(new BoxGeometry(0.24, 0.028, 0.02), neckWood, 0.26, 0, 0.01));
+  g.add(mesh(new BoxGeometry(0.05, 0.04, 0.02), neckWood, 0.4, 0, 0.005)); // headstock
+  return g;
+}
+/** A marimba: wooden bars on a frame, the player's side towards -z, bar tops 0.8 up. */
+export function marimbaModel() {
+  const g = new Group();
+  for (const x of [-0.48, 0.48]) for (const z of [-0.14, 0.14]) g.add(mesh(new CylinderGeometry(0.025, 0.025, 0.74, 5), M.log, x, 0.37, z));
+  for (const z of [-0.14, 0.14]) g.add(mesh(new BoxGeometry(1.0, 0.04, 0.04), M.log, 0, 0.74, z));
+  const bars = ['#C98B4E', '#B9783F', '#D39A5C', '#A86B37'].map(c => mat(c));
+  for (let i = 0; i < 9; i++) {
+    const len = 0.34 - i * 0.017, x = -0.42 + i * 0.105;
+    g.add(mesh(new BoxGeometry(0.085, 0.03, len), bars[i % bars.length], x, 0.78, 0));
+    g.add(mesh(new CylinderGeometry(0.025, 0.025, 0.2 + (8 - i) * 0.03, 6), M.log, x, 0.62 - (8 - i) * 0.015, 0.02)); // resonators
+  }
   return g;
 }
 
@@ -95,10 +132,11 @@ export function createCrafted(scene: Scene) {
     },
     drum() {
       const g = new Group();
-      g.add(mesh(new CylinderGeometry(0.24, 0.2, 0.5, 10), M.log, 0, 0.25, 0));
-      g.add(mesh(new CylinderGeometry(0.25, 0.25, 0.03, 10), hide, 0, 0.51, 0));
+      // (a slim drum she can sit right up against; her hands are calibrated to its skin)
+      g.add(mesh(new CylinderGeometry(0.2, 0.17, 0.5, 10), M.log, 0, 0.25, 0));
+      g.add(mesh(new CylinderGeometry(0.21, 0.21, 0.03, 10), hide, 0, 0.51, 0));
       for (let i = 0; i < 6; i++) {
-        const a = i / 6 * Math.PI * 2, cord = mesh(new BoxGeometry(0.015, 0.45, 0.015), fibre, Math.cos(a) * 0.23, 0.27, Math.sin(a) * 0.23);
+        const a = i / 6 * Math.PI * 2, cord = mesh(new BoxGeometry(0.015, 0.45, 0.015), fibre, Math.cos(a) * 0.19, 0.27, Math.sin(a) * 0.19);
         g.add(cord);
       }
       return place(g, DRUM_P.x, DRUM_P.z);
@@ -109,6 +147,23 @@ export function createCrafted(scene: Scene) {
       const holder = new Group();
       holder.add(g);
       return place(holder, SH.x + 1.9, SH.z + 0.1);
+    },
+    flute() {
+      const g = new Group(), f = fluteModel();
+      f.position.y = 0.03;
+      g.add(f);
+      return place(g, DRUM_P.x + 0.5, DRUM_P.z + 0.3); // lying by the drum
+    },
+    ukulele() {
+      const g = new Group(), u = ukuleleModel();
+      u.rotation.set(0.15, 0, 1.2); // leaning, neck up
+      u.position.y = 0.2;
+      g.add(u);
+      return place(g, DRUM_P.x - 0.45, DRUM_P.z + 0.15, yawTo(DRUM_P, FIRE)); // leaning by the drum
+    },
+    marimba() {
+      const g = marimbaModel(), player = ground(addScaled(MARIMBA_P, dirXZ(FIRE, MARIMBA_P), 0.38));
+      return place(g, MARIMBA_P.x, MARIMBA_P.z, yawTo(player, MARIMBA_P));
     },
     snare() {
       // three little loops on stakes by the burrows
@@ -275,6 +330,16 @@ export function createCrafted(scene: Scene) {
     return ground(V(SHED_P.x + lx * c + lz * s, SHED_P.z - lx * s + lz * c));
   };
   let inShed = false;
+  // once the bandstand stands, her instruments live on it
+  let onStage = false;
+  function moveToBandstand() {
+    for (const k of ['drum', 'marimba', 'flute', 'ukulele'] as const) {
+      const s = BAND_SPOTS[k], m = models[k];
+      m.position.set(s.at.x, s.at.y + BANDSTAND_FLOOR, s.at.z);
+      m.rotation.y = k === 'marimba' ? yawTo(s.player, s.at) : BANDSTAND_YAW;
+    }
+    onStage = true;
+  }
   function moveToShed() {
     SHED_TOOLS.forEach((k, i) => {
       const m = models[k], lx = -0.8 + i * 0.32;
@@ -291,6 +356,7 @@ export function createCrafted(scene: Scene) {
 
   return function updateCrafted(S: SimState, held: CraftKey | null) {
     if (!inShed && S.projects.shed.done) moveToShed();
+    if (!onStage && S.projects.bandstand.done) moveToBandstand();
     for (const k of Object.keys(models) as CraftKey[]) models[k].visible = !!S.items[k] && k !== held;
     // moving house: once the lodge stands, the shelf comes inside, the old bed frame goes with the shelter,
     // and the blanket lies on whichever bed she's using

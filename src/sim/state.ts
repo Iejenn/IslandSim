@@ -16,7 +16,7 @@ export type Trait = keyof typeof TRAITS;
 export type SkillKey = keyof typeof SKILLS;
 export type NeedKey = keyof typeof NEEDS;
 /** Things she makes in one sitting at the campfire. */
-export type CraftKey = 'axe' | 'pick' | 'rod' | 'spear' | 'snare' | 'basket' | 'hammock' | 'bucket' | 'drum' | 'journal'
+export type CraftKey = 'axe' | 'pick' | 'rod' | 'spear' | 'snare' | 'basket' | 'hammock' | 'bucket' | 'drum' | 'flute' | 'ukulele' | 'marimba' | 'journal'
   | 'chair' | 'table' | 'bed' | 'shelf' | 'rocker' // furniture, once her crafting is good enough
   | 'realbed' | 'sofa' | 'kitchen' // for the lodge's rooms
   | 'blanket' | 'sweater' // from her sheep's wool
@@ -25,7 +25,7 @@ export type CraftKey = 'axe' | 'pick' | 'rod' | 'spear' | 'snare' | 'basket' | '
 /** Things she builds over several sessions on site. */
 export type ProjectKey = 'garden' | 'rack' | 'dock' | 'hut' | 'hearth' | 'lookout' | 'canoe' | 'lodge' | 'fence' | 'coop'
   | 'trap' | 'barrel' | 'treehouse' // other ways to get food, water and a home
-  | 'houseboat' | 'shed'
+  | 'houseboat' | 'shed' | 'bandstand'
   | 'kiln' | 'oven' // working with clay
   | 'beehive' | 'sundial' | 'mosaic' | 'bathhouse'; // rare: only some islands (see S.rare)
 export type PlanKey = CraftKey | ProjectKey;
@@ -71,6 +71,7 @@ export interface Task {
   el: number;
   celebrate?: boolean;
   animal?: { kind: 'chicken' | 'sheep'; i: number }; // the animal she's herding home (so it can follow her)
+  instrument?: 'drum' | 'flute' | 'ukulele' | 'marimba'; // what she's playing (for the animation and the sound)
 }
 
 // kind: 'big' = a moment worth highlighting, 'recap' = the summary of a day (shown at the top of that day)
@@ -171,6 +172,7 @@ function createState() {
       treehouse: { started: false, progress: 0, done: false },
       houseboat: { started: false, progress: 0, done: false },
       shed: { started: false, progress: 0, done: false },
+      bandstand: { started: false, progress: 0, done: false },
       kiln: { started: false, progress: 0, done: false },
       oven: { started: false, progress: 0, done: false },
       beehive: { started: false, progress: 0, done: false },

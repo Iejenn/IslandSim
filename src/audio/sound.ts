@@ -68,6 +68,55 @@ export function createSound() {
   }
   const ease = (g: GainNode, v: number) => g.gain.setTargetAtTime(v, ctx!.currentTime, 0.6);
 
+  /* ---------- her music: a little phrase per call; returns how long until the next one ---------- */
+  // a pentatonic scale, so whatever she plays sounds pleasant
+  const SCALE = [261.6, 293.7, 329.6, 392, 440, 523.3, 587.3, 659.3, 784];
+  const CHORDS = [[261.6, 329.6, 392], [220, 261.6, 329.6], [174.6, 220, 261.6], [196, 246.9, 293.7]]; // C, Am, F, G
+  let note = 4, chord = 0;
+  /** A held flute note: soft attack, a little vibrato. */
+  function fluteNote(f: number, dur: number, vol: number, delay = 0) {
+    const t = ctx!.currentTime + delay, o = ctx!.createOscillator(), lfo = ctx!.createOscillator(), depth = ctx!.createGain(), g = ctx!.createGain();
+    o.type = 'sine'; o.frequency.value = f * 2;
+    lfo.frequency.value = 5.5; depth.gain.value = f * 0.012;
+    lfo.connect(depth).connect(o.frequency);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.06);
+    g.gain.setValueAtTime(vol, t + dur * 0.7);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(master);
+    o.start(t); lfo.start(t); o.stop(t + dur + 0.05); lfo.stop(t + dur + 0.05);
+  }
+  /** One phrase on an instrument; skill makes it steadier and quicker (and fewer wrong notes). */
+  function music(k: 'drum' | 'flute' | 'ukulele' | 'marimba', lvl: number, near: number) {
+    const beat = 0.62 - 0.025 * Math.min(10, lvl), sloppy = Math.max(0, 0.12 - lvl * 0.015);
+    const jitter = () => (Math.random() - 0.5) * sloppy;
+    const off = () => Math.random() < sloppy * 2 ? 1.06 : 1; // a slightly wrong note now and then
+    const step = () => { note = Math.max(0, Math.min(SCALE.length - 1, note + Math.floor(Math.random() * 5) - 2)); return SCALE[note] * off(); };
+    if (k === 'drum') {
+      // boom … ta-ta, with more fills as she gets better
+      tone(0.18 * near, 110, 55, 0.35);
+      tone(0.08 * near, 220, 160, 0.12, 'sine', beat * 0.5 + jitter());
+      tone(0.08 * near, 220, 160, 0.12, 'sine', beat * 0.75 + jitter());
+      if (lvl >= 3 && Math.random() < 0.4) tone(0.06 * near, 260, 190, 0.08, 'sine', beat * 0.875);
+      return beat;
+    }
+    if (k === 'flute') {
+      const n = 1 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < n; i++) fluteNote(step(), beat * (n === 1 ? 1.6 : 0.8), 0.05 * near, i * beat * 0.5 + jitter());
+      return beat * (n === 1 ? 1.6 : n * 0.5 + 0.4);
+    }
+    if (k === 'ukulele') {
+      // strum the chord (down, then up), moving to the next chord every couple of bars
+      if (Math.random() < 0.3) chord = (chord + 1) % CHORDS.length;
+      CHORDS[chord].forEach((f, i) => tone(0.045 * near, f * off(), f * 0.995, 0.7, 'triangle', i * 0.025 + jitter()));
+      CHORDS[chord].slice().reverse().forEach((f, i) => tone(0.03 * near, f, f * 0.995, 0.5, 'triangle', beat * 0.5 + i * 0.02));
+      return beat;
+    }
+    // marimba: two mallet notes, a woody ring with an octave on top
+    for (let i = 0; i < 2; i++) { const f = step(), d = i * beat * 0.5 + jitter(); tone(0.07 * near, f, f, 0.45, 'sine', d); tone(0.02 * near, f * 4, f * 4, 0.12, 'sine', d); }
+    return beat;
+  }
+
   // remember the player's choice (only in this browser)
   try { on = localStorage.getItem(PREF) === 'on'; } catch { /* storage blocked */ }
 
@@ -133,11 +182,8 @@ export function createSound() {
       if (st?.type === 'do' && now > nextHit) {
         if (st.pose === 'chop') { tone(0.12 * near, 140, 70, 0.12); burst(0.08 * near, 900, 0.08); nextHit = now + 0.9; }
         else if (st.pose === 'hammer') { tone(0.08 * near, 320, 200, 0.06, 'triangle'); nextHit = now + 0.55; }
-        else if (S.task?.id === 'drum') {
-          // a simple loop: boom … ta-ta boom
-          tone(0.18 * near, 110, 55, 0.35); tone(0.08 * near, 220, 160, 0.12, 'sine', 0.3); tone(0.08 * near, 220, 160, 0.12, 'sine', 0.45);
-          nextHit = now + 0.75;
-        } else nextHit = now + 0.3;
+        else if (S.task?.id === 'drum' && S.task.instrument) nextHit = now + music(S.task.instrument, S.skills.music.lvl, near);
+        else nextHit = now + 0.3;
       }
     },
   };
