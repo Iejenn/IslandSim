@@ -1,7 +1,9 @@
 // Sun, moon, sky colour, stars and the campfire glow over the day/night cycle.
-import { type Camera, BufferGeometry, Color, DirectionalLight, Float32BufferAttribute, HemisphereLight, Points, PointsMaterial, type Fog, type Mesh, type PointLight, type Scene } from 'three';
+// The sky is a dome around the camera: a gradient from the horizon up, warmed
+// around the sun at sunrise and sunset, with the sun's disc rising and setting.
+import { AdditiveBlending, BackSide, Group, Mesh, PlaneGeometry, ShaderMaterial, SphereGeometry, Vector3, type Camera, BufferGeometry, Color, DirectionalLight, Float32BufferAttribute, HemisphereLight, Points, PointsMaterial, type Fog, type PointLight, type Scene } from 'three';
 import { clamp, smooth } from '../sim/util';
-import { createNight } from './night';
+import { arc, createNight } from './night';
 
 // three r155+ uses physical light units. r147 (legacy mode) silently multiplied
 // every light by π, so we do it here to keep the original brightness.
@@ -41,7 +43,49 @@ export function createSky(scene: Scene, camera: Camera) {
     return s;
   })();
 
-  const cDay = new Color('#8FD3E6'), cDusk = new Color('#F3A46B'), cNight = new Color('#0C1B33'), cRain = new Color('#7E8E98'), sky = new Color(), grey = new Color();
+  /* the sky dome (drawn behind everything, travels with the camera) */
+  const dome = new Group();
+  scene.add(dome);
+  const skyMat = new ShaderMaterial({
+    side: BackSide, depthWrite: false, fog: false,
+    uniforms: { top: { value: new Color() }, horizon: { value: new Color() }, glowCol: { value: new Color('#FF9A55') }, glow: { value: 0 }, sunDir: { value: new Vector3(1, 0, 0) } },
+    vertexShader: 'varying vec3 vDir; void main() { vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `
+      uniform vec3 top, horizon, glowCol, sunDir; uniform float glow; varying vec3 vDir;
+      void main() {
+        vec3 d = normalize(vDir);
+        vec3 col = mix(horizon, top, smoothstep(-0.02, 0.32, d.y));
+        // a warm wash low in the sky on the sun's side, and a brighter halo right around it
+        float toward = max(dot(normalize(vec3(d.x, 0.0, d.z)), normalize(vec3(sunDir.x, 0.0, sunDir.z))), 0.0);
+        float band = pow(toward, 3.0) * (1.0 - smoothstep(0.0, 0.3, d.y));
+        float halo = pow(max(dot(d, sunDir), 0.0), 24.0);
+        col += glowCol * glow * (0.75 * band + 0.6 * halo);
+        gl_FragColor = vec4(col, 1.0);
+      }`,
+  });
+  const skyBall = new Mesh(new SphereGeometry(300, 32, 16), skyMat);
+  skyBall.renderOrder = -10;
+  dome.add(skyBall);
+  /* the sun's disc: white-gold up high, big and orange near the horizon */
+  const sunMat = new ShaderMaterial({
+    transparent: true, depthWrite: false, fog: false, blending: AdditiveBlending,
+    uniforms: { col: { value: new Color('#FFF3D0') }, opacity: { value: 1 } },
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `
+      uniform vec3 col; uniform float opacity; varying vec2 vUv;
+      void main() {
+        float r = length(vUv * 2.0 - 1.0);
+        float a = smoothstep(0.3, 0.27, r) + 0.45 * pow(max(1.0 - r, 0.0), 2.5);
+        gl_FragColor = vec4(col * a * opacity, 1.0);
+      }`,
+  });
+  const sunDisc = new Mesh(new PlaneGeometry(26, 26), sunMat);
+  sunDisc.renderOrder = -9;
+  dome.add(sunDisc);
+  const hDay = new Color('#CBEBF2'), hDusk = new Color('#F4B07C'), hNight = new Color('#1A2D50'), horizon = new Color();
+  const sunHigh = new Color('#FFF3D0'), sunLow = new Color('#FF9545');
+
+  const cDay = new Color('#8FD3E6'), cDusk = new Color('#D99A86'), cTwilight = new Color('#2E3460'), cNight = new Color('#0C1B33'), cRain = new Color('#7E8E98'), sky = new Color(), grey = new Color();
 
   /**
    * @param t real seconds (flame flicker)
@@ -57,7 +101,9 @@ export function createSky(scene: Scene, camera: Camera) {
     const day = smooth((e + 0.1) / 0.4);
     if (e > 0.25) sky.copy(cDay);
     else if (e > 0) sky.copy(cDusk).lerp(cDay, e / 0.25);
-    else if (e > -0.18) sky.copy(cNight).lerp(cDusk, (e + 0.18) / 0.18);
+    // (overhead goes rose → violet twilight → night; the orange stays low, on the horizon)
+    else if (e > -0.08) sky.copy(cTwilight).lerp(cDusk, (e + 0.08) / 0.08);
+    else if (e > -0.18) sky.copy(cNight).lerp(cTwilight, (e + 0.18) / 0.1);
     else sky.copy(cNight);
     if (rain > 0) sky.lerp(grey.copy(cRain).multiplyScalar((storm ? 0.1 : 0.2) + (storm ? 0.55 : 0.8) * day), rain * (storm ? 0.9 : 0.75));
     // lightning: a brief white flash every few seconds during a storm
@@ -66,8 +112,30 @@ export function createSky(scene: Scene, camera: Camera) {
     flash = Math.max(0, flash - dt * 6);
     if (flash > 0) sky.lerp(grey.set('#EEF3FF'), flash * 0.8);
     (scene.background as Color).copy(sky);
+    // the horizon: pale by day, glowing peach at sunrise and sunset, deep blue at night
+    if (e > 0.25) horizon.copy(hDay);
+    else if (e > 0) horizon.copy(hDusk).lerp(hDay, e / 0.25);
+    else if (e > -0.18) horizon.copy(hNight).lerp(hDusk, (e + 0.18) / 0.18);
+    else horizon.copy(hNight);
+    if (rain > 0) horizon.lerp(grey.copy(cRain).multiplyScalar((storm ? 0.12 : 0.25) + (storm ? 0.55 : 0.8) * day), rain * (storm ? 0.9 : 0.75));
+    if (flash > 0) horizon.lerp(grey.set('#EEF3FF'), flash * 0.8);
+    dome.position.copy(camera.position);
+    skyMat.uniforms.top.value.copy(sky);
+    skyMat.uniforms.horizon.value.copy(horizon);
+    const sunPos = arc(h);
+    skyMat.uniforms.sunDir.value.copy(sunPos).normalize();
+    const dusk = clamp(1 - Math.abs(e) / 0.3, 0, 1); // 1 right at sunrise/sunset
+    skyMat.uniforms.glow.value = (dusk + 0.15 * day) * (1 - rain);
+    // the disc itself: above the horizon only, hidden by cloud
+    const up = sunPos.y / 140;
+    sunDisc.visible = up > -0.03 && rain < 0.9;
+    sunDisc.position.copy(sunPos);
+    sunDisc.lookAt(camera.position);
+    sunDisc.scale.setScalar(1 + 0.4 * dusk);
+    (sunMat.uniforms.col.value as Color).copy(sunLow).lerp(sunHigh, clamp(up / 0.12, 0, 1));
+    sunMat.uniforms.opacity.value = clamp((up + 0.03) / 0.05, 0, 1) * (1 - 0.85 * rain);
     const fog = scene.fog as Fog;
-    fog.color.copy(sky);
+    fog.color.copy(sky).lerp(horizon, 0.6); // (so the far sea melts into the horizon)
     fog.near = 120 - 75 * rain;
     fog.far = 260 - 140 * rain;
     hemi.intensity = (0.18 + 0.45 * day + flash * 1.5) * LEGACY;

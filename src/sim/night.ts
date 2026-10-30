@@ -20,3 +20,7 @@ export function glowingSea(min = S.min) {
   const chance = { spring: 0.12, summer: 0.4, autumn: 0.2, winter: 0 }[season(Math.floor(min / 1440) + 1)];
   return !S.weather.raining && hash(nightOf(min) * 3 + S.island.seasonStart) < chance;
 }
+
+/** How far through its cycle the moon is right now, smoothly (0 new · 0.5 full), for drawing it. */
+// (shifted so the moon is exactly full around 21:30 on the night fullMoon() says, rising as the sun sets)
+export const moonAge = (min = S.min) => (((((min - 7 * 60) / 1440 - 0.6) / MOON_DAYS) % 1) + 1) % 1;

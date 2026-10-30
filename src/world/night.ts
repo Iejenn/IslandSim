@@ -3,9 +3,9 @@
 // summer nights the waves along the shore glow blue.
 import {
   AdditiveBlending, BufferAttribute, CanvasTexture, type Camera, Group, BufferGeometry, Color, DoubleSide, Float32BufferAttribute, Line, LineBasicMaterial, LineSegments, Mesh, PlaneGeometry,
-  Points, PointsMaterial, ShaderMaterial, type DirectionalLight, type Scene, Vector3,
+  Points, PointsMaterial, Quaternion, ShaderMaterial, type DirectionalLight, type Scene, Vector3,
 } from 'three';
-import { glowingSea, moonLight, moonPhase } from '../sim/night';
+import { glowingSea, moonAge, moonLight } from '../sim/night';
 import { pointAt } from '../sim/island';
 import { clamp } from '../sim/util';
 
@@ -20,6 +20,17 @@ function softDot() {
 }
 /** A direction on the sky dome (az, el in radians) at the sky radius. */
 const dome = (az: number, el: number, r = SKY_R) => new Vector3(Math.cos(el) * Math.cos(az) * r, Math.sin(el) * r, Math.cos(el) * Math.sin(az) * r);
+/**
+ * Where the sun (or the moon) is in the sky at its own hour `hr`: it rises in
+ * the east (+x) at 6, is highest at 12 (towards +z) and sets in the west at 18,
+ * below the sea in between. The arc is kept low, because the camera can only
+ * tilt up a little: what matters is seeing it rise and set.
+ */
+export const ARC_EL = 0.28;
+export function arc(hr: number, r = SKY_R) {
+  const a = (hr - 6) / 12 * Math.PI;
+  return dome(a, ARC_EL * Math.sin(a), r);
+}
 
 // constellations, as little 2D star maps (x, y in degrees) plus which stars are joined
 const CONSTELLATIONS: { az: number; el: number; stars: [number, number][]; lines: [number, number][] }[] = [
@@ -42,16 +53,16 @@ export function createNight(scene: Scene, moonLightSrc: DirectionalLight, camera
   /* the moon: a disc whose lit part follows the phase */
   const moonMat = new ShaderMaterial({
     transparent: true, depthWrite: false, fog: false, side: DoubleSide,
-    uniforms: { phase: { value: 0.5 }, opacity: { value: 0 } },
+    uniforms: { sun: { value: new Vector3(0, 0, 1) }, opacity: { value: 0 } },
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: `
-      uniform float phase, opacity; varying vec2 vUv;
+      uniform vec3 sun; uniform float opacity; varying vec2 vUv;
       void main() {
         vec2 p = vUv * 2.0 - 1.0; float r = length(p);
         if (r > 1.0) discard;
         vec3 n = vec3(p, sqrt(1.0 - r * r));
-        float a = phase * 6.2832;
-        float lit = smoothstep(-0.06, 0.06, dot(n, vec3(sin(a), 0.0, -cos(a))));
+        // lit from wherever the sun is: full when it's behind us, a crescent when it's near the moon
+        float lit = smoothstep(-0.06, 0.06, dot(n, sun));
         float spots = 0.08 * smoothstep(0.35, 0.0, length(p - vec2(-0.3, 0.25))) + 0.06 * smoothstep(0.25, 0.0, length(p - vec2(0.35, -0.3)));
         vec3 col = mix(vec3(0.10, 0.13, 0.22), vec3(0.97, 0.95, 0.86) - spots, lit);
         gl_FragColor = vec4(col, opacity * mix(0.35, 1.0, lit) * smoothstep(1.0, 0.96, r));
@@ -78,6 +89,7 @@ export function createNight(scene: Scene, moonLightSrc: DirectionalLight, camera
   const streak = new Line(streakGeo, new LineBasicMaterial({ color: '#FFFFFF', transparent: true, opacity: 0, fog: false, depthWrite: false }));
   sky.add(streak);
   let shoot = -1, nextShoot = 6;
+  const sunDir = new Vector3(), inv = new Quaternion();
   const from = new Vector3(), dir = new Vector3(), head = new Vector3(), tail = new Vector3();
 
   /* the glowing sea: specks along the waterline that pulse in waves */
@@ -104,17 +116,21 @@ export function createNight(scene: Scene, moonLightSrc: DirectionalLight, camera
   return function updateNight(t: number, h: number, rain: number, dt: number) {
     const e = Math.sin((h - 6) / 12 * Math.PI), dark = clamp(-e * 3, 0, 1), clear = 1 - rain;
     sky.position.copy(camera.position);
-    // the moon rises at dusk in the east and sets at dawn in the west, staying
-    // low enough to be seen (the camera can only tilt up a little)
-    const m = ((h - 18 + 24) % 24) / 12 * Math.PI, el = Math.sin(m);
-    moon.position.copy(dome(Math.PI - m * 0.9 + 0.3, 0.02 + 0.13 * el));
+    // the moon follows the same arc as the sun, a little later each day: a new
+    // moon travels with the sun, a half moon rises around noon, a full moon
+    // rises as the sun sets (so its shape and timing always match)
+    const age = moonAge(), mh = h - age * 24;
+    const el = Math.sin(((mh - 6) / 12) * Math.PI);
+    moon.position.copy(arc(mh));
     moon.lookAt(camera.position);
-    moonMat.uniforms.phase.value = moonPhase();
-    moonMat.uniforms.opacity.value = clamp(el * 4, 0, 1) * clamp(dark * 1.5, 0, 1) * clear;
+    sunDir.copy(arc(h, 1)).normalize().applyQuaternion(inv.copy(moon.quaternion).invert());
+    moonMat.uniforms.sun.value.copy(sunDir);
+    // (by day it's a pale ghost of itself)
+    moonMat.uniforms.opacity.value = clamp(el * 6, 0, 1) * (0.35 + 0.65 * clamp(dark * 1.5, 0, 1)) * clear;
     moon.visible = moonMat.uniforms.opacity.value > 0.01;
-    // moonlight: bright on a full moon, almost nothing on a new one
+    // moonlight: only while it's up, bright on a full moon, almost nothing on a new one
     moonLightSrc.position.copy(moon.position).multiplyScalar(0.25).setY(30 * Math.max(0.3, el));
-    moonLightSrc.intensity *= 0.25 + 0.75 * moonLight();
+    moonLightSrc.intensity *= (0.25 + 0.75 * moonLight()) * (0.2 + 0.8 * clamp(el * 3, 0, 1));
 
     const faint = dark * clear * (1 - 0.5 * moonLight()); // a bright moon washes out the faint lines
     (conStars.material as PointsMaterial).opacity = dark * clear;
