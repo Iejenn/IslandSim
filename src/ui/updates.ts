@@ -2,6 +2,7 @@
 // Every update that ships adds an entry at the top with the next version
 // (minor bump for content, patch bump for small fixes); VERSION follows it.
 export const UPDATES: { version: string; title: string; text: string }[] = [
+  { version: '1.5', title: 'Salt, smoke & iron', text: 'Salt pans on the rocky shore, a roof over the fire against the rain, a smokehouse for fish that keeps all winter, a workshop with a workbench, and late in the game a furnace to turn red ore into iron tools. (And she no longer sleeps in the open hammock in the rain.)' },
   { version: '1.4.1', title: 'Sandbar & surf fixes', text: 'The sandbar now rises out of the water from both ends as the tide goes out, with the same surf as the beaches, and the surf fades into rain, fog and the dark like everything else.' },
   { version: '1.4', title: 'Island growth', text: 'A bamboo islet across a sandbar (bridge it in bamboo, wood or stone), a cave with flint for sharper tools, water piped or drawn from a well in camp, wind chimes, and furniture and fences in each castaway’s favourite material (she remakes older pieces in it later).' },
   { version: '1.3.1', title: 'Surf fix', text: 'The surf now follows the water’s edge, the swell is calmer near the beach, and her speech bubble stays on screen.' },

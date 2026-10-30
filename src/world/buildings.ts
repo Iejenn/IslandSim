@@ -5,7 +5,7 @@ import {
   BoxGeometry, Color, CylinderGeometry, ExtrudeGeometry, TorusGeometry, type MeshStandardMaterial, Group, IcosahedronGeometry, Shape, SphereGeometry,
   type Material, type Mesh, type Object3D, type Scene, ConeGeometry, DodecahedronGeometry,
 } from 'three';
-import { BAR_A, BAR_B, BRIDGE_Y, CAVE_FACE, CAVE_P, height, PIPE_FROM, SPOUT_P, WELL_P, ORCHARD, ORCHARD_P, BANDSTAND_FLOOR, BANDSTAND_P, SHED_P, BATH_P, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SP, SUNDIAL_P, HOUSEBOAT_P, HOUSEBOAT_YAW, BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
+import { SALT_P, FIRECOVER_POSTS, SMOKE_P, WORKSHOP_P, FURNACE_P, ORE_P, BAR_A, BAR_B, BRIDGE_Y, CAVE_FACE, CAVE_P, height, PIPE_FROM, SPOUT_P, WELL_P, ORCHARD, ORCHARD_P, BANDSTAND_FLOOR, BANDSTAND_P, SHED_P, BATH_P, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SP, SUNDIAL_P, HOUSEBOAT_P, HOUSEBOAT_YAW, BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
 import { PLANS } from '../sim/plans';
 import { tideOffset } from '../sim/tide';
 import type { Crop, FruitKind, ProjectKey, SimState, Style } from '../sim/state';
@@ -19,6 +19,7 @@ const cornGold = mat('#E8C547', { roughness: 0.6 }), pumpkinMat = mat('#E07B24',
 const PETALS = ['#E85C8A', '#F2D14B', '#FFFFFF', '#B07CE0', '#F08A3C'].map(c => mat(c, { roughness: 0.6 }));
 const FRUIT_MAT: Record<FruitKind, ReturnType<typeof mat>> = { mango: mat('#F0A030', { roughness: 0.5 }), banana: mat('#F2DB4A', { roughness: 0.5 }), lemon: mat('#F5E65A', { roughness: 0.4 }) };
 const bambooMat = mat('#C9B26B'), bambooNode = mat('#9C8A45'), rope = mat('#B9A26A'), caveDark = mat('#141210', { roughness: 1 }), wellWater = mat('#3F8FA0', { roughness: 0.2 });
+const stoneGrey = mat('#8E979B'), saltMat = mat('#F4F1EA', { roughness: 0.9 }), brine = mat('#8FC9CF', { roughness: 0.2 }), oreMat = mat('#9A4A33'), furnaceGlow = mat('#FF8A2A', { emissive: '#FF6A10', emissiveIntensity: 1.2 });
 const trapFishMat = mat('#8FB6C4', { roughness: 0.4, metalness: 0.2 }), rainwater = mat('#5FB8C9', { roughness: 0.2 });
 
 export function createBuildings(scene: Scene) {
@@ -605,7 +606,7 @@ export function createBuildings(scene: Scene) {
     return out;
   })();
   const bridge = [...bridgeStyles.wood, ...bridgeStyles.bamboo, ...bridgeStyles.stone];
-  const STYLED_PARTS: Partial<Record<ProjectKey, Record<Style, Object3D[]>>> = { fence: fenceStyles, bridge: bridgeStyles };
+  const STYLED_PARTS: Partial<Record<ProjectKey, Record<Style, Object3D[]>>> = { fence: fenceStyles, bridge: bridgeStyles }; // (the fire hood joins below)
 
   /* the cave: a dark mouth in the hillside behind a pile of rubble; she clears it and props it up with timbers */
   const caveYaw = Math.atan2(CAVE_FACE.x, CAVE_FACE.z);
@@ -679,12 +680,97 @@ export function createBuildings(scene: Scene) {
     return staged(parts);
   })();
 
+  /* ---------- v1.5 ---------- */
+  /* salt pans: three shallow, stone-rimmed pans on the rocky shore; the brine dries to a white crust */
+  const saltCrust: Mesh[] = [];
+  const saltpans = (() => {
+    const parts: Object3D[] = [], yaw = yawTo(SALT_P, V(0, 0));
+    for (let i = 0; i < 3; i++) {
+      const g = new Group();
+      at(g, SALT_P.x + Math.cos(yaw) * (i - 1) * 1.15, SALT_P.y + 0.02, SALT_P.z - Math.sin(yaw) * (i - 1) * 1.15, yaw);
+      for (const [x, z, w, d] of [[0, -0.45, 1.0, 0.12], [0, 0.45, 1.0, 0.12], [-0.45, 0, 0.12, 0.9], [0.45, 0, 0.12, 0.9]]) g.add(mesh(new BoxGeometry(w, 0.14, d), M.rock, x, 0.07, z));
+      g.add(mesh(new BoxGeometry(0.8, 0.02, 0.8), brine, 0, 0.05, 0, false));
+      const crust = mesh(new BoxGeometry(0.8, 0.03, 0.8), saltMat, 0, 0.06, 0, false); g.add(crust); saltCrust.push(crust);
+      parts.push(g);
+    }
+    return staged(parts);
+  })();
+  /* a hood over the fire: two posts and a little roof, in her style */
+  const firecoverStyles = (() => {
+    const out = { wood: [] as Object3D[], bamboo: [] as Object3D[], stone: [] as Object3D[] };
+    const [p, q] = FIRECOVER_POSTS, yaw = Math.atan2(q.x - p.x, q.z - p.z);
+    for (const o of [p, q]) {
+      out.wood.push(mesh(new CylinderGeometry(0.07, 0.08, 2.7, 6), M.log, o.x, o.y + 1.35, o.z));
+      out.bamboo.push(mesh(new CylinderGeometry(0.06, 0.06, 2.7, 6), bambooMat, o.x, o.y + 1.35, o.z));
+      out.stone.push(mesh(new BoxGeometry(0.32, 2.6, 0.32), M.rock, o.x, o.y + 1.3, o.z));
+    }
+    const roof = (m: Material, list: Object3D[]) => {
+      for (const side of [-1, 1]) {
+        const r = mesh(new BoxGeometry(1.25, 0.06, 2.9), m, FIRE.x + Math.cos(yaw) * side * 0.55, FIRE.y + 2.85, FIRE.z - Math.sin(yaw) * side * 0.55);
+        r.rotation.set(0, yaw, -side * 0.45, 'YXZ'); list.push(r); // (each half slopes down, away from the ridge)
+      }
+    };
+    roof(M.wood, out.wood); roof(bambooMat, out.bamboo); roof(M.thatch, out.stone);
+    staged(out.wood); staged(out.bamboo); staged(out.stone);
+    return out;
+  })();
+  const firecover = [...firecoverStyles.wood, ...firecoverStyles.bamboo, ...firecoverStyles.stone];
+  STYLED_PARTS.firecover = firecoverStyles;
+  /* the smokehouse: a little plank hut with a chimney */
+  const smokehouse = (() => {
+    const g = (o: Object3D, x: number, y: number, z: number) => { o.position.set(SMOKE_P.x + x, SMOKE_P.y + y, SMOKE_P.z + z); return o; };
+    const roofL = g(mesh(new BoxGeometry(1.7, 0.06, 1.0), M.thatch), 0, 1.55, -0.4); roofL.rotation.x = -0.6; // (sloping down, away from the ridge)
+    const roofR = g(mesh(new BoxGeometry(1.7, 0.06, 1.0), M.thatch), 0, 1.55, 0.4); roofR.rotation.x = 0.6;
+    return staged([
+      g(mesh(new BoxGeometry(1.5, 0.12, 1.5), M.rock), 0, 0.06, 0),
+      g(mesh(new BoxGeometry(1.4, 1.3, 1.4), M.wood), 0, 0.75, 0),
+      g(mesh(new BoxGeometry(0.45, 0.8, 0.04), caveDark), 0, 0.5, 0.71),
+      roofL, roofR,
+      g(mesh(new BoxGeometry(0.22, 0.6, 0.22), M.rock), 0.45, 1.85, 0),
+    ]);
+  })();
+  /* the workshop: a roof on four posts over a workbench, tools on a board at the back */
+  const workshop = (() => {
+    const yaw = yawTo(WORKSHOP_P, FIRE), parts: Object3D[] = [], c = Math.cos(yaw), s = Math.sin(yaw);
+    const L = (x: number, y: number, z: number, o: Object3D) => { o.position.set(WORKSHOP_P.x + x * c + z * s, WORKSHOP_P.y + y, WORKSHOP_P.z - x * s + z * c); o.rotation.y = yaw; return o; };
+    for (const [x, z] of [[-1.3, -0.9], [1.3, -0.9], [-1.3, 0.9], [1.3, 0.9]]) parts.push(L(x, 1.2, z, mesh(new CylinderGeometry(0.07, 0.08, 2.4, 6), M.log)));
+    parts.push(L(0, 0.45, -0.3, mesh(new BoxGeometry(1.8, 0.1, 0.7), M.wood))); // the bench top
+    for (const x of [-0.8, 0.8]) parts.push(L(x, 0.2, -0.3, mesh(new BoxGeometry(0.1, 0.4, 0.6), M.log)));
+    parts.push(L(0, 1.1, -0.95, mesh(new BoxGeometry(2.4, 1.0, 0.06), M.wood))); // tool board
+    for (const x of [-0.8, -0.3, 0.3, 0.8]) parts.push(L(x, 1.15, -0.9, mesh(new BoxGeometry(0.06, 0.5, 0.04), x < 0 ? M.log : stoneGrey)));
+    const roof = L(0, 2.45, 0, mesh(new BoxGeometry(3.0, 0.08, 2.3), M.thatch)); roof.rotation.x = 0.12; parts.push(roof);
+    return staged(parts);
+  })();
+  /* the furnace: a tall stone stack with a glowing mouth (and the red ore seam on the ridge) */
+  const furnaceMouth = mesh(new BoxGeometry(0.34, 0.3, 0.05), furnaceGlow, 0, 0, 0, false);
+  const furnace = (() => {
+    const yaw = yawTo(FURNACE_P, FIRE);
+    const parts = [
+      at(mesh(new CylinderGeometry(0.75, 0.9, 0.5, 9), M.rock, 0, 0, 0), FURNACE_P.x, FURNACE_P.y + 0.25, FURNACE_P.z),
+      at(mesh(new CylinderGeometry(0.5, 0.75, 1.1, 9), clayMat, 0, 0, 0), FURNACE_P.x, FURNACE_P.y + 1.05, FURNACE_P.z),
+      at(mesh(new CylinderGeometry(0.28, 0.45, 0.6, 9), clayMat, 0, 0, 0), FURNACE_P.x, FURNACE_P.y + 1.9, FURNACE_P.z),
+    ];
+    at(furnaceMouth, FURNACE_P.x + Math.sin(yaw) * 0.86, FURNACE_P.y + 0.3, FURNACE_P.z + Math.cos(yaw) * 0.86, yaw);
+    furnaceMouth.visible = false; scene.add(furnaceMouth);
+    return staged(parts);
+  })();
+  (() => {
+    const g = new Group();
+    at(g, ORE_P.x, ORE_P.y, ORE_P.z);
+    for (let i = 0; i < 5; i++) {
+      const r = mesh(new DodecahedronGeometry(0.3 + (i % 3) * 0.12, 0), i % 2 ? oreMat : M.rock, Math.cos(i * 1.3) * 0.5, 0.15, Math.sin(i * 1.3) * 0.5);
+      r.rotation.set(i, i * 2, 0); g.add(r);
+    }
+    scene.add(g);
+    pickable(g, S => ({ title: 'Red rock', lines: [S.projects.furnace.done ? 'Iron ore, for her furnace' : 'Streaked with rusty red. Iron?'] }));
+  })();
+
   const showParts = (parts: Object3D[], started: boolean, progress: number, damaged = false) => {
     // storm damage knocks some of the later parts off until she repairs it
     const n = started ? Math.max(1, Math.ceil(progress * (damaged ? 0.7 : 1) * parts.length)) : 0;
     parts.forEach((p, i) => { p.visible = i < n; });
   };
-  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop, trap: trap.parts, barrel: barrel.parts, treehouse, houseboat: houseboat.parts, shed, bandstand, kiln, oven, beehive, sundial, mosaic, bathhouse, orchard, bridge, cave, pipe, well };
+  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop, trap: trap.parts, barrel: barrel.parts, treehouse, houseboat: houseboat.parts, shed, bandstand, kiln, oven, beehive, sundial, mosaic, bathhouse, orchard, bridge, cave, pipe, well, saltpans, firecover, smokehouse, workshop, furnace };
   /* ---------- weathering: wood greys, stone gathers moss, fabric fades ---------- */
   // Each building gets its own copies of the shared materials (made on the
   // first update, after the island's colours are applied), which drift towards
@@ -739,6 +825,11 @@ export function createBuildings(scene: Scene) {
     bridge: S => `Made of ${S.madeStyle.bridge ?? 'wood'} · across to the bamboo islet`,
     fence: S => { const n = S.chickens.filter(c => c.penned).length + S.sheep.filter(c => c.penned).length + S.bredHens + S.bredSheep.length; return `${S.madeStyle.fence === 'stone' ? 'A dry-stone wall' : S.madeStyle.fence === 'bamboo' ? 'Bamboo, lashed with fibre' : 'Posts and rails'} · ${n ? `keeps ${n} animal${n > 1 ? 's' : ''} safe` : 'no animals inside yet'}`; },
     pipe: () => 'Fresh water from the pond, right into camp',
+    saltpans: S => S.saltPans >= 1 ? `${Math.floor(S.saltPans)} handfuls of salt drying` : 'Seawater drying in the sun',
+    firecover: S => `Made of ${S.madeStyle.firecover ?? 'wood'} · keeps the rain off the fire`,
+    smokehouse: S => S.stock.fish ? `${S.stock.fish} smoked fish hanging inside` : 'Waiting for a good catch',
+    workshop: () => 'Her workbench: crafting goes quicker here',
+    furnace: S => S.stock.iron ? `${S.stock.iron} lumps of iron made` : 'Hot enough to melt rock',
     well: () => 'Cold, clean water in the middle of camp',
     orchard: S => { const n = S.orchard.filter(t => t.kind).length; return n ? `${n} of ${S.orchard.length} trees planted` : 'Waiting for its first tree'; },
     coop: S => { const n = S.chickens.filter(c => c.penned).length + S.bredHens; return n ? `Home to ${n} hen${n > 1 ? 's' : ''}${S.young.some(y => y.kind === 'chick') ? ' and their chicks' : ''}` : 'Waiting for its first hens'; },
@@ -784,6 +875,9 @@ export function createBuildings(scene: Scene) {
     }
     caveRubble.forEach((r, i) => { r.visible = !S.projects.cave.done && i >= Math.floor(S.projects.cave.progress * caveRubble.length); });
     for (const o of pipeWater) o.visible = S.projects.pipe.done;
+    saltCrust.forEach(c => { c.visible = S.projects.saltpans.done && S.saltPans >= 0.5; c.scale.y = 0.3 + S.saltPans / 6; });
+    furnaceMouth.visible = S.projects.furnace.done;
+    (furnaceGlow as MeshStandardMaterial).emissiveIntensity = 0.9 + 0.4 * Math.sin(t * 7) * Math.sin(t * 3.1);
     pipeWater[1].scale.x = pipeWater[1].scale.z = 1 + 0.15 * Math.sin(t * 9);
     // the lodge replaces the shelter (and its stone walls) once it's finished
     if (S.projects.lodge.done) for (const p of hut) p.visible = false;

@@ -6,7 +6,7 @@ import { liking } from './memory';
 import { happiness, wouldBeCutShort } from './needs';
 import { nextToHerd, sheepToShear } from './animals';
 import { canWork, damaged, FIREWOOD_RESERVE, missing, PLANS, REPAIRABLE, works } from './plans';
-import { standingTrees } from './resources';
+import { preservedCap, standingTrees } from './resources';
 import { dayNum, hour, isNight, S, tr, type TaskId } from './state';
 import { activityBias } from './taste';
 import { injured } from './events';
@@ -113,6 +113,10 @@ export function decide() {
   else if (S.style === 'bamboo' && S.isletFound && toIslet && S.stock.bamboo < 5) add('bamboo', 0.3 + 0.15 * S.taste.green - dark - wet);
   if (!S.isletFound && lowTide() && dayNum() >= 3 && !night) add('bamboo', 0.75 + 0.4 * S.taste.adventure + (S.style === 'bamboo' ? 0.2 : 0) + 0.2 * u(n.fun) - wet); // curious about that islet
   if (need.flint > 0) add('flint', 0.6 + busy - dark);
+  // salt from the pans, fish into the smokehouse, iron from ore
+  if (works('saltpans') && S.saltPans >= 3) add('salt', 0.42 + busy + (S.saltPans >= 5 ? 0.15 : 0) - dark - wet);
+  if (works('smokehouse') && S.stock.raw + S.stock.meat >= 2 && S.stock.fish < preservedCap() && n.food > 35) add('smoke', 0.55 + busy - dark);
+  if (need.iron > 0) add(S.stock.ore >= 2 && S.stock.wood >= 3 + FIREWOOD_RESERVE ? 'smelt' : S.stock.ore < 2 ? 'ore' : 'chop', 0.62 + busy - dark - wet);
   if (need.clay > 0) add('clay', 0.6 + busy - dark - wet);
   if (need.shells > 0) add('explore', 0.55 + busy - dark - wet); // beachcombing for the mosaic
   /* island events: things that turned up and want her attention */

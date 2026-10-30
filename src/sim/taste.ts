@@ -22,7 +22,7 @@ export function rollTaste(): Taste {
 // what someone with each passion might dream of building
 const DREAMS: Record<Leaning, PlanKey[]> = {
   comfort: ['lodge', 'sofa', 'realbed'],
-  practical: ['lodge', 'hearth', 'dock', 'shed', 'well'],
+  practical: ['lodge', 'hearth', 'dock', 'shed', 'well', 'workshop', 'furnace'],
   animals: ['coop', 'blanket'],
   green: ['garden', 'barrel', 'orchard', 'pipe'],
   sea: ['canoe', 'dock', 'trap', 'houseboat'],
@@ -67,7 +67,7 @@ const TASK_LEANING: Partial<Record<TaskId, Leaning>> = {
   herd: 'animals', collect: 'animals', shear: 'animals', befriend: 'animals', play: 'animals',
   plant: 'green', water: 'green', harvest: 'green', replant: 'green',
   drum: 'creative', write: 'creative',
-  bamboo: 'adventure', flint: 'practical', tidepools: 'sea', nightwalk: 'adventure', beachstars: 'adventure', plantfruit: 'green', pickfruit: 'green', dance: 'creative', cairn: 'adventure', sandcastle: 'sea', clouds: 'comfort', bouquet: 'green', whittle: 'creative', mushrooms: 'green', turtles: 'animals', tendgull: 'animals', honey: 'green', bathe: 'comfort', dig: 'adventure', salvage: 'adventure', explore: 'adventure', hunt: 'adventure', checksnares: 'practical', watch: 'adventure', stargaze: 'adventure',
+  salt: 'sea', smoke: 'sea', ore: 'practical', smelt: 'practical', bamboo: 'adventure', flint: 'practical', tidepools: 'sea', nightwalk: 'adventure', beachstars: 'adventure', plantfruit: 'green', pickfruit: 'green', dance: 'creative', cairn: 'adventure', sandcastle: 'sea', clouds: 'comfort', bouquet: 'green', whittle: 'creative', mushrooms: 'green', turtles: 'animals', tendgull: 'animals', honey: 'green', bathe: 'comfort', dig: 'adventure', salvage: 'adventure', explore: 'adventure', hunt: 'adventure', checksnares: 'practical', watch: 'adventure', stargaze: 'adventure',
   relax: 'comfort',
 };
 /** −0.05 … +0.1 extra score for activities that match her taste. */
@@ -113,6 +113,8 @@ const DREAM_SAY: Partial<Record<PlanKey, string>> = {
   cave: 'There’s a cave in that hill. One day I’ll clear the way in.',
   pipe: 'Water that comes to me, instead of me going to it. One day.',
   well: 'A well of my own, right in the middle of camp. That’s the dream.',
+  workshop: 'A real workshop, with a bench and a roof. That’s what I want one day.',
+  furnace: 'One day I’ll make metal here. Real iron, from this island.',
 };
 
 // what washed ashore with her, and the little quirks the player can spot

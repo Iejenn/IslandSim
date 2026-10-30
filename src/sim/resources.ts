@@ -52,10 +52,17 @@ export function updateResources(dm: number) {
   const keeps = FISH_KEEPS_MIN * (S.items.pots ? 2.5 : 1) * (S.projects.cave?.done ? 1.5 : 1); // sealed clay pots (and the cool cave) keep food much longer
   // the beehive fills with honey, except in winter
   if (works('beehive')) S.hive = Math.min(4, S.hive + days * (season() === 'winter' ? 0 : 0.6));
+  // salt drying in her salt pans in the sun (not while it rains), fastest in summer and on scorchers
+  if (works('saltpans') && !S.weather.raining) S.saltPans = Math.min(6, S.saltPans + days * { spring: 1.4, summer: 2.2, autumn: 1, winter: 0.4 }[s] * (S.weather.hot ? 1.5 : 1));
   if (S.stock.raw > 0 && S.min - S.rawSince > keeps) {
     if (S.projects.rack.done && !S.projects.rack.damaged) {
-      S.stock.fish = Math.min(8, S.stock.fish + S.stock.raw);
+      S.stock.fish = Math.min(preservedCap(), S.stock.fish + S.stock.raw);
       log('She hung the fish she couldn’t cook on the rack to dry.');
+    } else if (S.stock.salt >= 1) {
+      // (no rack, but salt: she salts it down instead)
+      S.stock.salt = Math.max(0, S.stock.salt - Math.ceil(S.stock.raw / 2));
+      S.stock.fish = Math.min(preservedCap(), S.stock.fish + S.stock.raw);
+      log('She salted down the fish she couldn’t cook.');
     } else {
       log(`The fish she couldn’t cook went bad.`);
       highlight('let a fish go bad');
@@ -64,8 +71,12 @@ export function updateResources(dm: number) {
   }
   if (S.stock.meat > 0 && S.min - S.meatSince > keeps) {
     if (S.projects.rack.done && !S.projects.rack.damaged) {
-      S.stock.fish = Math.min(8, S.stock.fish + S.stock.meat);
+      S.stock.fish = Math.min(preservedCap(), S.stock.fish + S.stock.meat);
       log('She hung the rabbit meat she couldn’t cook on the rack to dry.');
+    } else if (S.stock.salt >= 1) {
+      S.stock.salt = Math.max(0, S.stock.salt - Math.ceil(S.stock.meat / 2));
+      S.stock.fish = Math.min(preservedCap(), S.stock.fish + S.stock.meat);
+      log('She salted down the rabbit she couldn’t cook.');
     } else {
       log('The rabbit she couldn’t cook went bad.');
       highlight('let some meat go bad');
@@ -95,6 +106,9 @@ function seedForest(days: number) {
     if (nearTrees && Math.random() < days * 0.012 * rate * Math.min(3, nearTrees)) S.trees[i] = { state: 'sapling', growth: 0, planted: 0 };
   });
 }
+
+/** How much dried, salted or smoked food she can keep (a smokehouse holds a lot more). */
+export const preservedCap = () => works('smokehouse') ? 16 : 8;
 
 /** Index of the nearest forest tree in a given state (or -1). */
 export function nearestTree(state: 'tree' | 'stump' | 'sapling', from: Pt, skip = -1) {

@@ -3,15 +3,15 @@
 import { ONE_SHOT_SECONDS } from '../config/animations';
 import { chooseCrop, CROP_YIELD, freePlots, growingPlots, ripePlots } from './garden';
 import {
-  BAMBOO, BAR_A, BAR_B, CAVE_P, CAVE_STAND, PIPE_FROM, SPOUT_P, SPOUT_STAND, WELL_P, WELL_STAND, ORCHARD, ORCHARD_P, BANDSTAND_FLOOR, BANDSTAND_P, BAND_SPOTS, bandLocal, MARIMBA_P, type Instrument, SHED_P, TABLE_P, addScaled, dirXZ, SP, BATH_P, CLAY_P, CLAY_STAND, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SUNDIAL_P, BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
+  SALT_P, SALT_STAND, SMOKE_P, SMOKE_STAND, WORKSHOP_P, WORKSHOP_STAND, FURNACE_P, FURNACE_STAND, ORE_P, ORE_STAND, FIRECOVER_POSTS, BAMBOO, BAR_A, BAR_B, CAVE_P, CAVE_STAND, PIPE_FROM, SPOUT_P, SPOUT_STAND, WELL_P, WELL_STAND, ORCHARD, ORCHARD_P, BANDSTAND_FLOOR, BANDSTAND_P, BAND_SPOTS, bandLocal, MARIMBA_P, type Instrument, SHED_P, TABLE_P, addScaled, dirXZ, SP, BATH_P, CLAY_P, CLAY_STAND, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SUNDIAL_P, BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
   HAMMOCK_BED, SHELTER_BED, LOOKOUT_DECK, LOOKOUT_P, pointAt, RACK_P, SAIL_ROUTE, SCREE_P, SCREE_STAND, SEATS, SH, SHELTER, SPRING, standNear,
   V, WOODPILE_P, type Pt,
 } from './island';
 import { feelingAbout, remember } from './memory';
 import { nextToHerd, sheepToShear } from './animals';
 import { gainTrust } from './companion';
-import { toolSpeed, INSTRUMENTS, storageCap, checkFinished, damaged, indoors, minutesLeft, PLANS, REPAIRABLE, startPlan, workOn, works } from './plans';
-import { addMeat, addRawFish, nearestBoulder, nearestTree } from './resources';
+import { FIREWOOD_RESERVE, toolSpeed, INSTRUMENTS, storageCap, checkFinished, damaged, indoors, minutesLeft, PLANS, REPAIRABLE, startPlan, workOn, works } from './plans';
+import { addMeat, addRawFish, nearestBoulder, nearestTree, preservedCap } from './resources';
 import { addXp } from './skills';
 import {
   dayNum, feed, highlight, hour, isNight, log, S, say, tr,
@@ -122,6 +122,11 @@ const SITE: Record<string, { stand: Pt; face: Pt }> = {
   cave: { stand: CAVE_STAND, face: CAVE_P },
   pipe: { stand: standNear(V((PIPE_FROM.x + SPOUT_P.x) / 2, (PIPE_FROM.z + SPOUT_P.z) / 2), 0.9), face: V((PIPE_FROM.x + SPOUT_P.x) / 2, (PIPE_FROM.z + SPOUT_P.z) / 2) },
   well: { stand: WELL_STAND, face: WELL_P },
+  saltpans: { stand: SALT_STAND, face: SALT_P },
+  firecover: { stand: standNear(FIRECOVER_POSTS[0], 0.8, FIRE), face: FIRE },
+  smokehouse: { stand: SMOKE_STAND, face: SMOKE_P },
+  workshop: { stand: WORKSHOP_STAND, face: WORKSHOP_P },
+  furnace: { stand: FURNACE_STAND, face: FURNACE_P },
   // remaking the fence or the bridge happens where it stands
   get rework() { return SITE[S.reworkOf === 'bridge' ? 'bridge' : 'fence']; },
   bandstand: { stand: bandLocal(0, 2.2), face: BANDSTAND_P },
@@ -252,6 +257,10 @@ export const T: Record<string, () => Task | null> = {
       if (has('table')) { S.mood = Math.min(40, S.mood + 6); feed('fun', 4); } // eating at a real table
       if (recipe === fav) { S.mood = Math.min(40, S.mood + 8); feed('fun', 5); } // her favourite
       addXp('survival', 3 * n);
+      if (S.stock.salt >= 1 && Math.random() < 0.4) { // a pinch of salt makes everything better
+        S.stock.salt--; feed('food', 6); feed('fun', 6);
+        if (!S.feelingsNoted.includes('salt')) { S.feelingsNoted.push('salt'); log('She cooked with her own salt for the first time. It tasted like home.', 'big'); }
+      }
       S.stats.meals++;
       S.lastMeal = S.min;
       remember('cook', recipe === 'stew' ? 0.1 : 0.05);
@@ -264,8 +273,9 @@ export const T: Record<string, () => Task | null> = {
   eat() {
     // cold food: dried fish from the rack, or raw garden vegetables
     if (S.stock.fish > 0) {
-      return mk('eat', 'Eating dried fish', pick(TH.eat), [go(RACK_STAND, false, urgent(S.needs.food)), act({
-        pose: 'gather', face: RACK_P, min: 8, done() { if (S.stock.fish > 0) { S.stock.fish--; feed('food', 32); } },
+      const smoked = works('smokehouse');
+      return mk('eat', smoked ? 'Eating smoked fish' : 'Eating dried fish', pick(TH.eat), [go(smoked ? SMOKE_STAND : RACK_STAND, false, urgent(S.needs.food)), act({
+        pose: 'gather', face: smoked ? SMOKE_P : RACK_P, min: 8, done() { if (S.stock.fish > 0) { S.stock.fish--; feed('food', smoked ? 40 : 32); } },
       })]);
     }
     if (S.stock.fruit > 0) {
@@ -409,8 +419,10 @@ export const T: Record<string, () => Task | null> = {
     const k = S.goal;
     if (!k || PLANS[k].kind !== 'craft') return null;
     const min = Math.min(90, Math.ceil(minutesLeft()));
-    return mk('craft', `Making ${PLANS[k].a}`, pick(TH.craft), [go(CRAFT_SEAT.p), act({
-      pose: 'sit', face: FIRE, min,
+    // (at her workbench, once she has a workshop; otherwise sitting by the fire)
+    const bench = works('workshop');
+    return mk('craft', `Making ${PLANS[k].a}`, pick(TH.craft), [go(bench ? WORKSHOP_STAND : CRAFT_SEAT.p), act({
+      pose: bench ? 'hammer' : 'sit', face: bench ? WORKSHOP_P : FIRE, min,
       begin() { startPlan(k); },
       tick: dm => { workOn(k, dm); feed('fun', dm * workJoy() / 60); },
       done() { checkFinished(k); },
@@ -514,7 +526,9 @@ export const T: Record<string, () => Task | null> = {
     // on cold nights the open-air beds lose their charm (less so with a blanket)
     const chilly = fx().cold * (S.quirk === 'hardy' ? 0.3 : 1) * (has('blanket') ? 0.5 : 1);
     const exposed = (w: string) => w === 'hammock' || w === 'treehouse' || w === 'houseboat' || (w === 'shelter' && !works('hut'));
-    const score = (b: { rate: number; pref?: number; where: string }) => b.rate + (b.pref ?? 0) - (exposed(b.where) ? 10 * chilly : 0);
+    // the hammock has no roof at all: not while it rains (or rain clouds are close)
+    const wet = S.weather.raining || (!!S.weather.coming && S.weather.coming - S.min < 60);
+    const score = (b: { rate: number; pref?: number; where: string }) => b.rate + (b.pref ?? 0) - (exposed(b.where) ? 10 * chilly : 0) - (wet && b.where === 'hammock' ? 40 : 0);
     const bed = beds.reduce((a, b) => score(b) > score(a) ? b : a);
     let mins = 120;
     if (night) { const hr = hour(); mins = Math.max(60, ((7 + sleepShift() - hr + 24) % 24) * 60); } // sleep until 07:00 (or her own body clock)
@@ -715,6 +729,53 @@ export const T: Record<string, () => Task | null> = {
         S.stock.flint = Math.min(storageCap('flint'), S.stock.flint + 2);
         addXp('survival', 2);
         highlight('dug flint in the cave');
+      },
+    })]);
+  },
+  salt() {
+    // scrape up the salt the sun has left in her pans
+    if (!works('saltpans') || S.saltPans < 2) return null;
+    return mk('salt', 'Scraping salt from the pans', pick(['White gold.', 'The sun did all the work.', 'Salty fingers!']), [go(SALT_STAND), act({
+      pose: 'gather', face: SALT_P, min: 20, done() {
+        const n = Math.floor(S.saltPans);
+        S.saltPans -= n;
+        S.stock.salt = Math.min(storageCap('salt'), S.stock.salt + n);
+        addXp('survival', 2);
+        highlight('gathered salt');
+      },
+    })]);
+  },
+  smoke() {
+    // hang her spare fresh fish (and rabbit) in the smokehouse, over a smouldering fire
+    if (!works('smokehouse') || S.stock.raw + S.stock.meat < 2 || S.stock.fish >= preservedCap()) return null;
+    return mk('smoke', 'Smoking fish in the smokehouse', pick(['Low and slow.', 'Mmm, that smell.', 'This’ll keep all winter.']), [go(SMOKE_STAND), act({
+      pose: 'gather', face: SMOKE_P, min: 25, done() {
+        const n = Math.min(S.stock.raw + S.stock.meat, preservedCap() - S.stock.fish), fromRaw = Math.min(n, S.stock.raw);
+        S.stock.raw -= fromRaw; S.stock.meat -= n - fromRaw;
+        S.stock.fish += n;
+        if (S.stock.wood > FIREWOOD_RESERVE) S.stock.wood--; // (a log to smoulder)
+        addXp('survival', 2);
+        highlight('smoked fish');
+      },
+    })]);
+  },
+  ore() {
+    // break red, iron-rich rock out of the seam on the ridge
+    if (!works('furnace') || !has('pick')) return null;
+    return mk('ore', 'Digging iron ore on the ridge', pick(['Look at that red streak.', 'Heavy stuff.', 'Iron, in the rock!']), [go(ORE_STAND), act({
+      pose: 'chop', face: ORE_P, min: 45 / toolSpeed(), done() { S.stock.ore = Math.min(storageCap('ore'), S.stock.ore + 2); addXp('survival', 3); highlight('dug iron ore'); },
+    })]);
+  },
+  smelt() {
+    // ore and plenty of firewood into the furnace; a lump of iron comes out
+    if (!works('furnace') || S.stock.ore < 2 || S.stock.wood < 3 + FIREWOOD_RESERVE) return null;
+    return mk('smelt', 'Smelting iron in the furnace', pick(['Hotter… hotter!', 'Glowing like the sun.', 'Iron! Real iron!']), [go(FURNACE_STAND), act({
+      pose: 'gather', face: FURNACE_P, min: 60, done() {
+        S.stock.ore -= 2; S.stock.wood -= 3;
+        S.stock.iron = Math.min(storageCap('iron'), S.stock.iron + 1);
+        addXp('crafting', 5);
+        if (!S.feelingsNoted.includes('iron')) { S.feelingsNoted.push('iron'); log('Out of the roaring furnace came her first lump of iron.', 'big'); }
+        highlight('smelted iron');
       },
     })]);
   },
@@ -1051,9 +1112,9 @@ export const T: Record<string, () => Task | null> = {
 };
 
 // Tasks that urgent needs (or something new to try) are allowed to cut short.
-export const INTERRUPTIBLE = new Set<TaskId>(['bamboo', 'flint', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'honey', 'bathe', 'salvage', 'turtles', 'tendgull', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
+export const INTERRUPTIBLE = new Set<TaskId>(['salt', 'smoke', 'ore', 'bamboo', 'flint', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'honey', 'bathe', 'salvage', 'turtles', 'tendgull', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
 // Outdoor tasks a sudden shower sends her away from.
-export const RAIN_STOPS = new Set<TaskId>(['bamboo', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'salvage', 'turtles', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
+export const RAIN_STOPS = new Set<TaskId>(['salt', 'ore', 'bamboo', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'salvage', 'turtles', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
 // Which task "tries out" each newly made thing.
 export const CURIOUS_TASK: Partial<Record<CraftKey, TaskId>> = { rod: 'fish', spear: 'fish', drum: 'drum', flute: 'drum', ukulele: 'drum', marimba: 'drum', journal: 'write', axe: 'chop', pick: 'mine', chair: 'relax', rocker: 'watch' };
 

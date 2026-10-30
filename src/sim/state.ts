@@ -23,16 +23,18 @@ export type CraftKey = 'axe' | 'pick' | 'rod' | 'spear' | 'snare' | 'basket' | '
   | 'pots' | 'jug' | 'tiles' // fired in the kiln
   | 'lanterns' // along her paths
   | 'flinttools' | 'chimes' // from the cave's flint and the islet's bamboo
-  | 'rework'; // remaking a piece she already has in her favourite material (repeatable, see plans.ts)
+  | 'rework' // remaking a piece she already has in her favourite material (repeatable, see plans.ts)
+  | 'irontools'; // from the furnace's iron
 /** Things she builds over several sessions on site. */
 export type ProjectKey = 'garden' | 'rack' | 'dock' | 'hut' | 'hearth' | 'lookout' | 'canoe' | 'lodge' | 'fence' | 'coop'
   | 'trap' | 'barrel' | 'treehouse' // other ways to get food, water and a home
   | 'houseboat' | 'shed' | 'bandstand' | 'orchard'
   | 'kiln' | 'oven' // working with clay
   | 'beehive' | 'sundial' | 'mosaic' | 'bathhouse' // rare: only some islands (see S.rare)
-  | 'bridge' | 'cave' | 'pipe' | 'well'; // island growth: the islet, the cave, water at camp
+  | 'bridge' | 'cave' | 'pipe' | 'well' // island growth: the islet, the cave, water at camp
+  | 'saltpans' | 'firecover' | 'smokehouse' | 'workshop' | 'furnace'; // v1.5: food that keeps, a workshop, metal
 export type PlanKey = CraftKey | ProjectKey;
-export type Resource = 'wood' | 'stone' | 'fibre' | 'wool' | 'clay' | 'shells' | 'bamboo' | 'flint';
+export type Resource = 'wood' | 'stone' | 'fibre' | 'wool' | 'clay' | 'shells' | 'bamboo' | 'flint' | 'salt' | 'ore' | 'iron';
 /** What she likes to build things from (furniture, the fence, the bridge): a preference, not a rule. */
 export type Style = 'wood' | 'bamboo' | 'stone';
 export type TaskId =
@@ -42,7 +44,7 @@ export type TaskId =
   | 'befriend' | 'play' | 'repair' | 'swim' | 'herd' | 'shear' | 'collect' | 'checktrap' | 'hunt' | 'checksnares' | 'mushrooms'
   | 'clay' | 'salvage' | 'turtles' | 'tendgull' | 'dig' | 'honey' | 'bathe'
   | 'cairn' | 'sandcastle' | 'clouds' | 'bouquet' | 'whittle' | 'dance'
-  | 'plantfruit' | 'pickfruit' | 'nightwalk' | 'beachstars' | 'tidepools' | 'bamboo' | 'flint'
+  | 'plantfruit' | 'pickfruit' | 'nightwalk' | 'beachstars' | 'tidepools' | 'bamboo' | 'flint' | 'salt' | 'smoke' | 'ore' | 'smelt'
   | 'celebrate' | 'stand';
 
 /* ---------- task steps ---------- */
@@ -159,7 +161,7 @@ function createState() {
 
     /* ---------- island life ---------- */
     // logs on the woodpile, stones, plant fibre, saplings to replant, fresh fish to cook, dried fish, garden seeds
-    stock: { wood: 2, stone: 0, fibre: 0, saplings: 0, raw: 0, fish: 0, seeds: 0, veg: 0, shells: 0, eggs: 0, wool: 0, meat: 0, clay: 0, honey: 0, fruit: 0, bamboo: 0, flint: 0 }, // veg: stored garden vegetables; shells: her collection
+    stock: { wood: 2, stone: 0, fibre: 0, saplings: 0, raw: 0, fish: 0, seeds: 0, veg: 0, shells: 0, eggs: 0, wool: 0, meat: 0, clay: 0, honey: 0, fruit: 0, bamboo: 0, flint: 0, salt: 0, ore: 0, iron: 0 }, // veg: stored garden vegetables; shells: her collection
     rawSince: 0, // game minute the oldest uncooked fish was caught
     meatSince: 0, // …and the oldest uncooked rabbit
     lastMeal: 0, // game minute of her last cooked meal
@@ -190,6 +192,11 @@ function createState() {
       cave: { started: false, progress: 0, done: false },
       pipe: { started: false, progress: 0, done: false },
       well: { started: false, progress: 0, done: false },
+      saltpans: { started: false, progress: 0, done: false },
+      firecover: { started: false, progress: 0, done: false },
+      smokehouse: { started: false, progress: 0, done: false },
+      workshop: { started: false, progress: 0, done: false },
+      furnace: { started: false, progress: 0, done: false },
       kiln: { started: false, progress: 0, done: false },
       oven: { started: false, progress: 0, done: false },
       beehive: { started: false, progress: 0, done: false },
@@ -230,6 +237,7 @@ function createState() {
     orchard: ORCHARD.map(() => ({ kind: null as FruitKind | null, growth: 0, fruit: 0, planted: 0 })),
     bamboo: BAMBOO.map(() => 4 + Math.floor(Math.random() * 3)), // canes ready to cut in each clump on the islet (they grow back fast)
     isletFound: false, // has she waded out to the islet yet?
+    saltPans: 0, // salt drying in her salt pans, ready to scrape up
     // which rare projects this island allows (most islands get two of the four)
     rare: pickSome(['beehive', 'sundial', 'mosaic', 'bathhouse'] as ProjectKey[], Math.random() < 0.3 ? 3 : 2),
     // things that happen on this island, and when (see events.ts)
