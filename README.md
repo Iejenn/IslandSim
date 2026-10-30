@@ -60,6 +60,16 @@ its gates) instead of through them. Sound is generated in the browser (waves,
 wind, rain, the fire, birds, crickets, footsteps, chopping, her drum); turn it
 on with the Sound button.
 
+Nature carries on around her: the forest seeds itself and creeps towards
+the camp wherever she doesn't chop, chicks hatch and lambs are born in spring,
+and songbirds move in as the island stays green. Some mornings are misty, a
+rainbow can follow a shower, fireflies come out on summer nights and leaves
+drift down in autumn. Besides the work, she has little joys: stacking stones
+on the beach, sandcastles, lying in the grass watching clouds, picking a
+bouquet for her table, whittling small wooden animals, and hanging lanterns
+along her most-worn paths. Tap anything on the island (a building, a tree, an
+animal, something she made) to see a little card with its story.
+
 A stray dog may wash ashore and, if she earns its trust, follows her
 everywhere. Storms strip the berry bushes and can damage her buildings until
 she repairs them; on hot days she cools off in the sea. Crabs, gulls and
@@ -130,12 +140,14 @@ src/
                    boulders, buildings (incl. the lodge, fence and coop),
                    crafted items & furniture, the dog, livestock, rabbits,
                    wildlife, seasonal colours, event objects, trodden
-                   paths, wildflowers
+                   paths, wildflowers, atmosphere (mist, rainbow, fireflies,
+                   leaves, songbirds), traces of her hobbies, tap-to-look
   audio/           sound effects and ambience, generated with the Web Audio API
   character/       loading the model, playing animations, moving the body,
                    tools in her hand
   save.ts          localStorage save/load and the island's layout seed
-  ui/              observer panel, HUD (clock/speed/follow), thought bubble
+  ui/              observer panel, HUD (clock/speed/follow/sound), thought bubble,
+                   the tap-to-look info card
 scripts/
   simulate.ts      headless balance check (npm run simulate)
 ```

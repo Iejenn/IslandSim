@@ -6,7 +6,9 @@ import {
   type Material, type Mesh, type Object3D, type Scene, ConeGeometry, DodecahedronGeometry,
 } from 'three';
 import { BATH_P, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SP, SUNDIAL_P, HOUSEBOAT_P, HOUSEBOAT_YAW, BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
+import { PLANS } from '../sim/plans';
 import type { ProjectKey, SimState } from '../sim/state';
+import { cap, onDay, pickable } from './inspect';
 import { M, mat, mesh } from './materials';
 
 const soil = mat('#6B4A33'), withered = mat('#8A7A4E'), fruitRed = mat('#D9452B', { roughness: 0.5 }), hull = mat('#8A5A34');
@@ -493,6 +495,31 @@ export function createBuildings(scene: Scene) {
       const days = p.done ? (S.min - (p.builtAt ?? 0)) / 1440 : 0;
       a.mat.color.copy(a.from).lerp(a.to, 0.55 * Math.min(1, days / WEATHER_DAYS));
     }
+  }
+
+  /* ---------- tap to look: what each building is, and its story ---------- */
+  const extra: Partial<Record<ProjectKey, (S: SimState) => string | null>> = {
+    garden: S => `${S.plots.filter(p => p.state === 'growing').length} beds growing, ${S.plots.filter(p => p.state === 'ripe').length} ripe`,
+    coop: S => { const n = S.chickens.filter(c => c.penned).length + S.bredHens; return n ? `Home to ${n} hen${n > 1 ? 's' : ''}${S.young.some(y => y.kind === 'chick') ? ' and their chicks' : ''}` : 'Waiting for its first hens'; },
+    fence: S => { const n = S.chickens.filter(c => c.penned).length + S.sheep.filter(c => c.penned).length + S.bredHens + S.bredSheep.length; return n ? `Keeps ${n} animal${n > 1 ? 's' : ''} safe` : 'No animals inside yet'; },
+    trap: S => S.trapFish >= 1 ? `${Math.floor(S.trapFish)} fish waiting` : 'Empty for now',
+    barrel: S => S.barrel >= 1 ? `${Math.floor(S.barrel)} drinks of rainwater` : 'Waiting for rain',
+    beehive: S => S.hive >= 1 ? 'Heavy with honey' : 'The bees are busy',
+    lodge: S => (['realbed', 'sofa', 'kitchen'] as const).filter(k => S.items[k]).length + ' of 3 rooms furnished',
+    hut: S => S.items.tiles ? 'Under a tiled roof' : null,
+  };
+  for (const k of Object.keys(PARTS) as ProjectKey[]) {
+    const describe = (S: SimState) => {
+      const p = S.projects[k];
+      const lines = [p.done ? onDay(S.madeAt[k], 'Built') : `Being built · ${Math.round(p.progress * 100)}%`];
+      if (p.damaged) lines.push('Storm-damaged, waiting for repairs');
+      const more = p.done ? extra[k]?.(S) : null;
+      if (more) lines.push(more);
+      if (p.done && (S.min - (p.builtAt ?? 0)) / 1440 > 20) lines.push('Weathered by sun and rain');
+      if (p.done) lines.push(`“${PLANS[k].done}”`);
+      return { title: cap(PLANS[k].name), lines };
+    };
+    for (const part of PARTS[k]) pickable(part, describe);
   }
 
   /** Is this world point inside the lodge's walls? */

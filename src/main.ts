@@ -2,7 +2,7 @@
 // and UI, and runs the game loop. The sim (src/sim) knows nothing about
 // Three.js or the DOM; everything that connects them lives here.
 import './style.css';
-import { Raycaster, Vector2, Vector3 } from 'three';
+import { Raycaster, Vector2, Vector3, type Fog } from 'three';
 import { createSound } from './audio/sound';
 import { createAnimator } from './character/animation';
 import { loadCharacter } from './character/model';
@@ -14,7 +14,9 @@ import { hooks, hour, initState, isNight, log, say } from './sim/state';
 import { startTask, T } from './sim/tasks';
 import { createBubble } from './ui/bubble';
 import { createHud } from './ui/hud';
+import { createInfoCard } from './ui/infoCard';
 import { createPanel } from './ui/panel';
+import { inspect } from './world/inspect';
 import { createAnimals } from './world/animals';
 import { createBuildings } from './world/buildings';
 import { createCrafted } from './world/crafted';
@@ -23,9 +25,11 @@ import { createForest } from './world/forest';
 import { createLivestock } from './world/livestock';
 import { createProps } from './world/props';
 import { createFlowers } from './world/flowers';
+import { createJoys } from './world/joys';
 import { createPaths } from './world/paths';
 import { createRabbits } from './world/rabbits';
 import { createRain } from './world/rain';
+import { createAtmosphere } from './world/atmosphere';
 import { createEvents } from './world/events';
 import { createSeasons } from './world/seasons';
 import { drought } from './sim/events';
@@ -61,6 +65,8 @@ const updateLivestock = createLivestock(scene);
 const updateRabbits = createRabbits(scene);
 const updateSeasons = createSeasons(scene, terrain.material);
 const updateEvents = createEvents(scene);
+const updateAtmosphere = createAtmosphere(scene);
+const updateJoys = createJoys(scene);
 
 /* ---------- sim + her ---------- */
 const S = initState(save?.state);
@@ -71,6 +77,10 @@ if (import.meta.env.DEV) {
   Object.assign(window, {
     __S: S, __camera: camera, __controls: controls,
     __play: (k: AnimKey) => hooks.play(k, true), // try an animation, e.g. __play('death')
+    __look: (x: number, y: number) => { // what a tap at these screen pixels would show
+      const r = new Raycaster(); r.setFromCamera(new Vector2(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1), camera);
+      return inspect(r, S);
+    },
     __give: (k: CraftKey) => { S.items[k] = true; },
     __startTask: (id: string) => { const t = T[id](); if (t) startTask(t); },
   });
@@ -90,6 +100,7 @@ showSound();
 addEventListener('pointerdown', () => sound.resumeOnGesture(), { once: true });
 
 /* ---------- UI ---------- */
+const infoCard = createInfoCard();
 const hud = createHud();
 const bubble = createBubble(body.her, camera);
 const panel = createPanel(newIsland);
@@ -132,7 +143,13 @@ renderer.domElement.addEventListener('pointerup', e => {
     hud.setFollow(true);
     panel.expand();
     say(S.thought || 'Hm?');
+    infoCard.hide();
+    return;
   }
+  // anything else with a story: show its card where it was tapped
+  const info = inspect(ray, S);
+  if (info) infoCard.show(info, e.clientX, e.clientY);
+  else infoCard.hide();
 });
 
 function loadModel() {
@@ -186,6 +203,7 @@ function frame(now: number) {
   updatePaths(S, clockT);
   updateFlowers(S);
   updateEvents(S, body.her, clockT);
+  updateJoys(S);
   const dry = drought() ? 0.55 : 1; // the pond shrinks in a drought
   props.pond.scale.set(dry, 1, dry);
   props.shelter.visible = !S.projects.lodge.done; // the lodge replaces the old shelter
@@ -196,6 +214,7 @@ function frame(now: number) {
   sound.update(S, camera, body.her, rain, ready ? S.speed : 0);
   animateWater(clockT);
   updateSky(clockT, hour(), S.fire, props.campfire, rain, storm, dt);
+  updateAtmosphere(S, scene.fog as Fog, rain, dt, clockT);
   if (hud.following && ready) {
     tmpV.copy(body.her.position);
     tmpV.y += 1;

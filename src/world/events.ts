@@ -6,6 +6,7 @@ import { BoxGeometry, ConeGeometry, CylinderGeometry, Group, SphereGeometry, typ
 import { CLAY_P, ground, pointAt, V } from '../sim/island';
 import type { SimState } from '../sim/state';
 import { digPos, GULL_P, nestPos, wreckPos } from '../sim/tasks';
+import { pickable } from './inspect';
 import { M, mat, mesh } from './materials';
 import { v3 } from './stage';
 
@@ -58,12 +59,16 @@ export function createEvents(scene: Scene) {
 
   // the gull: hurt (hopping by the fire), then perhaps her pet
   const bird = add(gull());
+  pickable(wreck, S => ({ title: 'A shipwreck', lines: [S.wreck.state === 'ashore' ? 'Crates still waiting to be opened' : 'She salvaged what she could'] }));
+  pickable(nest, () => ({ title: 'A turtle nest', lines: ['Eggs buried in the warm sand', 'She keeps an eye on it'] }));
+  pickable(bird, S => S.gull.state === 'pet' ? { title: 'Captain', lines: ['A seagull she nursed back to health', 'Decided to stay'] } : { title: 'A hurt seagull', lines: ['She’s nursing its wing'] });
 
   // dug holes for the treasure, and the clay pit (always there)
   const holes: Mesh[] = [0, 1, 2].map(() => add(mesh(new CylinderGeometry(0.35, 0.3, 0.04, 8), hole)));
   const pit = mesh(new CylinderGeometry(0.75, 0.85, 0.05, 9), clay, CLAY_P.x, CLAY_P.y + 0.02, CLAY_P.z, false);
   pit.receiveShadow = true;
   scene.add(pit);
+  pickable(pit, () => ({ title: 'Clay pit', lines: ['Sticky orange clay for her pottery'] }));
 
   /** @param her her body @param t real seconds */
   return function updateEvents(S: SimState, her: Object3D, t: number) {

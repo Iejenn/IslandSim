@@ -20,6 +20,7 @@ export function updateWeather(dm: number) {
     if (S.min >= w.until) {
       const wasStorm = w.storm;
       w.raining = false;
+      w.clearedAt = S.min; // (a rainbow may follow)
       w.storm = false;
       say(wasStorm ? 'The storm’s passed. Let’s see what’s left standing.' : pick(['The sun’s back.', 'Finally, the rain stopped.', 'Everything smells fresh after the rain.']));
     }
@@ -47,6 +48,8 @@ function startStorm() {
   log('A storm rolled in.');
   highlight('rode out a storm');
   S.berries = S.berries.map(b => clamp(b - 2, 0, 6)); // the wind strips the bushes
+  if (S.cairns.length && Math.random() < 0.5) { S.cairns.pop(); log('The storm knocked over one of her stone stacks.'); }
+  S.sandcastle = null; // (no sandcastle survives a storm)
   // the wind may damage one of her buildings
   // (a tiled roof keeps the shelter and lodge safe)
   const tiled = (k: ProjectKey) => S.items.tiles && (k === 'hut' || k === 'lodge');

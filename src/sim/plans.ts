@@ -214,6 +214,16 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     tags: ['animals', 'creative'],
   },
 
+  lanterns: {
+    kind: 'craft', name: 'path lanterns', a: 'lanterns for her paths', cost: { wood: 3, fibre: 2 }, minutes: 60,
+    // once her feet have worn real paths into the island
+    unlocked: () => dayNum() >= 8 && Object.values(S.wear).filter(w => w > 0.5).length >= 12,
+    want: 'Lanterns along my paths, so I can find my way home in the dark.',
+    done: 'The lanterns are up. The island glows at night now.',
+    weight: () => 1.3,
+    tags: ['creative', 'comfort'],
+  },
+
   /* ---------- fired in the kiln ---------- */
   pots: {
     kind: 'craft', name: 'clay pots', a: 'some clay pots', cost: { clay: 3 }, minutes: 70,
@@ -518,6 +528,7 @@ export function checkFinished(k: PlanKey) {
     S.curious.push(k as CraftKey); // she'll want to try it out
   }
   S.goal = null;
+  S.madeAt[k] ??= dayNum();
   growTaste(def.tags); // making what she loves makes her love it more
   if (k === 'garden') S.stock.seeds += 3;
   if (S.dream === k) {

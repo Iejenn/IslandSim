@@ -1,6 +1,6 @@
 // Island terrain mesh, shaped by the same height() the sim uses for walking.
 import { Color, Float32BufferAttribute, Mesh, MeshStandardMaterial, PlaneGeometry, type Scene } from 'three';
-import { BOULDERS, FOREST, forestness, height, tAt } from '../sim/island';
+import { BOULDERS, FOREST, FOREST_START, forestness, height, tAt } from '../sim/island';
 import { smooth } from '../sim/util';
 
 export function createTerrain(scene: Scene) {
@@ -20,7 +20,7 @@ export function createTerrain(scene: Scene) {
     const t = t0 < 0.97 ? t0 * (1 - 0.2 * forestness(Math.atan2(z, x))) : t0;
     // grass → sand → wet sand → deep water, by distance from the centre
     gc.copy(g1).lerp(g2, 0.5 + 0.5 * Math.sin(x * 0.7 + z * 0.5));
-    if (t < 0.97) gc.lerp(forestFloor, 0.75 * smooth(near(x, z, FOREST, 2.6)));
+    if (t < 0.97) gc.lerp(forestFloor, 0.75 * smooth(near(x, z, FOREST.slice(0, FOREST_START), 2.6)));
     if (t < 0.6) c.copy(gc);
     else if (t < 0.68) c.copy(gc).lerp(sand, smooth((t - 0.6) / 0.08));
     else if (t < 0.97) c.copy(sand);
