@@ -1,12 +1,14 @@
 // Things she has crafted, shown where she keeps them: tools lean against the
 // woodpile, the rod against the shelter, the drum by the fire and so on.
 // Everything is built up front (hidden) and shown once the sim says she has it.
-import { BoxGeometry, ConeGeometry, CylinderGeometry, Group, TorusGeometry, type Object3D, type Scene } from 'three';
-import { BURROWS, WARREN_P, CHAIR_P, FIRE, LODGE_YAW, lodgeLocal, GARDEN_P, ground, HAMMOCK_P, JOURNAL_P, DRUM_P, LOOKOUT_DECK, LOOKOUT_P, SH, SHELF_P, TABLE_P, WOODPILE_P, yawTo } from '../sim/island';
+import { BoxGeometry, ConeGeometry, CylinderGeometry, Group, SphereGeometry, TorusGeometry, type Object3D, type Scene } from 'three';
+import { KILN_P, BURROWS, WARREN_P, CHAIR_P, FIRE, LODGE_YAW, lodgeLocal, GARDEN_P, ground, HAMMOCK_P, JOURNAL_P, DRUM_P, LOOKOUT_DECK, LOOKOUT_P, SH, SHELF_P, TABLE_P, WOODPILE_P, yawTo } from '../sim/island';
 import type { CraftKey, SimState } from '../sim/state';
 import { M, mat, mesh } from './materials';
 import { v3 } from './stage';
 
+const potMat = mat('#B8643E');
+const SEATS_JUG = { x: -0.9, z: 2.3 }; // beside the log seat by the fire
 const wool = M.cushion, fibre = mat('#B9A26A'), stone = mat('#8E979B'), hide = mat('#E3D3B0', { roughness: 0.7 }), tin = mat('#9C7A52');
 
 /** A stone tool head on a wooden handle (axe or pick), standing upright. */
@@ -119,6 +121,31 @@ export function createCrafted(scene: Scene) {
       }
       return place(g, WARREN_P.x, WARREN_P.z);
     },
+    /* ---------- fired in the kiln ---------- */
+    pots() {
+      const g = new Group();
+      [[0, 0, 0.22], [0.32, 0.1, 0.17], [-0.28, 0.12, 0.19]].forEach(([x, z, r]) => {
+        g.add(mesh(new SphereGeometry(r, 8, 6), potMat, x, r * 0.9, z));
+        g.add(mesh(new CylinderGeometry(r * 0.45, r * 0.5, r * 0.4, 8), potMat, x, r * 1.8, z));
+      });
+      return place(g, WOODPILE_P.x - 0.4, WOODPILE_P.z - 1.0);
+    },
+    jug() {
+      const g = new Group();
+      g.add(mesh(new SphereGeometry(0.2, 8, 6), potMat, 0, 0.2, 0));
+      g.add(mesh(new CylinderGeometry(0.07, 0.1, 0.22, 8), potMat, 0, 0.45, 0));
+      const handle = mesh(new TorusGeometry(0.09, 0.02, 4, 8, Math.PI), potMat, 0.17, 0.35, 0);
+      handle.rotation.z = -Math.PI / 2;
+      g.add(handle);
+      const p = SEATS_JUG;
+      return place(g, p.x, p.z);
+    },
+    tiles() {
+      // a few spare tiles stacked by the kiln (the rest are on the roof)
+      const g = new Group();
+      for (let i = 0; i < 4; i++) g.add(mesh(new BoxGeometry(0.35, 0.04, 0.25), potMat, 0, 0.03 + i * 0.045, 0));
+      return place(g, KILN_P.x - 1.1, KILN_P.z + 0.5);
+    },
     journal() {
       const g = new Group();
       [0.04, 0.11, 0.18].forEach((y, i) => {
@@ -147,9 +174,11 @@ export function createCrafted(scene: Scene) {
     bed() {
       // a raised frame under her sleeping mat, inside the shelter
       const g = new Group();
-      for (const [x, z] of [[-0.75, -0.45], [0.75, -0.45], [-0.75, 0.45], [0.75, 0.45]]) g.add(mesh(new BoxGeometry(0.08, 0.2, 0.08), M.log, x, 0.1, z));
-      for (const z of [-0.47, 0.47]) g.add(mesh(new BoxGeometry(1.6, 0.08, 0.06), M.log, 0, 0.16, z));
-      for (const x of [-0.77, 0.77]) g.add(mesh(new BoxGeometry(0.06, 0.08, 1.0), M.log, x, 0.16, 0));
+      // (lengthwise under her mat, like the mat itself)
+      for (const [x, z] of [[-0.45, -0.9], [0.45, -0.9], [-0.45, 0.6], [0.45, 0.6]]) g.add(mesh(new BoxGeometry(0.08, 0.2, 0.08), M.log, x, 0.1, z));
+      for (const x of [-0.47, 0.47]) g.add(mesh(new BoxGeometry(0.06, 0.08, 1.6), M.log, x, 0.16, -0.15));
+      for (const z of [-0.92, 0.62]) g.add(mesh(new BoxGeometry(1.0, 0.08, 0.06), M.log, 0, 0.16, z));
+      g.add(mesh(new BoxGeometry(0.9, 0.08, 1.75), M.bed, 0, 0.22, -0.15)); // her mat, now up on the frame
       return place(g, SH.x, SH.z, yawTo(SH, FIRE));
     },
     shelf() {
@@ -241,7 +270,7 @@ export function createCrafted(scene: Scene) {
       models.blanket.position.set(b.x, b.y + (S.items.realbed ? 0.5 : 0.2), b.z);
       models.blanket.rotation.y = LODGE_YAW;
     } else {
-      models.blanket.position.set(SH.x, SH.y + (S.items.bed ? 0.25 : 0.12), SH.z);
+      models.blanket.position.set(SH.x, SH.y + (S.items.bed ? 0.28 : 0.12), SH.z);
     }
     shells.forEach((sh, i) => { sh.visible = i < S.stock.shells; });
   };

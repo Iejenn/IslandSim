@@ -20,12 +20,14 @@ export function createAnimator(model: Object3D, animations: AnimationClip[]) {
     if (!a || (a === current && !forceOnce && !ONE_SHOT_CLIPS.has(name))) return; // already looping it
     const once = forceOnce || ONE_SHOT_CLIPS.has(name);
     a.reset();
+    if (key === 'lieDown') a.time = a.getClip().duration * 0.8; // just the lying-down end of the clip
     a.setLoop(once ? LoopOnce : LoopRepeat, Infinity);
     a.clampWhenFinished = once;
     a.setEffectiveWeight(1);
     a.setEffectiveTimeScale(STRIDE[key] ?? 1);
-    a.fadeIn(0.3).play();
-    if (current && current !== a) current.fadeOut(0.3);
+    const fade = key === 'lieDown' ? 0.7 : 0.3; // ease into bed
+    a.fadeIn(fade).play();
+    if (current && current !== a) current.fadeOut(fade);
     current = a;
   }
 

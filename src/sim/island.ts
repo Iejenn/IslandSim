@@ -102,6 +102,10 @@ export const SHELTER: Spot = (() => {
   return { spot: ground(addScaled(SH, dir, 0.3)), face: addScaled(SH, dir, 3) };
 })();
 reserve(SH);
+// Sleeping spots: she lies down on her back with her feet at `spot` and her
+// head towards `face` (her body ends up about 1.4 long in that direction).
+const shelterDir = dirXZ(SH, FIRE);
+export const SHELTER_BED: Spot = { spot: ground(addScaled(SH, shelterDir, 0.65)), face: addScaled(SH, shelterDir, -4) }; // head under the low back of the roof
 
 /* the pond (her spring) out on the north meadow, ringed by berry bushes */
 export const SP = ground(pointAt(POND_A, 0.42));
@@ -115,6 +119,12 @@ export const BUSHES = [0.6, 1.5, 2.6, 3.7, 4.6, 5.5].map(k => {
   return { pos, stand: standNear(pos, 1.0) };
 });
 
+// clay at the pond's edge, between two bushes; a bathhouse could stand on the far side
+export const CLAY_P = ground(V(SP.x + Math.cos(POND_A + 2.05) * 1.9, SP.z + Math.sin(POND_A + 2.05) * 1.9));
+export const CLAY_STAND = standNear(CLAY_P, 0.8);
+export const BATH_P = ground(V(SP.x + Math.cos(POND_A) * 2.3, SP.z + Math.sin(POND_A) * 2.3));
+reserve(CLAY_P, BATH_P);
+
 /* fishing spot on the north beach */
 export const FISH_A = Math.PI / 2;
 export const FISH: Spot = { spot: ground(pointAt(FISH_A, 0.9)), face: pointAt(FISH_A, 1.4) };
@@ -125,6 +135,8 @@ export const DRUM_P = ground(V(2.5, -1.5)); // near the fire, so she drums by fi
 export const HAMMOCK_P = ground(V(-0.6, -6.6)); // (clear of where the lodge will stand)
 export const JOURNAL_P = copy(SEATS[1].p);
 reserve(DRUM_P, HAMMOCK_P);
+const hammockDir = dirXZ(HAMMOCK_P, FIRE); // the hammock hangs along this line
+export const HAMMOCK_BED: Spot = { spot: ground(addScaled(HAMMOCK_P, hammockDir, 0.7)), face: addScaled(HAMMOCK_P, hammockDir, -4), lift: 0.5 };
 // furniture she makes once she's handy enough
 export const CHAIR_P = ground(V(1.1, -1.7)); // by the fire, facing it
 export const TABLE_P = ground(V(0.9, -2.95)); // next to the chair
@@ -144,7 +156,7 @@ export function lodgeLocal(lx: number, lz: number) {
   return ground(V(LODGE_P.x + lx * c + lz * s, LODGE_P.z - lx * s + lz * c));
 }
 export const LODGE_DOOR = lodgeLocal(0, 2.9);
-export const LODGE_BED: Spot = { spot: lodgeLocal(-2.2, -0.8), face: lodgeLocal(-2.2, 2) };
+export const LODGE_BED: Spot = { spot: lodgeLocal(-2.2, 0.1), face: lodgeLocal(-2.2, -3) }; // feet at the foot of the bed, head on the pillow
 export const LODGE_SOFA: Spot = { spot: lodgeLocal(-0.1, -1.25), face: lodgeLocal(-0.1, 2) };
 export const LODGE_KITCHEN: Spot = { spot: lodgeLocal(2.2, -0.7), face: lodgeLocal(2.2, -2.2) };
 reserve(LODGE_P, lodgeLocal(-2.6, 0), lodgeLocal(2.6, 0));
@@ -161,6 +173,13 @@ reserve(COOP_P, SHEEP_PEN_P);
 export const WOODPILE_P = ground(V(-2.0, 0.6));
 export const BARREL_P = ground(V(-3.0, 1.7)); // rain barrel, by the woodpile
 reserve(BARREL_P);
+// working with clay, and the rare projects only some islands get
+export const KILN_P = ground(V(4.6, -3.4));
+export const OVEN_P = ground(V(2.6, -4.6));
+export const HIVE_P = ground(V(5.2, 6.4));
+export const SUNDIAL_P = ground(V(-1.4, 4.6));
+export const MOSAIC_P = ground(V(6.6, -0.8));
+reserve(KILN_P, OVEN_P, HIVE_P, SUNDIAL_P, MOSAIC_P);
 export const RACK_P = ground(V(4.0, 0.0));
 export const GARDEN_P = ground(V(2.6, 5.0));
 // 2×2 beds around the garden centre
@@ -200,7 +219,7 @@ export const SPEAR_SPOT: Spot = { spot: ground(pointAt(FISH_A - 0.3, 1.01)), fac
 export const HOUSEBOAT_P = { ...addScaled(V(0, 0), dockDir, fishR * 1.06), y: 0 };
 HOUSEBOAT_P.x -= dockPerp.x * 2.3; HOUSEBOAT_P.z -= dockPerp.z * 2.3;
 export const HOUSEBOAT_YAW = Math.atan2(dockDir.x, dockDir.z);
-export const HOUSEBOAT_BED = { ...addScaled(HOUSEBOAT_P, dockDir, -0.9) }; // on the deck, under the cabin roof
+export const HOUSEBOAT_BED = { ...addScaled(HOUSEBOAT_P, dockDir, 0.05) }; // feet here, lying back onto the bedroll under the cabin roof
 
 // lookout tower on the south beach; she climbs up to watch the sea and the stars
 export const LOOKOUT_P = ground(pointAt(-1.2, 0.78));
@@ -240,7 +259,10 @@ reserve(...FOREST.map(t => t.pos));
 export const TREEHOUSE_TREE = FOREST.reduce((b, t, i) => Math.hypot(t.pos.x, t.pos.z) < Math.hypot(FOREST[b].pos.x, FOREST[b].pos.z) ? i : b, 0);
 export const TREEHOUSE_P = FOREST[TREEHOUSE_TREE].pos;
 export const TREEHOUSE_DECK = 2.3; // platform height
-export const TREEHOUSE_BED: Spot = { spot: standNear(TREEHOUSE_P, 0.8), face: standNear(TREEHOUSE_P, 3), lift: TREEHOUSE_DECK + 0.1 };
+// lying across the deck beside the trunk (not into it)
+const thIn = dirXZ(TREEHOUSE_P, V(0, 0)), thSide = { x: -thIn.z, y: 0, z: thIn.x };
+const thFeet = ground(addScaled(addScaled(TREEHOUSE_P, thIn, 0.75), thSide, 0.7));
+export const TREEHOUSE_BED: Spot = { spot: thFeet, face: addScaled(thFeet, thSide, -3), lift: TREEHOUSE_DECK + 0.1 };
 export const BOULDERS = scatter(11, 9, ROCKS_A - 0.42, ROCKS_A + 0.42, 0.45, 0.85, 2.5, 1.8).map(pos => ({ pos, stand: standNear(pos, 1.0) }));
 reserve(...BOULDERS.map(b => b.pos));
 // where loose stones lie around, in the middle of the rocky area

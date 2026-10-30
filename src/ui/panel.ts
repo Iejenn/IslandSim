@@ -46,6 +46,8 @@ function renderCamp() {
   if (S.stock.meat) stock.push(['Rabbit', `${S.stock.meat} (needs cooking)`]);
   if (S.stock.veg) stock.push(['Vegetables', String(S.stock.veg)]);
   if (S.stock.shells) stock.push(['Shells collected', String(S.stock.shells)]);
+  if (S.stock.clay) stock.push(['Clay', String(S.stock.clay)]);
+  if (S.stock.honey || S.projects.beehive.done) stock.push(['Honey', S.stock.honey ? n(S.stock.honey, 'jar', 'jars') : 'none yet']);
   if (S.stock.eggs || S.projects.coop.done) stock.push(['Eggs', String(S.stock.eggs)]);
   if (S.stock.wool || S.stats.shorn) stock.push(['Wool', String(S.stock.wool)]);
   if (S.projects.rack.done) stock.push(['Dried food', String(S.stock.fish)]);
@@ -72,6 +74,8 @@ function renderCamp() {
   const friends: [string, string][] = [];
   if (S.dog.state === 'wild') friends.push(['A stray dog', S.dog.trust > 0.5 ? 'warming up to her' : S.dog.trust > 0 ? 'still wary' : 'keeps its distance']);
   if (S.dog.state === 'friend') friends.push([S.dog.name, 'her dog']);
+  if (S.gull.state === 'hurt') friends.push(['A hurt seagull', 'she’s nursing it']);
+  if (S.gull.state === 'pet') friends.push(['Captain', 'her seagull']);
   const hens = S.chickens.filter(c => c.penned).length, flock = S.sheep.filter(c => c.penned).length;
   if (hens) friends.push(['Chickens', `${hens} at home`]);
   if (flock) friends.push(['Sheep', `${flock} at home${S.sheep.some(s => s.penned && s.wool >= 1) ? ' · ready to shear' : ''}`]);

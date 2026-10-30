@@ -23,7 +23,9 @@ import { createLivestock } from './world/livestock';
 import { createProps } from './world/props';
 import { createRabbits } from './world/rabbits';
 import { createRain } from './world/rain';
+import { createEvents } from './world/events';
 import { createSeasons } from './world/seasons';
+import { drought } from './sim/events';
 import { createSky } from './world/sky';
 import { createStage } from './world/stage';
 import { createTerrain } from './world/terrain';
@@ -32,6 +34,7 @@ import { createWater } from './world/water';
 import { clearSave, newSeed, readSave, withSeed, writeSave } from './save';
 import { snapshot } from './sim/persist';
 import type { CraftKey } from './sim/state';
+import type { AnimKey } from './config/animations';
 
 /* ---------- saved game? ---------- */
 const save = readSave();
@@ -52,6 +55,7 @@ const updateAnimals = createAnimals(scene);
 const updateLivestock = createLivestock(scene);
 const updateRabbits = createRabbits(scene);
 const updateSeasons = createSeasons(scene, terrainMat);
+const updateEvents = createEvents(scene);
 
 /* ---------- sim + her ---------- */
 const S = initState(save?.state);
@@ -61,6 +65,7 @@ applyLook(S.look); // this island's colours: tarp, bedding, roofs, wood…
 if (import.meta.env.DEV) {
   Object.assign(window, {
     __S: S, __camera: camera, __controls: controls,
+    __play: (k: AnimKey) => hooks.play(k, true), // try an animation, e.g. __play('death')
     __give: (k: CraftKey) => { S.items[k] = true; },
     __startTask: (id: string) => { const t = T[id](); if (t) startTask(t); },
   });
@@ -164,6 +169,9 @@ function frame(now: number) {
   updateLivestock(S, body.her, dt, clockT);
   updateRabbits(S, dt);
   updateSeasons(S);
+  updateEvents(S, body.her, clockT);
+  const dry = drought() ? 0.55 : 1; // the pond shrinks in a drought
+  props.pond.scale.set(dry, 1, dry);
   props.shelter.visible = !S.projects.lodge.done; // the lodge replaces the old shelter
   updateAnimals(dt, clockT, isNight());
   const storm = S.weather.storm;

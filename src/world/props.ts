@@ -97,14 +97,15 @@ export function createProps(scene: Scene) {
     const roof = mesh(new BoxGeometry(2.6, 0.08, 2.1), M.tarp, 0, 1.79, -0.05); // a tarp she found, a different colour on every island
     roof.rotation.x = -0.505;
     g.add(roof);
-    g.add(mesh(new BoxGeometry(1.5, 0.1, 0.9), M.bed, 0, 0.05, 0));
+    g.add(mesh(new BoxGeometry(0.9, 0.1, 1.8), M.bed, 0, 0.05, -0.15)); // lengthwise, so she can lie on it
     scene.add(g);
     return g;
   })();
 
-  /* spring */
+  /* spring (the pond shrinks in a drought, see main.ts) */
+  const pond = mesh(new CylinderGeometry(1.15, 1.2, 0.06, 10), M.spring, SP.x, SP.y + 0.04, SP.z, false);
   {
-    scene.add(mesh(new CylinderGeometry(1.15, 1.2, 0.06, 10), M.spring, SP.x, SP.y + 0.04, SP.z, false));
+    scene.add(pond);
     for (let i = 0; i < 7; i++) {
       const a = i / 7 * Math.PI * 2 + 0.3;
       rock(V(SP.x + Math.cos(a) * 1.35, SP.z + Math.sin(a) * 1.35), rand(0.18, 0.32));
@@ -144,6 +145,7 @@ export function createProps(scene: Scene) {
   return {
     campfire,
     shelter,
+    pond,
     /** Palms lean and sway with the wind (0 calm … 1 storm). @param t real seconds */
     sway(wind: number, t: number) {
       palms.forEach((g, i) => {

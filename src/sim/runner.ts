@@ -5,6 +5,7 @@ import { decide } from './decide';
 import { DOCK_START, ground, PACE, V, type Pt } from './island';
 import { onDock, surfaceY } from './plans';
 import { hooks, S, type Step } from './state';
+import { injured } from './events';
 import { endTask } from './tasks';
 import { clamp } from './util';
 
@@ -49,6 +50,7 @@ function enterStep(st: Step) {
     S.lift = st.lift || 0;
     st.begin?.();
     if (st.pose === 'sit') { hooks.play('sitDown'); S.sitting = true; }
+    else if (st.pose === 'lie') { hooks.play('lieDown'); S.sitting = true; } // (stands up the same way)
     else if (st.pose === 'gather') hooks.play('gather', false);
     else if (st.pose === 'chop') hooks.play('chop');
     else if (st.pose === 'hammer') hooks.play('hammer');
@@ -82,7 +84,7 @@ export function runTask(dtAnim: number, dm: number) {
   if (st.type === 'go') {
     const path = st.path!, tgt = path[0], pos = S.pos;
     const dx = tgt.x - pos.x, dz = tgt.z - pos.z, d = Math.hypot(dx, dz);
-    const step = (st.ride ? ROW : st.run ? RUN : WALK) * dm; // tied to game time so fast-forward doesn't starve her
+    const step = (st.ride ? ROW : st.run && !injured() ? RUN : WALK) * dm * (injured() && !st.ride ? 0.5 : 1); // tied to game time so fast-forward doesn't starve her (a sprained ankle halves it)
     S.faceTarget = tgt;
     if (d <= step) {
       pos.x = tgt.x; pos.z = tgt.z;

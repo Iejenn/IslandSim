@@ -16,7 +16,7 @@ const rows: string[] = [];
 // variety between islands: what each made first, its first three things, and everything it made
 const firsts: Record<string, number> = {}, openings = new Set<string>(), camps: Set<string>[] = [];
 let dreams = 0, dreamsMet = 0, idle = 0;
-const totals = { present: 0, spear: 0, snare: 0, hunted: 0, freed: 0, rabbitsLeft: 0, houseboat: 0, lodge: 0, fence: 0, coop: 0, penned: 0, eggs: 0, wool: 0, lodgeFurniture: 0, died: 0, built: 0, crafted: 0, furniture: 0, felled: 0, standing: 0, meals: 0, stews: 0, fireOutHours: 0, dogFriend: 0, storms: 0, repairs: 0, broken: 0, comfort: 0 };
+const totals = { salvaged: 0, hatched: 0, gullPet: 0, treasure: 0, kiln: 0, clayItems: 0, rareBuilt: 0, rareAllowed: 0, present: 0, spear: 0, snare: 0, hunted: 0, freed: 0, rabbitsLeft: 0, houseboat: 0, lodge: 0, fence: 0, coop: 0, penned: 0, eggs: 0, wool: 0, lodgeFurniture: 0, died: 0, built: 0, crafted: 0, furniture: 0, felled: 0, standing: 0, meals: 0, stews: 0, fireOutHours: 0, dogFriend: 0, storms: 0, repairs: 0, broken: 0, comfort: 0 };
 const FURNITURE = ['chair', 'table', 'bed', 'shelf', 'rocker'], LODGE_FURNITURE = ['realbed', 'sofa', 'kitchen'], WOOL_ITEMS = ['blanket', 'sweater'];
 for (let r = 0; r < runs; r++) {
   const S = initState();
@@ -61,6 +61,14 @@ for (let r = 0; r < runs; r++) {
   totals.hunted += S.stats.hunted; totals.freed += S.stats.freed; totals.rabbitsLeft += S.rabbits;
   totals.fence += S.projects.fence.done ? 1 : 0;
   totals.coop += S.projects.coop.done ? 1 : 0;
+  totals.salvaged += S.wreck.state === 'salvaged' ? 1 : 0;
+  totals.hatched += S.turtle.state === 'hatched' && S.turtle.visits >= 2 ? 1 : 0;
+  totals.gullPet += S.gull.state === 'pet' ? 1 : 0;
+  totals.treasure += S.treasure.spots.length && S.treasure.found >= S.treasure.spots.length ? 1 : 0;
+  totals.kiln += S.projects.kiln.done ? 1 : 0;
+  totals.clayItems += ['pots', 'jug', 'tiles'].filter(k => S.items[k as keyof typeof S.items]).length + (S.projects.oven.done ? 1 : 0);
+  totals.rareBuilt += S.rare.filter(k => S.projects[k].done).length;
+  totals.rareAllowed += S.rare.length;
   totals.present += S.chickens.filter(c => !c.away).length + S.sheep.filter(c => !c.away).length;
   totals.penned += S.chickens.filter(c => c.penned).length + S.sheep.filter(c => c.penned).length;
   totals.eggs += S.stats.eggs;
@@ -70,11 +78,12 @@ for (let r = 0; r < runs; r++) {
 }
 const avg = (v: number) => (v / runs).toFixed(1);
 console.log(rows.join('\n'));
-console.log(`\n${runs} islands × ${days} days: ${totals.died} died · avg ${avg(totals.built)}/14 built · ${avg(totals.crafted - totals.furniture)}/10 tools & things · ${avg(totals.furniture)}/5 furniture · ` +
+console.log(`\n${runs} islands × ${days} days: ${totals.died} died · avg ${avg(totals.built)}/20 built · ${avg(totals.crafted - totals.furniture)}/13 tools & things · ${avg(totals.furniture)}/5 furniture · ` +
   `${avg(totals.felled)} trees felled, ${avg(totals.standing)} trees standing · ${avg(totals.meals)} cooked meals (${totals.stews} islands had stew) · fire out ${avg(totals.fireOutHours)}h\n` +
   `dog befriended on ${totals.dogFriend}/${runs} · ${avg(totals.storms)} storms, ${avg(totals.repairs)} repairs, ${avg(totals.broken)} still broken at the end · home comfort ${avg(totals.comfort)}/16\n` +
   `fence on ${totals.fence}/${runs}, coop on ${totals.coop}/${runs}, lodge on ${totals.lodge}/${runs} · ${avg(totals.penned)}/7 animals home (of ${avg(totals.present)}) · ${avg(totals.eggs)} eggs, sheared ${avg(totals.wool)}× · ${avg(totals.lodgeFurniture)}/3 lodge furniture\n` +
-  `rabbits: hunted ${avg(totals.hunted)}, let go ${avg(totals.freed)}, ${avg(totals.rabbitsLeft)} left in the warren · houseboat on ${totals.houseboat}/${runs} · spear on ${totals.spear}/${runs}, snares on ${totals.snare}/${runs}`);
+  `rabbits: hunted ${avg(totals.hunted)}, let go ${avg(totals.freed)}, ${avg(totals.rabbitsLeft)} left in the warren · houseboat on ${totals.houseboat}/${runs} · spear on ${totals.spear}/${runs}, snares on ${totals.snare}/${runs}\n` +
+  `events: wreck salvaged on ${totals.salvaged}, turtles seen hatching on ${totals.hatched}, gull stayed on ${totals.gullPet}, treasure found on ${totals.treasure} · kiln on ${totals.kiln}/${runs}, ${avg(totals.clayItems)}/4 clay things · rare projects ${totals.rareBuilt}/${totals.rareAllowed} built`);
 // how different two finished camps are: 0 = made exactly the same things, 1 = nothing in common
 let diff = 0, pairs = 0;
 for (let i = 0; i < camps.length; i++) for (let j = i + 1; j < camps.length; j++) {

@@ -214,6 +214,32 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     tags: ['animals', 'creative'],
   },
 
+  /* ---------- fired in the kiln ---------- */
+  pots: {
+    kind: 'craft', name: 'clay pots', a: 'some clay pots', cost: { clay: 3 }, minutes: 70,
+    unlocked: () => works('kiln'),
+    want: 'Sealed clay pots would keep food fresh for much longer.',
+    done: 'A row of clay pots. Nothing goes off in a hurry now.',
+    weight: () => 2,
+    tags: ['practical'],
+  },
+  jug: {
+    kind: 'craft', name: 'water jug', a: 'a water jug', cost: { clay: 2 }, minutes: 50,
+    unlocked: () => works('kiln'),
+    want: 'A big water jug, so I don’t have to run to the pond every time I’m thirsty.',
+    done: 'A water jug! Cool water, right here at camp.',
+    weight: () => 1.8 + (tr('lazy') ? 1 : 0),
+    tags: ['practical', 'comfort'],
+  },
+  tiles: {
+    kind: 'craft', name: 'roof tiles', a: 'roof tiles', cost: { clay: 8 }, minutes: 140,
+    unlocked: () => works('kiln') && (S.projects.lodge.done || S.projects.hut.done),
+    want: 'If I fired clay tiles for the roof, the storms couldn’t tear it apart.',
+    done: 'A tiled roof. Let the storms come.',
+    weight: () => 1.3 + 0.2 * S.stats.repairs,
+    tags: ['practical', 'comfort'],
+  },
+
   /* ---------- projects ---------- */
   garden: {
     kind: 'build', name: 'garden', a: 'a garden', cost: { wood: 4 }, minutes: 150,
@@ -321,6 +347,56 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     weight: () => 1.3 + (tr('curious') ? 0.7 : 0),
     tags: ['sea', 'adventure'],
   },
+  kiln: {
+    kind: 'build', name: 'kiln', a: 'a kiln', cost: { stone: 6, clay: 4 }, minutes: 180,
+    // there's clay at the pond's edge; once she notices, she can fire it
+    unlocked: () => dayNum() >= 6 && S.skills.building.lvl >= 1,
+    want: 'There’s good clay by the pond. With a kiln I could fire pots… maybe even tiles.',
+    done: 'The kiln is done! Let’s see what this clay can do.',
+    weight: () => 1.4,
+    tags: ['creative', 'practical'],
+  },
+  oven: {
+    kind: 'build', name: 'bread oven', a: 'a bread oven', cost: { stone: 4, clay: 6 }, minutes: 160,
+    unlocked: () => works('kiln') && S.projects.garden.done,
+    want: 'A clay oven… I could bake pies from the garden. Real baking!',
+    done: 'An oven! Something’s going to smell amazing around here.',
+    weight: () => 1.5,
+    tags: ['comfort', 'green'],
+  },
+  /* ---------- rare: each island allows only a couple of these (S.rare) ---------- */
+  beehive: {
+    kind: 'build', name: 'beehive', a: 'a beehive', cost: { wood: 4, fibre: 2 }, minutes: 120,
+    unlocked: () => S.rare.includes('beehive') && dayNum() >= 6,
+    want: 'Wild bees keep buzzing around the garden. A hive, and I’d have honey!',
+    done: 'The bees moved in! Honey, here I come.',
+    weight: () => 1.6,
+    tags: ['green', 'animals'],
+  },
+  sundial: {
+    kind: 'build', name: 'sundial', a: 'a sundial', cost: { stone: 6 }, minutes: 90,
+    unlocked: () => S.rare.includes('sundial') && dayNum() >= 7,
+    want: 'I keep losing track of time. A sundial! I know how they work… roughly.',
+    done: 'A sundial. It’s half past something. Probably.',
+    weight: () => 1.2 + (tr('curious') ? 0.8 : 0),
+    tags: ['creative', 'practical'],
+  },
+  mosaic: {
+    kind: 'build', name: 'shell mosaic', a: 'a shell mosaic', cost: { shells: 8, stone: 4 }, minutes: 150,
+    unlocked: () => S.rare.includes('mosaic') && S.stock.shells >= 3,
+    want: 'All these shells… I could set them into a mosaic. A picture of the island.',
+    done: 'The mosaic is finished. It’s the most beautiful thing on this island.',
+    weight: () => 1.2 + (S.quirk === 'collector' ? 1.5 : 0),
+    tags: ['creative'],
+  },
+  bathhouse: {
+    kind: 'build', name: 'bathhouse', a: 'a bathhouse', cost: { stone: 8, wood: 6, clay: 4 }, minutes: 260,
+    unlocked: () => S.rare.includes('bathhouse') && works('kiln'),
+    want: 'A little bathhouse by the pond, with a fire under the water. Pure luxury.',
+    done: 'A hot bath. On a desert island. I’m a genius.',
+    weight: () => 1.4 + (tr('lazy') ? 0.6 : 0),
+    tags: ['comfort'],
+  },
   lodge: {
     kind: 'build', name: 'lodge', a: 'a lodge', cost: { wood: 16, stone: 12 }, minutes: 420,
     // usually after stone walls, but a skilled builder can go straight for the house
@@ -395,7 +471,7 @@ export const FIREWOOD_RESERVE = 2;
 
 /** How much of each resource she still has to gather before she can start her goal. */
 export function missing(): Record<Resource, number> {
-  const out = { wood: 0, stone: 0, fibre: 0, wool: 0 }, k = S.goal;
+  const out = { wood: 0, stone: 0, fibre: 0, wool: 0, clay: 0, shells: 0 }, k = S.goal;
   if (!k || progressOf(k).started) return out;
   for (const r of Object.keys(out) as Resource[]) {
     const cost = PLANS[k].cost[r] ?? 0;
@@ -469,10 +545,11 @@ export const works = (k: ProjectKey) => S.projects[k].done && !S.projects[k].dam
 export const damaged = () => (Object.keys(REPAIRABLE) as ProjectKey[]).filter(k => S.projects[k].damaged);
 
 /* ---------- home comfort: how much the camp feels like a home ---------- */
-const COMFORT_ITEMS: CraftKey[] = ['chair', 'table', 'bed', 'shelf', 'rocker', 'hammock', 'drum', 'realbed', 'sofa', 'kitchen', 'blanket'];
-/** 0…20: furniture and comforts she has made, plus a sound roof (or a whole lodge) and hearth. */
+const COMFORT_ITEMS: CraftKey[] = ['jug', 'chair', 'table', 'bed', 'shelf', 'rocker', 'hammock', 'drum', 'realbed', 'sofa', 'kitchen', 'blanket'];
+/** 0…25: furniture and comforts she has made, plus a sound roof (or a whole lodge) and hearth. */
 export function comfort() {
-  return COMFORT_ITEMS.filter(k => S.items[k]).length + (works('lodge') ? 4 : works('hut') ? 2 : 0) + (works('treehouse') ? 2 : 0) + (works('houseboat') ? 2 : 0) + (S.projects.hearth.done ? 1 : 0);
+  return COMFORT_ITEMS.filter(k => S.items[k]).length + (works('lodge') ? 4 : works('hut') ? 2 : 0) + (works('treehouse') ? 2 : 0) + (works('houseboat') ? 2 : 0)
+    + (['sundial', 'mosaic', 'bathhouse', 'oven'] as ProjectKey[]).filter(works).length + (S.projects.hearth.done ? 1 : 0);
 }
 /** Somewhere dry and solid to sleep and shelter: the lodge, or the shelter with stone walls. */
 export const indoors = () => works('lodge') || works('hut');
