@@ -12,6 +12,10 @@ export const ANIM = {
   gather: 'PickUp',
   celebrate: 'Victory',
   death: 'Death',
+  // There's no sleeping clip, but Death ends with her lying on her back:
+  // animation.ts starts this near the end, so she settles into that pose
+  // instead of collapsing.
+  lieDown: 'Death',
 } as const;
 
 export type AnimKey = keyof typeof ANIM;

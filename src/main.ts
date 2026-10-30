@@ -34,6 +34,7 @@ import { createWater } from './world/water';
 import { clearSave, newSeed, readSave, withSeed, writeSave } from './save';
 import { snapshot } from './sim/persist';
 import type { CraftKey } from './sim/state';
+import type { AnimKey } from './config/animations';
 
 /* ---------- saved game? ---------- */
 const save = readSave();
@@ -64,6 +65,7 @@ applyLook(S.look); // this island's colours: tarp, bedding, roofs, wood…
 if (import.meta.env.DEV) {
   Object.assign(window, {
     __S: S, __camera: camera, __controls: controls,
+    __play: (k: AnimKey) => hooks.play(k, true), // try an animation, e.g. __play('death')
     __give: (k: CraftKey) => { S.items[k] = true; },
     __startTask: (id: string) => { const t = T[id](); if (t) startTask(t); },
   });

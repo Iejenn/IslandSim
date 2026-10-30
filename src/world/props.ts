@@ -97,7 +97,7 @@ export function createProps(scene: Scene) {
     const roof = mesh(new BoxGeometry(2.6, 0.08, 2.1), M.tarp, 0, 1.79, -0.05); // a tarp she found, a different colour on every island
     roof.rotation.x = -0.505;
     g.add(roof);
-    g.add(mesh(new BoxGeometry(1.5, 0.1, 0.9), M.bed, 0, 0.05, 0));
+    g.add(mesh(new BoxGeometry(0.9, 0.1, 1.8), M.bed, 0, 0.05, -0.15)); // lengthwise, so she can lie on it
     scene.add(g);
     return g;
   })();

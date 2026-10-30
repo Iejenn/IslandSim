@@ -50,6 +50,7 @@ function enterStep(st: Step) {
     S.lift = st.lift || 0;
     st.begin?.();
     if (st.pose === 'sit') { hooks.play('sitDown'); S.sitting = true; }
+    else if (st.pose === 'lie') { hooks.play('lieDown'); S.sitting = true; } // (stands up the same way)
     else if (st.pose === 'gather') hooks.play('gather', false);
     else if (st.pose === 'chop') hooks.play('chop');
     else if (st.pose === 'hammer') hooks.play('hammer');

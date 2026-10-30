@@ -48,7 +48,7 @@ export interface GoStep {
 }
 export interface DoStep {
   type: 'do';
-  pose: 'sit' | 'gather' | 'idle' | 'chop' | 'hammer';
+  pose: 'sit' | 'lie' | 'gather' | 'idle' | 'chop' | 'hammer'; // lie: on her back, feet where she stood, head towards `face`
   face?: Pt;
   min: number; // game minutes
   tick?: (dm: number) => void;

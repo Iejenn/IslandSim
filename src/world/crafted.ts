@@ -174,9 +174,11 @@ export function createCrafted(scene: Scene) {
     bed() {
       // a raised frame under her sleeping mat, inside the shelter
       const g = new Group();
-      for (const [x, z] of [[-0.75, -0.45], [0.75, -0.45], [-0.75, 0.45], [0.75, 0.45]]) g.add(mesh(new BoxGeometry(0.08, 0.2, 0.08), M.log, x, 0.1, z));
-      for (const z of [-0.47, 0.47]) g.add(mesh(new BoxGeometry(1.6, 0.08, 0.06), M.log, 0, 0.16, z));
-      for (const x of [-0.77, 0.77]) g.add(mesh(new BoxGeometry(0.06, 0.08, 1.0), M.log, x, 0.16, 0));
+      // (lengthwise under her mat, like the mat itself)
+      for (const [x, z] of [[-0.45, -0.9], [0.45, -0.9], [-0.45, 0.6], [0.45, 0.6]]) g.add(mesh(new BoxGeometry(0.08, 0.2, 0.08), M.log, x, 0.1, z));
+      for (const x of [-0.47, 0.47]) g.add(mesh(new BoxGeometry(0.06, 0.08, 1.6), M.log, x, 0.16, -0.15));
+      for (const z of [-0.92, 0.62]) g.add(mesh(new BoxGeometry(1.0, 0.08, 0.06), M.log, 0, 0.16, z));
+      g.add(mesh(new BoxGeometry(0.9, 0.08, 1.75), M.bed, 0, 0.22, -0.15)); // her mat, now up on the frame
       return place(g, SH.x, SH.z, yawTo(SH, FIRE));
     },
     shelf() {
@@ -268,7 +270,7 @@ export function createCrafted(scene: Scene) {
       models.blanket.position.set(b.x, b.y + (S.items.realbed ? 0.5 : 0.2), b.z);
       models.blanket.rotation.y = LODGE_YAW;
     } else {
-      models.blanket.position.set(SH.x, SH.y + (S.items.bed ? 0.25 : 0.12), SH.z);
+      models.blanket.position.set(SH.x, SH.y + (S.items.bed ? 0.28 : 0.12), SH.z);
     }
     shells.forEach((sh, i) => { sh.visible = i < S.stock.shells; });
   };

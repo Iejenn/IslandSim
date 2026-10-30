@@ -3,8 +3,8 @@
 import { ONE_SHOT_SECONDS } from '../config/animations';
 import { freePlots, growingPlots, ripePlots } from './garden';
 import {
-  SP, BATH_P, CLAY_P, CLAY_STAND, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SUNDIAL_P, BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
-  HAMMOCK_P, LOOKOUT_DECK, LOOKOUT_P, pointAt, RACK_P, SAIL_ROUTE, SCREE_P, SCREE_STAND, SEATS, SH, SHELTER, SPRING, standNear,
+  addScaled, dirXZ, SP, BATH_P, CLAY_P, CLAY_STAND, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SUNDIAL_P, BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
+  HAMMOCK_BED, SHELTER_BED, LOOKOUT_DECK, LOOKOUT_P, pointAt, RACK_P, SAIL_ROUTE, SCREE_P, SCREE_STAND, SEATS, SH, SHELTER, SPRING, standNear,
   V, WOODPILE_P, type Pt,
 } from './island';
 import { feelingAbout, remember } from './memory';
@@ -63,7 +63,10 @@ const CRAFT_SEAT = SEATS[0]; // she crafts sitting by the fire
 /** Her seat by the fire: the chair once she's made one, otherwise a log. */
 const fireSeat = () => S.items.chair ? CHAIR_P : CRAFT_SEAT.p;
 const DRUM_SEAT = standNear(DRUM_P, 0.6, FIRE);
-const HAMMOCK = { spot: HAMMOCK_P, face: FIRE, lift: 0.35 };
+/** Lie down on her back (feet at p, head towards face), then get up again. */
+function lieAt(p: Pt, face: Pt, min: number, tick?: (dm: number) => void, done?: (() => void) | null, lift?: number): Step[] {
+  return [go(p), act({ pose: 'lie', face, min, tick, done, lift }), standUp()];
+}
 // where she stands to work on each project
 const SITE: Record<string, { stand: Pt; face: Pt }> = {
   garden: { stand: GARDEN_STAND, face: GARDEN_P },
@@ -439,12 +442,12 @@ export const T: Record<string, () => Task | null> = {
     // energy per hour in each place she could sleep; she picks the best
     const blanket = has('blanket') ? 3 : 0;
     const beds = [
-      { where: 'shelter', spot: SHELTER, lift: 0, rate: (works('hut') ? 15 : 13) + (has('bed') ? 4 : 0) + blanket + (S.washedUp === 'tarp' ? 2 : 0), label: 'Sleeping in the shelter' },
-      ...(has('hammock') ? [{ where: 'hammock', spot: HAMMOCK, lift: HAMMOCK.lift, rate: 18, label: 'Sleeping in the hammock' }] : []),
+      { where: 'shelter', spot: SHELTER_BED, lift: has('bed') ? 0.22 : 0.08, rate: (works('hut') ? 15 : 13) + (has('bed') ? 4 : 0) + blanket + (S.washedUp === 'tarp' ? 2 : 0), label: 'Sleeping in the shelter' },
+      ...(has('hammock') ? [{ where: 'hammock', spot: HAMMOCK_BED, lift: HAMMOCK_BED.lift!, rate: 18, label: 'Sleeping in the hammock' }] : []),
       // (an adventurous soul likes the treehouse even when there's a softer bed)
       ...(works('treehouse') ? [{ where: 'treehouse', spot: TREEHOUSE_BED, lift: TREEHOUSE_BED.lift!, rate: 19 + blanket, pref: 6 * S.taste.adventure, label: 'Sleeping in the treehouse' }] : []),
-      ...(works('houseboat') ? [{ where: 'houseboat', spot: { spot: HOUSEBOAT_BED, face: HOUSEBOAT_P }, lift: 0, rate: 20 + blanket, pref: 6 * S.taste.sea, label: 'Sleeping on the houseboat' }] : []),
-      ...(lodge ? [{ where: 'lodge', spot: LODGE_BED, lift: 0, rate: (has('realbed') ? 24 : 16 + (has('bed') ? 4 : 0)) + blanket, label: has('realbed') ? 'Sleeping in her bed' : 'Sleeping in the lodge' }] : []),
+      ...(works('houseboat') ? [{ where: 'houseboat', spot: { spot: HOUSEBOAT_BED, face: addScaled(HOUSEBOAT_BED, dirXZ(HOUSEBOAT_BED, HOUSEBOAT_P), 3) }, lift: 0, rate: 20 + blanket, pref: 6 * S.taste.sea, label: 'Sleeping on the houseboat' }] : []),
+      ...(lodge ? [{ where: 'lodge', spot: LODGE_BED, lift: has('realbed') ? 0.46 : 0.18, rate: (has('realbed') ? 24 : 16 + (has('bed') ? 4 : 0)) + blanket, label: has('realbed') ? 'Sleeping in her bed' : 'Sleeping in the lodge' }] : []),
     ];
     // on cold nights the open-air beds lose their charm (less so with a blanket)
     const chilly = fx().cold * (S.quirk === 'hardy' ? 0.3 : 1) * (has('blanket') ? 0.5 : 1);
@@ -458,12 +461,12 @@ export const T: Record<string, () => Task | null> = {
       // along the dock, step aboard, sleep rocked by the waves, back to the dock in the morning
       return mk('sleep', night ? bed.label : 'Napping on the houseboat', night ? 'Rocked to sleep by the sea.' : pick(TH.nap), [
         go(DOCK_END), ride(HOUSEBOAT_BED),
-        act({ pose: 'sit', face: HOUSEBOAT_P, min: mins, tick: dm => { feed('energy', dm * bed.rate / 60); } }),
+        act({ pose: 'lie', face: bed.spot.face, min: mins, tick: dm => { feed('energy', dm * bed.rate / 60); } }),
         ride(DOCK_END), act({ pose: 'sit', face: FIRE, min: 1, begin() { S.sailing = false; } }), standUp(),
       ]);
     }
     return mk('sleep', night ? bed.label : 'Taking a nap', th,
-      sitAt(bed.spot.spot, bed.spot.face, mins, dm => { feed('energy', dm * bed.rate / 60); }, () => { if (night && bed.where === 'shelter') S.stats.nightsInShelter++; }, bed.lift));
+      lieAt(bed.spot.spot, bed.spot.face, mins, dm => { feed('energy', dm * bed.rate / 60); }, () => { if (night && bed.where === 'shelter') S.stats.nightsInShelter++; }, bed.lift));
   },
   relax() {
     const chair = has('chair'), s = pick(SEATS);
