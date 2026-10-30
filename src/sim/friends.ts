@@ -16,9 +16,15 @@ const freshName = (pool: string[], used: string[]) => pool.find(n => !used.inclu
 /* ---------- at dawn ---------- */
 export function friendsAtDawn() {
   nameAnimals();
+  springMilk();
   ducksArrive();
   parrotAppears();
   dogGift();
+}
+
+/** Her ewes give milk through the spring (and after a lamb is born, see animals.ts). */
+function springMilk() {
+  if (season() === 'spring' && S.sheep.some(s => s.penned)) S.milkUntil = Math.max(S.milkUntil, S.min + 1440);
 }
 
 function nameAnimals() {
@@ -42,7 +48,7 @@ function ducksArrive() {
     log('A pair of ducks landed on the pond, and decided to stay.', 'big');
     say('Ducks! On my pond!');
     highlight('saw ducks settle on the pond');
-  } else if (S.ducks >= 2 && S.ducks < 6 && season() === 'spring' && !S.feelingsNoted.includes(`ducklings:${Math.floor(dayNum() / 48)}`) && Math.random() < 0.15) {
+  } else if (S.ducks >= 2 && S.ducks < 6 && season() === 'spring' && !S.feelingsNoted.includes(`ducklings:${Math.floor(dayNum() / 48)}`) && Math.random() < (S.projects.duckhouse?.done ? 0.3 : 0.15)) {
     S.feelingsNoted.push(`ducklings:${Math.floor(dayNum() / 48)}`);
     const n = 2 + Math.floor(Math.random() * 3);
     S.ducks = Math.min(6, S.ducks + n);

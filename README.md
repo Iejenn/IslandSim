@@ -135,6 +135,16 @@ repeating things she says. Her dog fetches sticks she throws into the sea and
 leaves her little gifts, and her fishing turns up mackerel, snapper, sea bream,
 parrotfish, octopus and, rarely, a golden trevally.
 
+An animal lover has her own path too: a barn that keeps her flock warm (and
+growing wool) through winter, a duck house on the pond (more ducklings, and
+duck eggs), a dovecote with doves wheeling over camp, milk from her ewes in
+spring and a cheese press to make cheese. Everything she does with animals
+builds her Animal care skill; master it and she becomes a friend of all
+creatures (her hens lay more and her sheep grow thicker fleeces).
+
+Photo mode (under the gear) hides everything but the island: frame your shot
+and save it as a picture.
+
 The nights have their own life. The moon waxes and wanes over eight days,
 shooting stars streak low over the sea, and two island constellations (the
 turtle and the canoe) hang over the horizon; tilt the camera up to see them.

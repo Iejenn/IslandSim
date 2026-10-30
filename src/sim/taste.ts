@@ -23,7 +23,7 @@ export function rollTaste(): Taste {
 const DREAMS: Record<Leaning, PlanKey[]> = {
   comfort: ['lodge', 'sofa', 'realbed'],
   practical: ['lodge', 'hearth', 'dock', 'shed', 'well', 'workshop', 'furnace'],
-  animals: ['coop', 'blanket'],
+  animals: ['coop', 'blanket', 'barn', 'dovecote'],
   green: ['garden', 'barrel', 'orchard', 'pipe'],
   sea: ['canoe', 'dock', 'trap', 'houseboat'],
   creative: ['shelf', 'drum', 'treehouse', 'kiln', 'bandstand'],
@@ -67,7 +67,7 @@ const TASK_LEANING: Partial<Record<TaskId, Leaning>> = {
   herd: 'animals', collect: 'animals', shear: 'animals', befriend: 'animals', play: 'animals',
   plant: 'green', water: 'green', harvest: 'green', replant: 'green',
   drum: 'creative', write: 'creative',
-  ducks: 'animals', parrot: 'animals', decorate: 'creative', totem: 'creative', salt: 'sea', smoke: 'sea', ore: 'practical', smelt: 'practical', bamboo: 'adventure', flint: 'practical', tidepools: 'sea', nightwalk: 'adventure', beachstars: 'adventure', plantfruit: 'green', pickfruit: 'green', dance: 'creative', cairn: 'adventure', sandcastle: 'sea', clouds: 'comfort', bouquet: 'green', whittle: 'creative', mushrooms: 'green', turtles: 'animals', tendgull: 'animals', honey: 'green', bathe: 'comfort', dig: 'adventure', salvage: 'adventure', explore: 'adventure', hunt: 'adventure', checksnares: 'practical', watch: 'adventure', stargaze: 'adventure',
+  milk: 'animals', cheese: 'animals', ducks: 'animals', parrot: 'animals', decorate: 'creative', totem: 'creative', salt: 'sea', smoke: 'sea', ore: 'practical', smelt: 'practical', bamboo: 'adventure', flint: 'practical', tidepools: 'sea', nightwalk: 'adventure', beachstars: 'adventure', plantfruit: 'green', pickfruit: 'green', dance: 'creative', cairn: 'adventure', sandcastle: 'sea', clouds: 'comfort', bouquet: 'green', whittle: 'creative', mushrooms: 'green', turtles: 'animals', tendgull: 'animals', honey: 'green', bathe: 'comfort', dig: 'adventure', salvage: 'adventure', explore: 'adventure', hunt: 'adventure', checksnares: 'practical', watch: 'adventure', stargaze: 'adventure',
   relax: 'comfort',
 };
 /** −0.05 … +0.1 extra score for activities that match her taste. */
@@ -109,6 +109,8 @@ const DREAM_SAY: Partial<Record<PlanKey, string>> = {
   bandstand: 'One day I’ll have a little stage, and play my music to the whole island.',
   kiln: 'One day I’ll fire my own pottery. There must be clay somewhere.',
   shed: 'One day every tool I make will have its own hook on a wall.',
+  barn: 'One day my animals will have a proper barn, warm and full of hay.',
+  dovecote: 'I’d love a dovecote, with doves cooing me awake every morning.',
   bridge: 'One day I’ll build a bridge out to that little island. Whatever the tide says.',
   cave: 'There’s a cave in that hill. One day I’ll clear the way in.',
   pipe: 'Water that comes to me, instead of me going to it. One day.',

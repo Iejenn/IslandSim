@@ -32,9 +32,17 @@
   </button>
   <div class="settings-menu" id="settingsMenu" role="menu" hidden>
     <button role="menuitem" id="openMenu">Save &amp; back to menu</button>
+    <button role="menuitem" id="photoMode">Photo mode</button>
     <button role="menuitemcheckbox" id="sound" aria-checked="false"><span>Sound</span><i class="switch" aria-hidden="true"></i></button>
   </div>
 </div>
+
+<!-- photo mode: everything else hides; frame the island and save a picture -->
+<div class="photo-bar" id="photoBar" hidden>
+  <button id="photoTake">Take photo</button>
+  <button class="quiet" id="photoDone">Done</button>
+</div>
+<div class="photo-flash" id="photoFlash"></div>
 
 <!-- the start menu, over the blurred island -->
 <div class="menu" id="menu" role="dialog" aria-modal="true" aria-labelledby="menuTitle">

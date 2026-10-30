@@ -11,7 +11,7 @@ import { createHeldTools, type HeldTool } from './character/heldTools';
 import { createBody } from './character/movement';
 import { updateNeeds } from './sim/needs';
 import { runTask, settleHeight } from './sim/runner';
-import { hooks, hour, initState, isNight, log, say } from './sim/state';
+import { dayNum, hooks, hour, initState, isNight, log, say } from './sim/state';
 import { startTask, T } from './sim/tasks';
 import { createBubble } from './ui/bubble';
 import { createHud } from './ui/hud';
@@ -141,6 +141,27 @@ gear.addEventListener('click', () => showSettings(settings.hidden === true));
 addEventListener('pointerdown', e => { if (!(e.target as Element).closest('.settings')) showSettings(false); });
 addEventListener('keydown', e => { if (e.key === 'Escape') showSettings(false); });
 document.getElementById('openMenu')!.addEventListener('click', () => { showSettings(false); menu.open(); });
+
+/* photo mode: hide everything but the island, frame it, and save a picture */
+let photoWanted = false;
+const photoBar = document.getElementById('photoBar')!, flash = document.getElementById('photoFlash')!;
+const setPhotoMode = (on: boolean) => { document.body.classList.toggle('photo-mode', on); photoBar.hidden = !on; if (on) hud.setFollow(false); };
+document.getElementById('photoMode')!.addEventListener('click', () => { showSettings(false); setPhotoMode(true); });
+document.getElementById('photoDone')!.addEventListener('click', () => setPhotoMode(false));
+document.getElementById('photoTake')!.addEventListener('click', () => { photoWanted = true; });
+function takePhoto() {
+  photoWanted = false;
+  renderer.domElement.toBlob(blob => {
+    if (!blob) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${S.name.toLowerCase()}-day${dayNum()}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+  flash.classList.add('on'); // a little camera flash
+  requestAnimationFrame(() => flash.classList.remove('on'));
+}
 if (takeSkipMenu()) { document.getElementById('menu')!.hidden = true; started = true; } // (just switched islands from the menu)
 else menu.open();
 function renderUI() {
@@ -222,13 +243,16 @@ function begin() {
 }
 
 /* ---------- main loop ---------- */
-let last = performance.now(), lastUI = 0, lastSave = 0, clockT = 0, waveUntil = 0;
+let last = performance.now(), lastUI = 0, lastSave = 0, clockT = 0, lifeT = 0, waveUntil = 0;
 const tmpV = new Vector3();
 function frame(now: number) {
   const dt = Math.min(0.1, (now - last) / 1000); // real seconds, capped so a background tab doesn't jump
   last = now;
   clockT += dt;
   const sp = S.speed, animScale = sp > 0 ? Math.min(sp, 6) : 0; // animations stop speeding up past 6×
+  // the animals' own clock: it stops while the game is paused, so they freeze along with her
+  const lifeDt = sp > 0 ? dt : 0;
+  lifeT += lifeDt;
   if (ready && started && !menu.isOpen && !S.dead && sp > 0) {
     const dm = dt * 4 * sp; // 1 real second = 4 game minutes at 1×
     S.min += dm;
@@ -255,32 +279,32 @@ function frame(now: number) {
   updateCrafted(S, held ?? (playing === 'flute' || playing === 'ukulele' ? playing : null)); // (a flute or ukulele in her hands isn't in its spot)
   updateForest(S);
   props.syncBerries(S.berries);
-  updateBuildings(S, body.her, clockT);
-  if (ready) updateDog(S, body.her, dt, clockT);
-  updateLivestock(S, body.her, dt, clockT);
+  updateBuildings(S, body.her, lifeT); // (on the animals' clock: the doves, and the bobbing boats, pause too)
+  if (ready) updateDog(S, body.her, lifeDt, lifeT);
+  updateLivestock(S, body.her, lifeDt, lifeT);
   updateRabbits(S, dt);
   updateSeasons(S);
   updatePaths(S, clockT);
   updateFlowers(S);
   updateEvents(S, body.her, clockT);
   updateJoys(S);
-  updateCritters(S, dt, clockT);
+  updateCritters(S, lifeDt, lifeT);
   // the sky and the shore: clouds, surf and footprints, smoke from the fire
   const sunUp = Math.sin((hour() - 6) / 12 * Math.PI), light = Math.min(1, Math.max(0, (sunUp + 0.1) / 0.4));
   const dry = drought() ? 0.75 : 1; // the pond shrinks in a drought (and the waterfall dwindles)
   props.pond.scale.set(dry, 1, dry);
   updateWaterfall(clockT, drought() ? 1 : 0);
   props.shelter.visible = !S.projects.lodge.done; // the lodge replaces the old shelter
-  updateAnimals(dt, clockT, isNight());
+  updateAnimals(lifeDt, lifeT, isNight());
   const storm = S.weather.storm;
   const rain = updateRain(dt, S.weather.raining, controls.target, storm);
   updateClouds(S, dt * animScale, rain);
   updateShore(S, body.her, clockT, light);
   updateSmoke(S, dt * animScale, rain, storm ? 1 : rain * 0.3, light);
-  updateIslet(S, clockT, storm ? 1 : rain * 0.4);
+  updateIslet(S, lifeT, storm ? 1 : rain * 0.4);
   updateLifeProps(S);
   updateDecor(S);
-  updateFriendsWorld(S, body.her, clockT);
+  updateFriendsWorld(S, body.her, lifeT);
   props.sway(storm ? rain : rain * 0.3, clockT);
   sound.update(S, camera, body.her, rain, ready ? S.speed : 0);
   animateWater(clockT);
@@ -295,6 +319,7 @@ function frame(now: number) {
   }
   controls.update();
   renderer.render(scene, camera);
+  if (photoWanted) takePhoto(); // (right after rendering, while the picture is still in the canvas)
   bubble.update(now, ready);
   if (now - lastUI > 250) { lastUI = now; renderUI(); }
   if (now - lastSave > 5000) { lastSave = now; saveNow(); } // autosave every 5 real seconds

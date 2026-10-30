@@ -11,7 +11,7 @@ import { clamp, mergeInto, pick, rand } from './util';
 
 export const NAMES = ['Mara', 'Lena', 'Iris', 'Noor', 'Sofie', 'Ava', 'Elin', 'Tess', 'Yara', 'Fenna'];
 export const TRAITS = { musical: 'Musical', curious: 'Curious', hardworking: 'Hard-working', lazy: 'Easy-going', social: 'Sociable' };
-export const SKILLS = { foraging: 'Foraging', fishing: 'Fishing', survival: 'Survival', crafting: 'Crafting', building: 'Building', gardening: 'Gardening', music: 'Music', writing: 'Storytelling' };
+export const SKILLS = { foraging: 'Foraging', fishing: 'Fishing', survival: 'Survival', crafting: 'Crafting', building: 'Building', gardening: 'Gardening', music: 'Music', writing: 'Storytelling', animals: 'Animal care' };
 export const NEEDS = { food: 'Food', water: 'Water', energy: 'Energy', fun: 'Fun', company: 'Company' };
 
 export type Trait = keyof typeof TRAITS;
@@ -26,7 +26,8 @@ export type CraftKey = 'axe' | 'pick' | 'rod' | 'spear' | 'snare' | 'basket' | '
   | 'lanterns' // along her paths
   | 'flinttools' | 'chimes' // from the cave's flint and the islet's bamboo
   | 'rework' // remaking a piece she already has in her favourite material (repeatable, see plans.ts)
-  | 'irontools'; // from the furnace's iron
+  | 'irontools' // from the furnace's iron
+  | 'press'; // a cheese press, for her ewes' milk
 /** Things she builds over several sessions on site. */
 export type ProjectKey = 'garden' | 'rack' | 'dock' | 'hut' | 'hearth' | 'lookout' | 'canoe' | 'lodge' | 'fence' | 'coop'
   | 'trap' | 'barrel' | 'treehouse' // other ways to get food, water and a home
@@ -34,7 +35,8 @@ export type ProjectKey = 'garden' | 'rack' | 'dock' | 'hut' | 'hearth' | 'lookou
   | 'kiln' | 'oven' // working with clay
   | 'beehive' | 'sundial' | 'mosaic' | 'bathhouse' // rare: only some islands (see S.rare)
   | 'bridge' | 'cave' | 'pipe' | 'well' // island growth: the islet, the cave, water at camp
-  | 'saltpans' | 'firecover' | 'smokehouse' | 'workshop' | 'furnace'; // v1.5: food that keeps, a workshop, metal
+  | 'saltpans' | 'firecover' | 'smokehouse' | 'workshop' | 'furnace' // v1.5: food that keeps, a workshop, metal
+  | 'barn' | 'duckhouse' | 'dovecote'; // v1.8: for an animal lover
 export type PlanKey = CraftKey | ProjectKey;
 export type Resource = 'wood' | 'stone' | 'fibre' | 'wool' | 'clay' | 'shells' | 'bamboo' | 'flint' | 'salt' | 'ore' | 'iron';
 /** What she likes to build things from (furniture, the fence, the bridge): a preference, not a rule. */
@@ -46,7 +48,7 @@ export type TaskId =
   | 'befriend' | 'play' | 'repair' | 'swim' | 'herd' | 'shear' | 'collect' | 'checktrap' | 'hunt' | 'checksnares' | 'mushrooms'
   | 'clay' | 'salvage' | 'turtles' | 'tendgull' | 'dig' | 'honey' | 'bathe'
   | 'cairn' | 'sandcastle' | 'clouds' | 'bouquet' | 'whittle' | 'dance'
-  | 'plantfruit' | 'pickfruit' | 'nightwalk' | 'beachstars' | 'tidepools' | 'bamboo' | 'flint' | 'salt' | 'smoke' | 'ore' | 'smelt' | 'tea' | 'party' | 'totem' | 'decorate' | 'ducks' | 'parrot'
+  | 'plantfruit' | 'pickfruit' | 'nightwalk' | 'beachstars' | 'tidepools' | 'bamboo' | 'flint' | 'salt' | 'smoke' | 'ore' | 'smelt' | 'tea' | 'party' | 'totem' | 'decorate' | 'ducks' | 'parrot' | 'milk' | 'cheese'
   | 'celebrate' | 'stand';
 
 /* ---------- task steps ---------- */
@@ -163,7 +165,7 @@ function createState() {
 
     /* ---------- island life ---------- */
     // logs on the woodpile, stones, plant fibre, saplings to replant, fresh fish to cook, dried fish, garden seeds
-    stock: { wood: 2, stone: 0, fibre: 0, saplings: 0, raw: 0, fish: 0, seeds: 0, veg: 0, shells: 0, eggs: 0, wool: 0, meat: 0, clay: 0, honey: 0, fruit: 0, bamboo: 0, flint: 0, salt: 0, ore: 0, iron: 0, herbs: 0 }, // veg: stored garden vegetables; shells: her collection
+    stock: { wood: 2, stone: 0, fibre: 0, saplings: 0, raw: 0, fish: 0, seeds: 0, veg: 0, shells: 0, eggs: 0, wool: 0, meat: 0, clay: 0, honey: 0, fruit: 0, bamboo: 0, flint: 0, salt: 0, ore: 0, iron: 0, herbs: 0, milk: 0, cheese: 0 }, // veg: stored garden vegetables; shells: her collection
     rawSince: 0, // game minute the oldest uncooked fish was caught
     meatSince: 0, // …and the oldest uncooked rabbit
     lastMeal: 0, // game minute of her last cooked meal
@@ -199,6 +201,9 @@ function createState() {
       smokehouse: { started: false, progress: 0, done: false },
       workshop: { started: false, progress: 0, done: false },
       furnace: { started: false, progress: 0, done: false },
+      barn: { started: false, progress: 0, done: false },
+      duckhouse: { started: false, progress: 0, done: false },
+      dovecote: { started: false, progress: 0, done: false },
       kiln: { started: false, progress: 0, done: false },
       oven: { started: false, progress: 0, done: false },
       beehive: { started: false, progress: 0, done: false },
@@ -215,7 +220,7 @@ function createState() {
     likes: {} as Partial<Record<TaskId, number>>,
     feelingsNoted: [] as string[], // strong likes/dislikes already written in the diary
     // lifetime counters (unlock new plans)
-    stats: { hunted: 0, freed: 0, herded: 0, eggs: 0, shorn: 0, forages: 0, fishTrips: 0, fishCaught: 0, nightsInShelter: 0, waterings: 0, harvests: 0, rainsSeen: 0, writeMin: 0, treesFelled: 0, stonesMined: 0, crafted: 0, meals: 0, storms: 0, repairs: 0, reworks: 0 },
+    stats: { hunted: 0, freed: 0, herded: 0, eggs: 0, shorn: 0, forages: 0, fishTrips: 0, fishCaught: 0, nightsInShelter: 0, waterings: 0, harvests: 0, rainsSeen: 0, writeMin: 0, treesFelled: 0, stonesMined: 0, crafted: 0, meals: 0, storms: 0, repairs: 0, reworks: 0, milked: 0 },
     // highlights of the current day, summarised in the diary at dawn
     today: [] as string[],
     // coming: when the clouds that have been gathering will start to rain (0 = none on the way)
@@ -270,6 +275,7 @@ function createState() {
     names: { hens: [] as string[], sheep: [] as string[] }, favHen: -1, ducks: 0,
     parrot: { state: 'none' as 'none' | 'wild' | 'friend', trust: 0, name: '', words: [] as string[] },
     caughtKinds: [] as string[], // the kinds of fish she's landed
+    milkUntil: 0, // her ewes give milk for a while after lambing (game minute)
     treasure: { found: 0, spots: [] as number[] }, // spots: beach angles still to dig (0 = none)
     // a stray dog that may wash ashore; she has to win its trust
     dog: { state: 'none' as 'none' | 'wild' | 'friend', trust: 0, name: '', home: copy(START), since: 0 },

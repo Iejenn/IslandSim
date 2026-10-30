@@ -449,3 +449,9 @@ export const ORE_STAND = standNear(ORE_P, 1.0);
 export const TOTEM_SPOTS = [0.55, 3.55, -1.6].map(a => ground(V(Math.cos(a) * (FENCE_R - 0.9), Math.sin(a) * (FENCE_R - 0.9))));
 /* ---------- v1.6: spots around camp where she puts her decorations (clear of the gate paths) ---------- */
 export const DECOR_SPOTS = [[-6.99, 0.36], [-3.6, 5.05], [3.43, 2.06], [0.59, -4.97], [-4.76, 6.68], [3.2, 7.55], [8.2, 0.25], [4.95, -1.6], [8.05, -1.57], [-2.0, 2.99]].map(([x, z]) => ground(V(x, z)));
+/* ---------- v1.8: for an animal lover: a barn for the sheep, a duck house, a dovecote ---------- */
+export const BARN_P = ground(V(-10.5, -3.5)); // just outside the fence, on the sheep-pen side
+export const BARN_STAND = standNear(BARN_P, 1.7);
+export const DOVECOTE_P = ground(V(1.0, -6.5));
+export const DUCKHOUSE_P = { x: SP.x + (POND_R - 0.7), y: SP.y, z: SP.z }; // floating on the pond
+export const DUCKHOUSE_STAND = ground(V(SP.x + POND_R + 0.6, SP.z));
