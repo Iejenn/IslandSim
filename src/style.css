@@ -108,6 +108,7 @@ h2:first-child{margin-top:2px}
 #loading{position:fixed;inset:0;z-index:9;display:grid;place-items:center;color:#EAF1EC;font-size:20px;font-family:Caveat,cursive;font-size:30px;pointer-events:none;transition:opacity .6s}
 
 @media (max-width:760px){
+  .settings{top:calc(12px + env(safe-area-inset-top,0px))}
   .hud{max-width:calc(100% - 24px)}
   .panel{top:auto;left:8px;right:8px;width:auto;bottom:calc(8px + env(safe-area-inset-bottom,0px));max-height:54vh;border-radius:20px}
   .sheet-toggle{display:inline-block}
@@ -143,7 +144,7 @@ h2:first-child{margin-top:2px}
 /* ---------- start menu: a card over the blurred island ---------- */
 .menu{position:fixed;inset:0;z-index:11;display:grid;place-items:center;padding:16px;background:rgba(8,18,28,.25);backdrop-filter:blur(7px) saturate(1.1);-webkit-backdrop-filter:blur(7px) saturate(1.1);overflow-y:auto}
 .menu[hidden]{display:none}
-body.menu-open .hud,body.menu-open .panel,body.menu-open #bubble,body.menu-open #info{display:none}
+body.menu-open .hud,body.menu-open .settings,body.menu-open .panel,body.menu-open #bubble,body.menu-open #info{display:none}
 .menu-card{background:var(--panel);border-radius:24px;padding:28px 26px 22px;width:100%;max-width:440px;box-shadow:0 24px 70px rgba(0,0,0,.35);color:var(--ink);max-height:calc(100dvh - 32px);overflow-y:auto}
 .menu-title{font-size:38px;line-height:1;margin:0;letter-spacing:-.02em}
 .menu-h{font-size:22px;margin:0 0 6px}
@@ -170,3 +171,18 @@ body.menu-open .hud,body.menu-open .panel,body.menu-open #bubble,body.menu-open 
 .file-btn input{display:none}
 .menu-error{color:var(--coral);font-size:14px;margin:10px 0 0}
 .menu-row{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+
+/* ---------- settings gear (top right; the panel sits just below it on wide screens) ---------- */
+.settings{position:fixed;z-index:7;top:calc(12px + env(safe-area-inset-top,0px));right:12px}
+@media (min-width:761px){.panel{top:calc(66px + env(safe-area-inset-top,0px))}.hud{max-width:calc(100% - 100px)}}
+.gear{width:44px;height:44px;border:0;border-radius:50%;display:grid;place-items:center;background:var(--panel);color:var(--ink);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 6px 24px rgba(5,20,30,.18);transition:transform .3s}
+.gear[aria-expanded="true"]{transform:rotate(60deg)}
+.settings-menu{position:absolute;top:52px;right:0;min-width:220px;background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:18px;padding:6px;box-shadow:0 12px 40px rgba(5,20,30,.28);display:grid}
+.settings-menu[hidden]{display:none}
+.settings-menu button{border:0;background:transparent;text-align:left;padding:11px 12px;border-radius:12px;font-weight:600;font-size:15px;display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--ink)}
+.settings-menu button:hover{background:var(--chip)}
+.switch{width:36px;height:22px;border-radius:999px;background:var(--track);position:relative;transition:background .2s;flex:none}
+.switch::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--paper);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+[aria-checked="true"] .switch{background:var(--lagoon)}
+[aria-checked="true"] .switch::after{transform:translateX(14px)}
+@media (prefers-reduced-motion:reduce){.gear,.switch,.switch::after{transition:none}}

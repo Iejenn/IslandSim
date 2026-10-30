@@ -102,7 +102,7 @@ let performer: ReturnType<typeof createPerformer> | null = null;
 /* ---------- sound (made in the browser, off until the player turns it on) ---------- */
 const sound = createSound();
 const soundBtn = document.getElementById('sound')!;
-const showSound = () => { soundBtn.textContent = sound.on ? 'Sound on' : 'Sound off'; soundBtn.setAttribute('aria-pressed', String(sound.on)); };
+const showSound = () => soundBtn.setAttribute('aria-checked', String(sound.on)); // (the switch in the settings menu shows it)
 soundBtn.addEventListener('click', () => { sound.toggle(); showSound(); });
 showSound();
 // browsers only start audio after a click: if it was on last time, the first click anywhere brings it back
@@ -126,7 +126,13 @@ const menu = createMenu({
     if (open) hud.setFollow(false);
   },
 });
-document.getElementById('openMenu')!.addEventListener('click', () => menu.open());
+/* the gear: a little settings menu (back to the start menu, sound) */
+const gear = document.getElementById('gear')!, settings = document.getElementById('settingsMenu')!;
+const showSettings = (open: boolean) => { settings.hidden = !open; gear.setAttribute('aria-expanded', String(open)); };
+gear.addEventListener('click', () => showSettings(settings.hidden === true));
+addEventListener('pointerdown', e => { if (!(e.target as Element).closest('.settings')) showSettings(false); });
+addEventListener('keydown', e => { if (e.key === 'Escape') showSettings(false); });
+document.getElementById('openMenu')!.addEventListener('click', () => { showSettings(false); menu.open(); });
 if (takeSkipMenu()) { document.getElementById('menu')!.hidden = true; started = true; } // (just switched islands from the menu)
 else menu.open();
 function renderUI() {
