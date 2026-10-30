@@ -1,6 +1,7 @@
 // Needs decay over game time, health follows from them, plus the slower
 // rhythms: weather, the garden, new goals and the daily recap.
 import { startDay } from './life';
+import { friendsAtDawn, updateFriends } from './friends';
 import { updateAnimals } from './animals';
 import { maybeDogArrives } from './companion';
 import { updateGarden } from './garden';
@@ -57,6 +58,7 @@ export function updateNeeds(dm: number) {
   updateGarden(dm);
   updateResources(dm);
   updateAnimals(dm);
+  updateFriends(dm);
 
   // a new day starts at 07:00: recap yesterday, bushes regrow, she may wish for something
   const di = Math.floor((S.min - 420) / 1440);
@@ -67,6 +69,7 @@ export function updateNeeds(dm: number) {
     log(`Day ${dayNum()} begins.`);
     maybeHotDay();
     startDay(); // her mood today, maybe a cold, birthdays and anniversaries (life.ts)
+    friendsAtDawn(); // names, ducks, the parrot, the dog's gifts (friends.ts)
     S.partied = false;
     maybeDogArrives();
     noteComfort();

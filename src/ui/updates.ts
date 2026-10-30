@@ -2,6 +2,7 @@
 // Every update that ships adds an entry at the top with the next version
 // (minor bump for content, patch bump for small fixes); VERSION follows it.
 export const UPDATES: { version: string; title: string; text: string }[] = [
+  { version: '1.7', title: 'Animal friends', text: 'She names her hens and sheep (one hen becomes her shadow), ducks raise ducklings on the pond, a wild parrot can be won over and learns her words, her dog fetches sticks from the sea and brings her little gifts, and the sea gives up new kinds of fish.' },
   { version: '1.6', title: 'Life & mastery', text: 'She wakes up in a mood that colours her day, catches the odd cold (herbal tea from the garden helps), celebrates her birthday and her years on the island, becomes known for what she does best (a master carver, an island angler, a green thumb…), and decorates her camp with things that suit her.' },
   { version: '1.5.1', title: 'Cave fix', text: 'The hill now rises into a rocky shoulder around the cave, so its mouth is cut into the slope instead of standing out from it.' },
   { version: '1.5', title: 'Salt, smoke & iron', text: 'Salt pans on the rocky shore, a roof over the fire against the rain, a smokehouse for fish that keeps all winter, a workshop with a workbench, and late in the game a furnace to turn red ore into iron tools. (And she no longer sleeps in the open hammock in the rain.)' },
