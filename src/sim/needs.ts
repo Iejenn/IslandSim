@@ -1,5 +1,6 @@
 // Needs decay over game time, health follows from them, plus the slower
 // rhythms: weather, the garden, new goals and the daily recap.
+import { startDay } from './life';
 import { updateAnimals } from './animals';
 import { maybeDogArrives } from './companion';
 import { updateGarden } from './garden';
@@ -65,6 +66,8 @@ export function updateNeeds(dm: number) {
     S.berries = S.berries.map(b => clamp(b + fx().berries, 0, 6)); // lots in spring and autumn, few in winter
     log(`Day ${dayNum()} begins.`);
     maybeHotDay();
+    startDay(); // her mood today, maybe a cold, birthdays and anniversaries (life.ts)
+    S.partied = false;
     maybeDogArrives();
     noteComfort();
     noteSeason();

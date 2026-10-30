@@ -16,6 +16,7 @@ const soil = mat('#6B4A33'), withered = mat('#8A7A4E'), fruitRed = mat('#D9452B'
 const WATER_Y = 0.12;
 const terracotta = mat('#B8643E'), clayMat = mat('#C47A4E'), honeyMat = mat('#E3A63A', { roughness: 0.5 }), hiveWood = mat('#D9B77A');
 const cornGold = mat('#E8C547', { roughness: 0.6 }), pumpkinMat = mat('#E07B24', { roughness: 0.6 }), stalkMat = mat('#9BB05A');
+const herbLeaf = mat('#8DB38A');
 const PETALS = ['#E85C8A', '#F2D14B', '#FFFFFF', '#B07CE0', '#F08A3C'].map(c => mat(c, { roughness: 0.6 }));
 const FRUIT_MAT: Record<FruitKind, ReturnType<typeof mat>> = { mango: mat('#F0A030', { roughness: 0.5 }), banana: mat('#F2DB4A', { roughness: 0.5 }), lemon: mat('#F5E65A', { roughness: 0.4 }) };
 const bambooMat = mat('#C9B26B'), bambooNode = mat('#9C8A45'), rope = mat('#B9A26A'), caveDark = mat('#141210', { roughness: 1 }), wellWater = mat('#3F8FA0', { roughness: 0.2 });
@@ -509,6 +510,13 @@ export function createBuildings(scene: Scene) {
     const pumpkin = kit('pumpkin');
     for (let i = 0; i < 4; i++) leafBall(pumpkin, 0.16, Math.cos(i * 1.6) * 0.3, 0.06, Math.sin(i * 1.6) * 0.3, 0.4);
     const pk = mesh(new SphereGeometry(0.2, 10, 6), pumpkinMat, 0.02, 0.14, 0); pk.scale.set(1, 0.75, 1); pumpkin.g.add(pk); pumpkin.ripe.push(pk);
+    // herbs: low silvery-green tufts with tiny white and lilac flowers
+    const herbs = kit('herbs');
+    for (let i = 0; i < 5; i++) {
+      const a = i * 1.26 + 0.4, x = Math.cos(a) * 0.25, z = Math.sin(a) * 0.25;
+      const l = leafBall(herbs, 0.1, x, 0.08, z, 0.9); l.material = herbLeaf;
+      const bloom = mesh(new SphereGeometry(0.035, 5, 3), i % 2 ? PETALS[2] : PETALS[3], x, 0.18, z, false); herbs.g.add(bloom); herbs.ripe.push(bloom);
+    }
     // flowers: green tufts that burst into colour
     const flowers = kit('flowers');
     for (let i = 0; i < 6; i++) {
@@ -912,7 +920,7 @@ export function createBuildings(scene: Scene) {
       for (const [k, c] of Object.entries(crops) as [Crop, typeof crops[Crop]][]) {
         c.g.visible = k === crop;
         if (k !== crop) continue;
-        for (const l of c.leaves) l.material = (p.state === 'withered' ? withered : k === 'corn' ? stalkMat : M.leaf) as Material;
+        for (const l of c.leaves) l.material = (p.state === 'withered' ? withered : k === 'corn' ? stalkMat : k === 'herbs' ? herbLeaf : M.leaf) as Material;
         for (const f of c.ripe) f.visible = p.state === 'ripe';
       }
     });

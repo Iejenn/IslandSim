@@ -9,11 +9,13 @@ const WITHER_DRY_MIN = 0.75 * 1440; // completely dry this long → withered
 const ROT_AT = 2.2; // growth value where an unharvested crop rots
 
 /** Days each crop takes to ripen (at an ordinary pace), and how many vegetables a bed gives. */
-export const CROP_DAYS: Record<Crop, number> = { greens: 1.6, tomato: 2, corn: 2.6, pumpkin: 3, flowers: 1.6 };
-export const CROP_YIELD: Record<Crop, number> = { greens: 1, tomato: 2, corn: 2, pumpkin: 3, flowers: 0 };
+export const CROP_DAYS: Record<Crop, number> = { greens: 1.6, tomato: 2, corn: 2.6, pumpkin: 3, flowers: 1.6, herbs: 1.4 };
+export const CROP_YIELD: Record<Crop, number> = { greens: 1, tomato: 2, corn: 2, pumpkin: 3, flowers: 0, herbs: 0 };
 /** What she sows: whatever suits the season (and a bed of flowers now and then, more for a gardener). */
 export function chooseCrop(): Crop {
   if (Math.random() < 0.08 + 0.2 * S.taste.green) return 'flowers';
+  // a bed of herbs for tea, more likely once she's been ill (or has none left)
+  if (Math.random() < (S.stock.herbs < 2 ? 0.12 : 0.04) + (S.ill ? 0.3 : 0)) return 'herbs';
   const options: Crop[] = { spring: ['greens', 'tomato'], summer: ['corn', 'tomato', 'greens'], autumn: ['pumpkin', 'greens'], winter: ['greens'] }[season()] as Crop[];
   return options[Math.floor(Math.random() * options.length)];
 }

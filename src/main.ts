@@ -32,6 +32,8 @@ import { createCritters } from './world/critters';
 import { createClouds } from './world/clouds';
 import { createShore } from './world/shore';
 import { createIslet } from './world/islet';
+import { createLifeProps } from './world/life';
+import { createDecor } from './world/decor';
 import { createSmoke } from './world/smoke';
 import { createPaths } from './world/paths';
 import { createRabbits } from './world/rabbits';
@@ -77,7 +79,7 @@ const updateAtmosphere = createAtmosphere(scene);
 const updateJoys = createJoys(scene);
 const updateWaterfall = createWaterfall(scene);
 const updateCritters = createCritters(scene);
-const updateClouds = createClouds(scene), updateShore = createShore(scene), updateSmoke = createSmoke(scene), updateIslet = createIslet(scene);
+const updateClouds = createClouds(scene), updateShore = createShore(scene), updateSmoke = createSmoke(scene), updateIslet = createIslet(scene), updateLifeProps = createLifeProps(scene), updateDecor = createDecor(scene);
 
 /* ---------- sim + her ---------- */
 const S = initState(save?.state);
@@ -239,7 +241,7 @@ function frame(now: number) {
   const gesture: Playing = clockT < waveUntil ? (S.sitting ? 'sitWave' : 'wave')
     : playing ?? (doing === 'cook' && S.sitting ? 'stir'
     : (doing === 'write' || doing === 'whittle') && S.sitting ? 'carve'
-    : doing === 'dance' ? 'dance'
+    : doing === 'dance' || (doing === 'party' && S.task!.i === S.task!.steps.length - 1) ? 'dance' // (the party ends in a dance)
     : doing === 'fish' && S.items.rod && S.sitting ? 'cast'
     : doing === 'relax' && S.sitting && S.dog.state === 'friend' && clockT % 14 < 6 ? 'pet' // now and then she strokes her dog
     : null);
@@ -275,6 +277,8 @@ function frame(now: number) {
   updateShore(S, body.her, clockT, light);
   updateSmoke(S, dt * animScale, rain, storm ? 1 : rain * 0.3, light);
   updateIslet(S, clockT, storm ? 1 : rain * 0.4);
+  updateLifeProps(S);
+  updateDecor(S);
   props.sway(storm ? rain : rain * 0.3, clockT);
   sound.update(S, camera, body.her, rain, ready ? S.speed : 0);
   animateWater(clockT);

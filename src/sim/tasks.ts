@@ -3,7 +3,7 @@
 import { ONE_SHOT_SECONDS } from '../config/animations';
 import { chooseCrop, CROP_YIELD, freePlots, growingPlots, ripePlots } from './garden';
 import {
-  SALT_P, SALT_STAND, SMOKE_P, SMOKE_STAND, WORKSHOP_P, WORKSHOP_STAND, FURNACE_P, FURNACE_STAND, ORE_P, ORE_STAND, FIRECOVER_POSTS, BAMBOO, BAR_A, BAR_B, CAVE_P, CAVE_STAND, PIPE_FROM, SPOUT_P, SPOUT_STAND, WELL_P, WELL_STAND, ORCHARD, ORCHARD_P, BANDSTAND_FLOOR, BANDSTAND_P, BAND_SPOTS, bandLocal, MARIMBA_P, type Instrument, SHED_P, TABLE_P, addScaled, dirXZ, SP, BATH_P, CLAY_P, CLAY_STAND, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SUNDIAL_P, BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
+  DECOR_SPOTS, TOTEM_SPOTS, SALT_P, SALT_STAND, SMOKE_P, SMOKE_STAND, WORKSHOP_P, WORKSHOP_STAND, FURNACE_P, FURNACE_STAND, ORE_P, ORE_STAND, FIRECOVER_POSTS, BAMBOO, BAR_A, BAR_B, CAVE_P, CAVE_STAND, PIPE_FROM, SPOUT_P, SPOUT_STAND, WELL_P, WELL_STAND, ORCHARD, ORCHARD_P, BANDSTAND_FLOOR, BANDSTAND_P, BAND_SPOTS, bandLocal, MARIMBA_P, type Instrument, SHED_P, TABLE_P, addScaled, dirXZ, SP, BATH_P, CLAY_P, CLAY_STAND, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SUNDIAL_P, BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
   HAMMOCK_BED, SHELTER_BED, LOOKOUT_DECK, LOOKOUT_P, pointAt, RACK_P, SAIL_ROUTE, SCREE_P, SCREE_STAND, SEATS, SH, SHELTER, SPRING, standNear,
   V, WOODPILE_P, type Pt,
 } from './island';
@@ -19,6 +19,9 @@ import {
 } from './state';
 import { fullMoon, glowingSea } from './night';
 import { lowTide } from './tide';
+import { birthdayToday, drinkTea, ill, isMaster } from './life';
+import { DECOR, nextDecor, placeDecor } from './decor';
+import { injured } from './events';
 import { fx, season } from './seasons';
 import { TH, thoughtFor } from './thoughts';
 import { clamp, pick, rand } from './util';
@@ -35,12 +38,25 @@ export function sleepShift() {
   return S.quirk === 'earlybird' ? -1.5 : S.quirk === 'nightowl' ? 1.5 : 0;
 }
 
-const CROP_NAME: Record<Crop, string> = { greens: 'greens', tomato: 'tomatoes', corn: 'corn', pumpkin: 'pumpkins', flowers: 'flowers' };
+const CROP_NAME: Record<Crop, string> = { greens: 'greens', tomato: 'tomatoes', corn: 'corn', pumpkin: 'pumpkins', flowers: 'flowers', herbs: 'herbs' };
 const CROP_FIRST: Record<Crop, string> = {
   greens: 'Her first garden greens: crisp and green and all her own.', tomato: 'Her first tomatoes ripened, warm from the sun.',
   corn: 'She picked her first corn cobs, taller than she is.', pumpkin: 'Her first pumpkin! Big, round and orange.',
   flowers: 'Her first bed of garden flowers bloomed. She put them all in a vase.',
+  herbs: 'She picked her first herbs: mint and something like chamomile. Good for tea, and for what ails her.',
 };
+
+/** (still has what it takes, by the time she's done) */
+const nextDecorOk = (k: keyof typeof DECOR) => Object.entries(DECOR[k].cost).every(([r, n]) => S.stock[r as keyof typeof S.stock] >= n!);
+
+/** Heavy work now and then ends with a twisted ankle (a few days of taking it easy). */
+function maybeSprain() {
+  if (injured() || Math.random() > 0.006) return;
+  S.injuredUntil = S.min + 2 * 1440;
+  log('She twisted her ankle on a loose stone. A few days of taking it easy, then.');
+  say('Ow! My ankle…');
+  highlight('twisted her ankle');
+}
 
 /* ---------- step builders ---------- */
 const go = (p: Pt, carry?: boolean, run?: boolean): GoStep => ({ type: 'go', to: copy(p), carry: !!carry, run });
@@ -290,7 +306,7 @@ export const T: Record<string, () => Task | null> = {
     }
     // starving with no way to cook: raw fish it is
     if (S.stock.veg <= 0 && S.stock.raw > 0 && S.needs.food < 15) {
-      return mk('eat', 'Eating raw fish', 'Raw fish. Desperate times.', [act({ pose: 'gather', min: 8, done() { if (S.stock.raw > 0) { S.stock.raw--; feed('food', 20); } } })]);
+      return mk('eat', 'Eating raw fish', 'Raw fish. Desperate times.', [act({ pose: 'gather', min: 8, done() { if (S.stock.raw > 0) { S.stock.raw--; feed('food', 20); S.ateRawAt = S.min; } } })]); // (risky for her stomach, see life.ts)
     }
     if (S.stock.veg <= 0) return null;
     return mk('eat', 'Eating raw vegetables', 'Crunchy. Better cooked, but crunchy.', [go(GARDEN_STAND, false, urgent(S.needs.food)), act({
@@ -352,6 +368,7 @@ export const T: Record<string, () => Task | null> = {
     const t = FOREST[i];
     return mk('chop', 'Chopping down a tree', pick(TH.chop), [go(t.stand), act({
       pose: 'chop', face: t.pos, min: 50 / toolSpeed(), done() {
+        maybeSprain();
         S.trees[i] = { state: 'stump', growth: 0, planted: 0 };
         S.stats.treesFelled++;
         if (Math.random() < 0.7) S.stock.saplings++; // a seedling from the forest floor to replant
@@ -403,6 +420,7 @@ export const T: Record<string, () => Task | null> = {
     const b = BOULDERS[i];
     return mk('mine', 'Breaking stones off a boulder', pick(TH.mine), [go(b.stand), act({
       pose: 'chop', face: b.pos, min: 45 / toolSpeed(), done() {
+        maybeSprain();
         const n = Math.min(3, S.boulders[i]);
         S.boulders[i] -= n;
         S.stock.stone = Math.min(storageCap('stone'), S.stock.stone + n);
@@ -482,6 +500,7 @@ export const T: Record<string, () => Task | null> = {
         for (const p of ripe) {
           const crop = p.crop ?? 'tomato';
           if (crop === 'flowers') { S.bouquetAt = S.min; S.mood = Math.min(40, S.mood + 8); feed('fun', 6); } // straight into a vase
+          else if (crop === 'herbs') S.stock.herbs = Math.min(10, S.stock.herbs + 3); // dried for tea
           else {
             feed('food', 10); // a few bites right there
             S.stock.veg = Math.min(14, S.stock.veg + CROP_YIELD[crop]); // the rest goes in the pantry
@@ -776,6 +795,47 @@ export const T: Record<string, () => Task | null> = {
         addXp('crafting', 5);
         if (!S.feelingsNoted.includes('iron')) { S.feelingsNoted.push('iron'); log('Out of the roaring furnace came her first lump of iron.', 'big'); }
         highlight('smelted iron');
+      },
+    })]);
+  },
+  tea() {
+    // a cup of herbal tea by the fire when she's under the weather
+    if (!ill() || S.stock.herbs < 1 || S.fire <= 0) return null;
+    return mk('tea', 'Sipping herbal tea by the fire', pick(['Mmm. Warm all the way down.', 'Mint and honey would be perfect.', 'I feel better already.']), [go(standNear(FIRE, 1.6, SEATS[0].p)), act({
+      pose: 'gather', face: FIRE, min: 20, done() { S.stock.herbs--; drinkTea(); feed('water', 20); feed('fun', 5); highlight('drank herbal tea'); },
+    })]);
+  },
+  party() {
+    // her birthday: a cake if she has an oven (otherwise a feast by the fire), and a dance
+    if (!birthdayToday() || S.partied) return null;
+    const oven = works('oven'), p = standNear(FIRE, 2.4, SEATS[0].p);
+    return mk('party', oven ? 'Baking herself a birthday cake' : 'Having a birthday feast', 'Happy birthday to me!', [go(oven ? standNear(OVEN_P, 1.1) : p), act({
+      pose: 'gather', face: oven ? OVEN_P : FIRE, min: 40, done() {
+        S.partied = true;
+        feed('food', 35); feed('fun', 30); S.mood = Math.min(40, S.mood + 20);
+        log(oven ? 'She baked herself a birthday cake, and ate a big slice under the stars.' : 'She made herself a little birthday feast by the fire.');
+        highlight(oven ? 'baked a birthday cake' : 'had a birthday feast');
+      },
+    }), go(p), act({ pose: 'idle', face: FIRE, min: 20, done() { S.mood = Math.min(40, S.mood + 8); } })]); // (a birthday dance: see main.ts)
+  },
+  decorate() {
+    // make something pretty for her camp, in the next free spot
+    const k = nextDecor(), spot = DECOR_SPOTS[S.decor.length];
+    if (!k || !spot) return null;
+    return mk('decorate', `Making ${DECOR[k].name} for her camp`, pick(['Just to make it nice.', 'A home should look like a home.', 'There. Much better.']), [go(standNear(spot, 0.9)), act({
+      pose: 'hammer', face: spot, min: 60, done() { if (nextDecorOk(k)) placeDecor(k); addXp('crafting', 6); },
+    })]);
+  },
+  totem() {
+    // a master carver carves totem poles for her camp: an animal of the island on each
+    if (!isMaster('crafting') || S.totems >= TOTEM_SPOTS.length || S.stock.wood < 3 + FIREWOOD_RESERVE || !has('axe')) return null;
+    const spot = TOTEM_SPOTS[S.totems], beast = ['a turtle', 'a gull', 'a crab', 'a fish', 'her dog'][S.totems % 5];
+    return mk('totem', 'Carving a totem pole', pick(['Every cut tells a story.', 'Just a little more off the nose…', 'This one’s for the island.']), [go(standNear(spot, 0.9)), act({
+      pose: 'chop', face: spot, min: 120, done() {
+        S.stock.wood -= 3; S.totems++;
+        addXp('crafting', 10);
+        log(`She carved a totem pole with ${beast === 'her dog' && S.dog.state === 'friend' ? S.dog.name : beast} at the top.`, S.totems === 1 ? 'big' : undefined);
+        highlight('carved a totem pole');
       },
     })]);
   },
@@ -1112,7 +1172,7 @@ export const T: Record<string, () => Task | null> = {
 };
 
 // Tasks that urgent needs (or something new to try) are allowed to cut short.
-export const INTERRUPTIBLE = new Set<TaskId>(['salt', 'smoke', 'ore', 'bamboo', 'flint', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'honey', 'bathe', 'salvage', 'turtles', 'tendgull', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
+export const INTERRUPTIBLE = new Set<TaskId>(['decorate', 'tea', 'totem', 'salt', 'smoke', 'ore', 'bamboo', 'flint', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'honey', 'bathe', 'salvage', 'turtles', 'tendgull', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
 // Outdoor tasks a sudden shower sends her away from.
 export const RAIN_STOPS = new Set<TaskId>(['salt', 'ore', 'bamboo', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'salvage', 'turtles', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
 // Which task "tries out" each newly made thing.
