@@ -87,6 +87,11 @@ out an orchard and plant mango, banana and lemon trees, which take most of a
 season to grow and then bear fruit to pick, eat fresh or bake into a fruit
 pie (and a pot turns spare vegetables into soup).
 
+The sun rises out of the sea in the east and sets in the west, warming the
+sky orange around it, and the moon follows it on the same path: a new moon
+keeps the sun company, a half moon rises around noon, and a full moon comes up
+as the sun goes down, laying a silver path on the water.
+
 The nights have their own life. The moon waxes and wanes over eight days,
 shooting stars streak low over the sea, and two island constellations (the
 turtle and the canoe) hang over the horizon; tilt the camera up to see them.
