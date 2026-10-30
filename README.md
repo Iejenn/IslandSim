@@ -107,8 +107,13 @@ she repairs them; on hot days she cools off in the sea. Crabs, gulls and
 jumping fish keep her company too. What she'll want to make next is never
 listed: it depends on how her life goes.
 
-Progress is saved in the browser (localStorage), so a refresh continues the
-same life. "Start over on a new island" at the bottom of the Diary resets it.
+It opens on a start menu over the (blurred) island: continue, see what's
+new, or switch between three save slots, so a few islands can live side by
+side. Progress is saved in the browser (localStorage), so a refresh continues
+the same life. To move an island to another device, export it from the menu
+(as a file, or a code to paste) and import it into an empty slot there. The
+Menu button in the top bar brings it back; "Start over on a new island" at the
+bottom of the Diary resets the island you're on.
 
 Built with [Vite](https://vite.dev), TypeScript and [three.js](https://threejs.org).
 
@@ -178,9 +183,9 @@ src/
   audio/           sound effects and ambience, generated with the Web Audio API
   character/       loading the model, posing her arms for each instrument (perform.ts), playing animations, moving the body,
                    tools in her hand
-  save.ts          localStorage save/load and the island's layout seed
-  ui/              observer panel, HUD (clock/speed/follow/sound), thought bubble,
-                   the tap-to-look info card
+  save.ts          localStorage save slots, import/export, and the island's layout seed
+  ui/              start menu (slots, what's new in updates.ts), observer panel,
+                   HUD (clock/speed/follow/sound/menu), thought bubble, the tap-to-look info card
 scripts/
   simulate.ts      headless balance check (npm run simulate)
 ```

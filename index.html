@@ -24,6 +24,33 @@
   </div>
   <div class="pill"><button id="follow" aria-pressed="false">Follow her</button></div>
   <div class="pill"><button id="sound" aria-pressed="false">Sound off</button></div>
+  <div class="pill"><button id="openMenu">Menu</button></div>
+</div>
+
+<!-- the start menu, over the blurred island -->
+<div class="menu" id="menu" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+  <div class="menu-card">
+    <div id="menuMain">
+      <h1 class="menu-title" id="menuTitle">Island Sim</h1>
+      <p class="menu-sub">A castaway’s life, one day at a time</p>
+      <button class="menu-go" id="menuContinue">Continue</button>
+      <h2>Your islands</h2>
+      <ul class="slots" id="slots"></ul>
+      <h2>What’s new</h2>
+      <ul class="news" id="news"></ul>
+    </div>
+    <div id="menuImport" hidden>
+      <h2 class="menu-h">Bring an island over</h2>
+      <p class="menu-sub">Paste a save code, or choose a save file you exported on another device.</p>
+      <textarea id="importText" rows="5" placeholder="Paste the save code here" spellcheck="false"></textarea>
+      <label class="file-btn">Choose a file<input type="file" id="importFile" accept=".json,application/json"></label>
+      <p class="menu-error" id="importError" hidden>That doesn’t look like an Island Sim save.</p>
+      <div class="menu-row">
+        <button class="quiet" id="importCancel">Back</button>
+        <button class="menu-go" id="importGo">Import</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <aside class="panel" id="panel" aria-label="Observer panel">
