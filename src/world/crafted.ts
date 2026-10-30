@@ -2,7 +2,7 @@
 // woodpile, the rod against the shelter, the drum by the fire and so on.
 // Everything is built up front (hidden) and shown once the sim says she has it.
 import { BoxGeometry, ConeGeometry, CylinderGeometry, Group, SphereGeometry, TorusGeometry, type Object3D, type Scene } from 'three';
-import { KILN_P, BURROWS, WARREN_P, CHAIR_P, FIRE, LODGE_YAW, lodgeLocal, GARDEN_P, ground, HAMMOCK_P, JOURNAL_P, DRUM_P, LOOKOUT_DECK, LOOKOUT_P, SH, SHELF_P, TABLE_P, WOODPILE_P, yawTo } from '../sim/island';
+import { SHED_P, V, KILN_P, BURROWS, WARREN_P, CHAIR_P, FIRE, LODGE_YAW, lodgeLocal, GARDEN_P, ground, HAMMOCK_P, JOURNAL_P, DRUM_P, LOOKOUT_DECK, LOOKOUT_P, SH, SHELF_P, TABLE_P, WOODPILE_P, yawTo } from '../sim/island';
 import { PLANS } from '../sim/plans';
 import type { CraftKey, SimState } from '../sim/state';
 import { cap, onDay, pickable } from './inspect';
@@ -266,7 +266,31 @@ export function createCrafted(scene: Scene) {
    * Show what she owns. Tools in her hands (see character/heldTools.ts) are
    * hidden from where they're normally kept.
    */
+  // Once the tool shed stands, her tools hang on its back wall (in this order, along the rail)
+  // instead of lying around camp; a tool in use leaves an empty hook.
+  const SHED_TOOLS: CraftKey[] = ['axe', 'pick', 'spear', 'rod', 'bucket', 'basket'];
+  const shedYaw = yawTo(SHED_P, FIRE);
+  const shedSpot = (lx: number, lz: number) => {
+    const c = Math.cos(shedYaw), s = Math.sin(shedYaw);
+    return ground(V(SHED_P.x + lx * c + lz * s, SHED_P.z - lx * s + lz * c));
+  };
+  let inShed = false;
+  function moveToShed() {
+    SHED_TOOLS.forEach((k, i) => {
+      const m = models[k], lx = -0.8 + i * 0.32;
+      // long tools stand leaning on the rail; the bucket and basket go on the shelf
+      const onShelf = k === 'bucket' || k === 'basket', p = shedSpot(lx, onShelf ? -0.45 : -0.2);
+      m.position.set(p.x, p.y + (onShelf ? 0.77 : 0.06), p.z);
+      // the models lean sideways (axe and rod one way, pick and spear the other); turn each so it leans back against the wall
+      const leansLeft = k === 'axe' || k === 'rod';
+      m.rotation.set(0, onShelf ? shedYaw : shedYaw + (leansLeft ? -1 : 1) * Math.PI / 2, 0);
+      m.scale.setScalar(onShelf ? 0.7 : k === 'rod' ? 0.75 : 1);
+    });
+    inShed = true;
+  }
+
   return function updateCrafted(S: SimState, held: CraftKey | null) {
+    if (!inShed && S.projects.shed.done) moveToShed();
     for (const k of Object.keys(models) as CraftKey[]) models[k].visible = !!S.items[k] && k !== held;
     // moving house: once the lodge stands, the shelf comes inside, the old bed frame goes with the shelter,
     // and the blanket lies on whichever bed she's using

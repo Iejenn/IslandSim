@@ -5,7 +5,7 @@ import {
   BoxGeometry, Color, CylinderGeometry, ExtrudeGeometry, TorusGeometry, type MeshStandardMaterial, Group, IcosahedronGeometry, Shape, SphereGeometry,
   type Material, type Mesh, type Object3D, type Scene, ConeGeometry, DodecahedronGeometry,
 } from 'three';
-import { BATH_P, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SP, SUNDIAL_P, HOUSEBOAT_P, HOUSEBOAT_YAW, BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
+import { SHED_P, BATH_P, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SP, SUNDIAL_P, HOUSEBOAT_P, HOUSEBOAT_YAW, BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
 import { PLANS } from '../sim/plans';
 import type { ProjectKey, SimState } from '../sim/state';
 import { cap, onDay, pickable } from './inspect';
@@ -347,6 +347,23 @@ export function createBuildings(scene: Scene) {
     return parts;
   }
 
+  /* tool shed: a lean-to open towards the fire, with a rail on the back wall
+     for her tools (crafted.ts hangs them there) and a shelf */
+  const shed = site(SHED_P, parts => {
+    parts.push(mesh(new BoxGeometry(2.1, 0.08, 1.3), M.wood, 0, 0.04, 0)); // floor
+    parts.push(mesh(new BoxGeometry(2.1, 2.0, 0.08), M.wood, 0, 1.0, -0.62)); // back wall
+    for (const x of [-1.03, 1.03]) {
+      const side = mesh(new BoxGeometry(0.08, 1.8, 1.3), M.wood, x, 0.9, 0);
+      parts.push(side);
+    }
+    for (const x of [-1.03, 1.03]) parts.push(mesh(new CylinderGeometry(0.05, 0.05, 1.7, 5), M.log, x, 0.85, 0.62)); // front posts
+    parts.push(mesh(new BoxGeometry(1.9, 0.05, 0.05), M.log, 0, 1.45, -0.55)); // tool rail
+    parts.push(mesh(new BoxGeometry(1.9, 0.04, 0.28), M.wood, 0, 0.75, -0.45)); // shelf
+    const roof = mesh(new BoxGeometry(2.4, 0.07, 1.65), M.tarp, 0, 1.95, 0.02);
+    roof.rotation.x = 0.22; // sloping down to the front
+    parts.push(roof);
+  });
+
   /* kiln: a clay dome on a stone base, with a chimney and a dark mouth */
   const kiln = site(KILN_P, parts => {
     parts.push(mesh(new CylinderGeometry(0.8, 0.9, 0.3, 9), M.rock, 0, 0.15, 0));
@@ -451,7 +468,7 @@ export function createBuildings(scene: Scene) {
     const n = started ? Math.max(1, Math.ceil(progress * (damaged ? 0.7 : 1) * parts.length)) : 0;
     parts.forEach((p, i) => { p.visible = i < n; });
   };
-  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop, trap: trap.parts, barrel: barrel.parts, treehouse, houseboat: houseboat.parts, kiln, oven, beehive, sundial, mosaic, bathhouse };
+  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop, trap: trap.parts, barrel: barrel.parts, treehouse, houseboat: houseboat.parts, shed, kiln, oven, beehive, sundial, mosaic, bathhouse };
   /* ---------- weathering: wood greys, stone gathers moss, fabric fades ---------- */
   // Each building gets its own copies of the shared materials (made on the
   // first update, after the island's colours are applied), which drift towards

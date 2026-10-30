@@ -357,6 +357,15 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     weight: () => 1.3 + (tr('curious') ? 0.7 : 0),
     tags: ['sea', 'adventure'],
   },
+  shed: {
+    kind: 'build', name: 'tool shed', a: 'a tool shed', cost: { wood: 6, stone: 2 }, minutes: 150,
+    // once her tools are piling up around camp
+    unlocked: () => dayNum() >= 5 && TOOLS.filter(k => S.items[k]).length >= 3,
+    want: 'My tools are lying all over the camp. A shed with a proper tool wall, that’s what I need.',
+    done: 'A tool shed! Everything has its place, and there’s room to stockpile.',
+    weight: () => 1.6 + (tr('hardworking') ? 0.6 : 0),
+    tags: ['practical'],
+  },
   kiln: {
     kind: 'build', name: 'kiln', a: 'a kiln', cost: { stone: 6, clay: 4 }, minutes: 180,
     // there's clay at the pond's edge; once she notices, she can fire it
@@ -476,6 +485,12 @@ export function chooseGoal() {
   return true;
 }
 
+const TOOLS: CraftKey[] = ['axe', 'pick', 'rod', 'spear', 'bucket', 'basket', 'snare'];
+/** How much of a material she can keep: a tool shed gives room for half as much again. */
+export function storageCap(r: 'wood' | 'stone' | 'fibre' | 'clay') {
+  return (r === 'stone' ? 30 : 20) * (works('shed') ? 1.5 : 1);
+}
+
 // Logs she always keeps back for the campfire; projects can't use these.
 export const FIREWOOD_RESERVE = 2;
 
@@ -549,7 +564,7 @@ export function checkFinished(k: PlanKey) {
 // What the storm can damage, and what fixing it costs.
 export const REPAIRABLE: Partial<Record<ProjectKey, Partial<Record<Resource, number>>>> = {
   rack: { wood: 1 }, dock: { wood: 3 }, hut: { wood: 1, stone: 2 }, lookout: { wood: 2 }, lodge: { wood: 2, stone: 1 },
-  trap: { wood: 2 }, treehouse: { wood: 2 }, houseboat: { wood: 3 },
+  trap: { wood: 2 }, treehouse: { wood: 2 }, houseboat: { wood: 3 }, shed: { wood: 1 },
 };
 /** A finished project that isn't storm-damaged right now. */
 export const works = (k: ProjectKey) => S.projects[k].done && !S.projects[k].damaged;

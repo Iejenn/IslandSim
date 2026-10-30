@@ -12,7 +12,9 @@ the fire dies and she can't cook her catch. As her crafting improves she makes
 furniture (a chair by the fire, a table, a bed frame, a shelf for her shells, a
 rocking chair on the lookout) and the camp starts to feel like home.
 
-Later on she can tear down her shelter and build a lodge with a bedroom, a
+Once her tools pile up she may build a tool shed: they hang on its back wall
+from then on, and there's room to stockpile half as much again. Later on she
+can tear down her shelter and build a lodge with a bedroom, a
 living room and a kitchen, then furnish it (a real bed, a sofa, a wood stove
 for cooking when the campfire is out). Chickens and sheep roam the island
 from day one, but they're no use to her until she fences off her home and
