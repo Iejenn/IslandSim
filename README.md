@@ -126,6 +126,15 @@ suits her: flower planters, bunting, painted stones, nets and floats, a bird
 feeder, a driftwood bench, a carved owl, a stone border, a shell garland, or a
 kennel for her dog.
 
+The animals are her company. She names her hens and sheep, and one hen
+becomes her favourite and follows her around camp. A pair of ducks settles on
+the pond and raises ducklings in spring; she feeds them. A wild parrot watches
+her from the forest until she wins it over with fruit or berries; then it
+lives on a perch in camp, rides on her shoulder when she sits, and starts
+repeating things she says. Her dog fetches sticks she throws into the sea and
+leaves her little gifts, and her fishing turns up mackerel, snapper, sea bream,
+parrotfish, octopus and, rarely, a golden trevally.
+
 The nights have their own life. The moon waxes and wanes over eight days,
 shooting stars streak low over the sea, and two island constellations (the
 turtle and the canoe) hang over the horizon; tilt the camera up to see them.

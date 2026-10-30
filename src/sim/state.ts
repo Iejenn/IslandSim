@@ -46,7 +46,7 @@ export type TaskId =
   | 'befriend' | 'play' | 'repair' | 'swim' | 'herd' | 'shear' | 'collect' | 'checktrap' | 'hunt' | 'checksnares' | 'mushrooms'
   | 'clay' | 'salvage' | 'turtles' | 'tendgull' | 'dig' | 'honey' | 'bathe'
   | 'cairn' | 'sandcastle' | 'clouds' | 'bouquet' | 'whittle' | 'dance'
-  | 'plantfruit' | 'pickfruit' | 'nightwalk' | 'beachstars' | 'tidepools' | 'bamboo' | 'flint' | 'salt' | 'smoke' | 'ore' | 'smelt' | 'tea' | 'party' | 'totem' | 'decorate'
+  | 'plantfruit' | 'pickfruit' | 'nightwalk' | 'beachstars' | 'tidepools' | 'bamboo' | 'flint' | 'salt' | 'smoke' | 'ore' | 'smelt' | 'tea' | 'party' | 'totem' | 'decorate' | 'ducks' | 'parrot'
   | 'celebrate' | 'stand';
 
 /* ---------- task steps ---------- */
@@ -266,6 +266,10 @@ function createState() {
     mastery: {} as Partial<Record<SkillKey, number>>, // day she became known for each skill
     song: '', book: '', islandName: '', recordFish: 0, totems: 0, // what she has to show for it
     decor: [] as { key: DecorKey; spot: number; at: number }[], // how she's decorated her camp (decor.ts)
+    // her animal friends (friends.ts)
+    names: { hens: [] as string[], sheep: [] as string[] }, favHen: -1, ducks: 0,
+    parrot: { state: 'none' as 'none' | 'wild' | 'friend', trust: 0, name: '', words: [] as string[] },
+    caughtKinds: [] as string[], // the kinds of fish she's landed
     treasure: { found: 0, spots: [] as number[] }, // spots: beach angles still to dig (0 = none)
     // a stray dog that may wash ashore; she has to win its trust
     dog: { state: 'none' as 'none' | 'wild' | 'friend', trust: 0, name: '', home: copy(START), since: 0 },
@@ -336,9 +340,12 @@ export function log(text: string, kind?: DiaryEntry['kind'], day = dayNum(), sto
   S.diary.length = Math.min(S.diary.length, 200);
   S.diaryDirty = true;
 }
+/** Who's listening when she speaks (her parrot, see friends.ts), without state.ts importing them. */
+export const listeners = { said: [] as ((text: string) => void)[] };
 export function say(text: string) {
   S.thought = text;
   hooks.onSay();
+  for (const f of listeners.said) f(text);
 }
 /** Raise (or lower) a need, kept within 0–100. */
 export function feed(k: NeedKey, v: number) {

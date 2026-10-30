@@ -120,6 +120,9 @@ export function decide() {
   // her life: tea when she's ill, a party on her birthday, totem poles once she's a master carver
   if (ill() && S.stock.herbs >= 1 && S.fire > 0) add('tea', 0.9);
   if (partyTime()) add('party', 1.1);
+  // her animal friends: feeding the ducks, winning over the parrot (friends.ts)
+  if (S.ducks >= 2 && !night) add('ducks', 0.25 + 0.3 * S.taste.animals + 0.4 * u(n.company) - wet);
+  if (S.parrot.state === 'wild' && !night && n.food > 30) add('parrot', 0.45 + 0.35 * S.taste.animals + 0.2 * S.taste.adventure - wet);
   // making her camp pretty, once it's established (decor.ts)
   if (decorating() && !night && n.food > 40 && n.energy > 30) add('decorate', 0.45 + 0.3 * S.taste.creative + 0.2 * S.taste.comfort - wet);
   if (isMaster('crafting') && S.totems < 3 && !night && S.stock.wood >= 3 + FIREWOOD_RESERVE) add('totem', 0.6 + 0.3 * S.taste.creative - wet);

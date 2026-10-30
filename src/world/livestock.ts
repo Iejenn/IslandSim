@@ -3,7 +3,7 @@
 // stay near their meadow, penned ones potter about inside the fence, and the
 // one she's herding home follows her (a chicken gets carried).
 import { BoxGeometry, ConeGeometry, Group, type Mesh, type Object3D, type Scene } from 'three';
-import { CHICKEN_HOMES, COOP_P, SHEEP_HOMES, SHEEP_PEN_P, type Pt } from '../sim/island';
+import { CHICKEN_HOMES, COOP_P, FENCE_R, SHEEP_HOMES, SHEEP_PEN_P, type Pt } from '../sim/island';
 import { surfaceY } from '../sim/plans';
 import { pickable } from './inspect';
 import type { SimState } from '../sim/state';
@@ -60,8 +60,8 @@ export function createLivestock(scene: Scene) {
   for (const y of [...chicks, ...lambs]) y.g.scale.setScalar(0.5);
   for (const c of chicks) c.body.children.forEach(m => { (m as Mesh).material = chickYellow; });
   // tap to look
-  chickens.forEach((c, i) => pickable(c.g, S => ({ title: S.chickens[i].penned ? 'One of her hens' : 'A wild chicken', lines: [S.chickens[i].penned ? 'Lays eggs in the coop' : S.projects.coop.done ? 'She could bring it home' : 'Roams the meadow'] })));
-  sheep.forEach((c, i) => pickable(c.g, S => ({ title: S.sheep[i].penned ? 'One of her sheep' : 'A wild sheep', lines: [S.sheep[i].penned ? (S.sheep[i].wool >= 1 ? 'Ready to shear' : 'Growing a new fleece') : 'Grazes by the pond'] })));
+  chickens.forEach((c, i) => pickable(c.g, S => ({ title: S.chickens[i].penned ? (S.names?.hens[i] ? `${S.names.hens[i]}${S.favHen === i ? ', her favourite' : ''}` : 'One of her hens') : 'A wild chicken', lines: [S.chickens[i].penned ? 'Lays eggs in the coop' : S.projects.coop.done ? 'She could bring it home' : 'Roams the meadow'] })));
+  sheep.forEach((c, i) => pickable(c.g, S => ({ title: S.sheep[i].penned ? (S.names?.sheep[i] || 'One of her sheep') : 'A wild sheep', lines: [S.sheep[i].penned ? (S.sheep[i].wool >= 1 ? 'Ready to shear' : 'Growing a new fleece') : 'Grazes by the pond'] })));
   bredHens.forEach(c => pickable(c.g, () => ({ title: 'A hen', lines: ['Hatched here on the island'] })));
   bredSheep.forEach(c => pickable(c.g, () => ({ title: 'A sheep', lines: ['Born here on the island'] })));
   chicks.forEach((c, i) => pickable(c.g, S => { const y = S.young.filter(v => v.kind === 'chick')[i]; return y ? { title: 'A chick', lines: [`Hatched on day ${Math.floor(y.born / 1440) + 1}`] } : null; }));
@@ -106,7 +106,9 @@ export function createLivestock(scene: Scene) {
     chickens.forEach((c, i) => {
       const penned = S.chickens[i].penned, mine = herding?.kind === 'chicken' && herding.i === i;
       c.g.visible = !S.chickens[i].away; // not every island has a full flock
-      wander(c, penned ? COOP_P : c.home, penned ? 1.8 : 1.6, 0.6, dt, t, mine ? her : null, mine);
+      // her favourite hen trails after her while she's around camp
+      const fav = penned && S.favHen === i && Math.hypot(her.position.x, her.position.z) < FENCE_R - 0.5 && !S.sailing;
+      wander(c, penned ? COOP_P : c.home, penned ? 1.8 : 1.6, 0.6, dt, t, mine || fav ? her : null, mine);
     });
     sheep.forEach((s, i) => {
       const penned = S.sheep[i].penned, mine = herding?.kind === 'sheep' && herding.i === i;

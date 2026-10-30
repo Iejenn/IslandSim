@@ -62,6 +62,11 @@ export function createDog(scene: Scene) {
   crab.visible = false;
   scene.add(crab);
 
+  // the stick she throws for it
+  const stick = mesh(new BoxGeometry(0.5, 0.04, 0.04), mat('#7A5A3A'), 0, 0, 0, false);
+  stick.visible = false;
+  scene.add(stick);
+
   let act: Act = 'heel', actLeft = 0;
   pickable(dog, S => S.dog.state === 'friend'
     ? { title: S.dog.name, lines: [S.dog.since ? `Her friend since day ${S.dog.since}` : 'Her best friend', DOING[act]] }
@@ -141,11 +146,22 @@ export function createDog(scene: Scene) {
       target.x = DOCK_START.x; target.z = DOCK_START.z; // waits on the shore
       lying = true;
     } else if (S.task?.id === 'play') {
-      // bound around her in wide circles, as if chasing a stick
       playing = true;
-      target.x = her.position.x + Math.cos(t * 1.4) * 2.4;
-      target.z = her.position.z + Math.sin(t * 1.4) * 2.4;
       speed = 5;
+      const ha = Math.atan2(her.position.z, her.position.x), atShore = Math.hypot(her.position.x, her.position.z) > islandR(ha) * 0.86;
+      if (atShore) {
+        // she throws the stick into the sea: out it bounds (and swims), then back to her
+        const ph = (t * 0.3) % 1, out = ph < 0.5 ? ph / 0.5 : 1 - (ph - 0.5) / 0.5;
+        target.x = her.position.x + Math.cos(ha) * (0.8 + 3.2 * out); target.z = her.position.z + Math.sin(ha) * (0.8 + 3.2 * out);
+        stick.visible = true;
+        stick.position.set(her.position.x + Math.cos(ha) * 4, seaLevel() + 0.02, her.position.z + Math.sin(ha) * 4);
+        if (ph >= 0.5) { stick.position.set(dog.position.x + Math.sin(dog.rotation.y) * 0.4, dog.position.y + 0.48, dog.position.z + Math.cos(dog.rotation.y) * 0.4); stick.rotation.y = dog.rotation.y + Math.PI / 2; } // (in its mouth)
+        repath = 1; path = []; // (straight out and back, through the water)
+      } else {
+        // bound around her in wide circles, as if chasing a stick
+        target.x = her.position.x + Math.cos(t * 1.4) * 2.4;
+        target.z = her.position.z + Math.sin(t * 1.4) * 2.4;
+      }
     } else {
       const asleep = S.task?.id === 'sleep', night = h >= 21.5 || h < 6;
       const a = her.rotation.y, far = Math.hypot(her.position.x - dog.position.x, her.position.z - dog.position.z);
@@ -198,7 +214,9 @@ export function createDog(scene: Scene) {
     const arrived = dist < 0.3;
     if (arrived && act === 'beside') dog.rotation.y = her.rotation.y; // settled beside her, facing the same way
     if (arrived && act === 'fire') dog.rotation.y = Math.atan2(FIRE.x - dog.position.x, FIRE.z - dog.position.z) + 1.4;
-    dog.position.y = surfaceY(dog.position.x, dog.position.z);
+    // (in the sea it swims, head and back above the water)
+    dog.position.y = Math.max(surfaceY(dog.position.x, dog.position.z), seaLevel() - 0.28);
+    if (S.task?.id !== 'play') stick.visible = false;
     const moving = !arrived;
     const doing = d.state === 'friend' && arrived && !lying ? act : null;
     dogNow.doing = d.state === 'friend' ? DOING[act] : 'wild';
