@@ -36,7 +36,7 @@ export type TaskId =
   | 'plant' | 'water' | 'harvest' | 'drum' | 'write' | 'sail' | 'stargaze' | 'watch'
   | 'befriend' | 'play' | 'repair' | 'swim' | 'herd' | 'shear' | 'collect' | 'checktrap' | 'hunt' | 'checksnares' | 'mushrooms'
   | 'clay' | 'salvage' | 'turtles' | 'tendgull' | 'dig' | 'honey' | 'bathe'
-  | 'cairn' | 'sandcastle' | 'clouds' | 'bouquet' | 'whittle'
+  | 'cairn' | 'sandcastle' | 'clouds' | 'bouquet' | 'whittle' | 'dance'
   | 'celebrate' | 'stand';
 
 /* ---------- task steps ---------- */
@@ -136,6 +136,7 @@ function createState() {
     berries: BUSHES.map(() => 6), // one count per bush in island.BUSHES
     items: {} as Partial<Record<CraftKey, boolean>>, // things she has crafted
     diary: [] as DiaryEntry[],
+    story: [] as { day: number; text: string }[], // the big moments of her life, kept for good (the "Her story" tab)
     thought: '',
     activity: 'Waking up',
     lastAction: null as TaskId | null,
@@ -258,6 +259,9 @@ export function initState(saved?: Record<string, unknown>) {
     if (S.berries.length !== fresh.berries.length) S.berries = fresh.berries;
     if (S.chickens.length !== fresh.chickens.length) S.chickens = fresh.chickens;
     if (S.sheep.length !== fresh.sheep.length) S.sheep = fresh.sheep;
+    // (saves from before "Her story": start it from the big moments still in the diary)
+    if (!S.story.length) S.story = S.diary.filter(d => d.kind === 'big' && d.day && !/^(Spring has come|Summer is here|Autumn has come|Winter has come)/.test(d.text))
+      .reverse().map(d => ({ day: d.day!, text: d.text }));
   }
   return S;
 }
@@ -283,8 +287,9 @@ export const clock = () => {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
-export function log(text: string, kind?: DiaryEntry['kind'], day = dayNum()) {
+export function log(text: string, kind?: DiaryEntry['kind'], day = dayNum(), story = kind === 'big') {
   S.diary.unshift({ t: clock(), text, day, kind });
+  if (story) { S.story.push({ day, text }); if (S.story.length > 250) S.story.splice(1, 1); } // (keeps her first day)
   S.diary.length = Math.min(S.diary.length, 200);
   S.diaryDirty = true;
 }

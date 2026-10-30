@@ -123,3 +123,19 @@ h2:first-child{margin-top:2px}
 .info-card ul{list-style:none;margin:0;padding:0;font-size:13px;line-height:1.45;color:var(--soft)}
 .info-card li:last-child:not(:first-child){font-style:italic}
 @keyframes info-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* her story: a summary, then chapters (one per season) of big moments */
+.story-head{padding:6px 0 10px;border-bottom:1px solid var(--line)}
+.story-head h2{margin:0 0 4px;font-size:18px}
+.story-head p{margin:0;font-size:13px;color:var(--soft);line-height:1.5}
+.story-head .story-dream{margin-top:6px;font-style:italic;color:var(--ink)}
+.story,.story ol{list-style:none;margin:0;padding:0}
+.story .chapter{padding:10px 0 4px}
+.story h3{margin:0 0 6px;font-size:15px;display:flex;gap:8px;align-items:baseline}
+.story h3 span{font-weight:500;font-size:12px;color:var(--soft);text-transform:uppercase;letter-spacing:.04em}
+.story ol{border-left:2px solid var(--lagoon);margin-left:4px;padding-left:12px}
+.story ol li{padding:4px 0;display:grid;grid-template-columns:52px 1fr;gap:8px;position:relative}
+.story ol li::before{content:"";position:absolute;left:-17px;top:10px;width:8px;height:8px;border-radius:50%;background:var(--lagoon)}
+.story time{color:var(--soft);font-size:12px}
+.story ol span{font-size:14px;line-height:1.4}
+.story-empty{color:var(--soft);font-size:14px;padding:12px 0}

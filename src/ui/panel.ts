@@ -5,7 +5,7 @@ import { freePlots, growingPlots, ripePlots } from '../sim/garden';
 import { happiness } from '../sim/needs';
 import { missing, PLANS } from '../sim/plans';
 import { xpNeed } from '../sim/skills';
-import { season } from '../sim/seasons';
+import { season, SEASON_DAYS } from '../sim/seasons';
 import { dayNum, NEEDS, S, SKILLS, TRAITS, type DiaryEntry, type CraftKey, type NeedKey, type ProjectKey, type Resource, type SkillKey } from '../sim/state';
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -106,6 +106,35 @@ function renderDiary() {
   }).join('');
 }
 
+/**
+ * Her story: a summary of her life so far, then the big moments in order,
+ * in chapters, one per season she's lived through.
+ */
+function renderStory() {
+  const day = dayNum(), built = Object.values(S.projects).filter(p => p.done).length, made = Object.values(S.items).filter(Boolean).length;
+  const planted = S.trees.filter(t => t.planted).length, home = S.chickens.filter(c => c.penned).length + S.sheep.filter(c => c.penned).length + S.bredHens + S.bredSheep.length;
+  const facts = [
+    `${day} day${day > 1 ? 's' : ''} on the island`,
+    built && `${built} thing${built > 1 ? 's' : ''} built`, made && `${made} made by hand`,
+    S.stats.fishCaught && `${S.stats.fishCaught} fish caught`, planted && `${planted} tree${planted > 1 ? 's' : ''} planted`,
+    S.dog.state === 'friend' && `best friends with ${S.dog.name}`, S.gull.state === 'pet' && 'a seagull called Captain', home && `${home} animals at home`,
+  ].filter(Boolean);
+  const dream = S.feelingsNoted.includes('dream') ? (S.dream ? `<p class="story-dream">Still dreaming of ${PLANS[S.dream].a}.</p>` : '') : '';
+  const chapters = new Map<number, { day: number; text: string }[]>();
+  for (const e of S.story) {
+    const c = Math.floor((e.day - 1) / SEASON_DAYS);
+    if (!chapters.has(c)) chapters.set(c, []);
+    chapters.get(c)!.push(e);
+  }
+  const body = [...chapters.entries()].map(([c, es]) => {
+    const first = c * SEASON_DAYS + 1, last = Math.min(day, first + SEASON_DAYS - 1);
+    return `<li class="chapter"><h3>${cap(season(first))} <span>days ${first}–${last}</span></h3><ol>`
+      + es.map(e => `<li><time>Day ${e.day}</time><span>${e.text}</span></li>`).join('') + '</ol></li>';
+  }).join('');
+  return `<div class="story-head"><h2>${S.name}</h2><p>${facts.join(' · ')}</p>${dream}</div>`
+    + (body ? `<ol class="story">${body}</ol>` : '<p class="story-empty">Her story is just beginning.</p>');
+}
+
 export function createPanel(onNewIsland: () => void) {
   const needsEl = $('needs'), skillsEl = $('skills'), panel = $('panel'), toggle = $('sheetToggle');
   needsEl.innerHTML = Object.entries(NEEDS).map(([k, l]) =>
@@ -113,7 +142,7 @@ export function createPanel(onNewIsland: () => void) {
 
   document.querySelectorAll<HTMLElement>('[data-tab]').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('[data-tab]').forEach(x => x.setAttribute('aria-selected', String(x === b)));
-    ['status', 'camp', 'diary'].forEach(t => { $('tab-' + t).hidden = t !== b.dataset.tab; });
+    ['status', 'camp', 'diary', 'story'].forEach(t => { $('tab-' + t).hidden = t !== b.dataset.tab; });
   }));
 
   // on phones the panel is a bottom sheet that starts collapsed
@@ -169,6 +198,7 @@ export function createPanel(onNewIsland: () => void) {
       }).join('');
 
       renderCamp();
+      if (!$('tab-story').hidden) $('story').innerHTML = renderStory();
       if (S.diaryDirty) {
         S.diaryDirty = false;
         $('diary').innerHTML = renderDiary();

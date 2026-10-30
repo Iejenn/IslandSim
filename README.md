@@ -81,6 +81,13 @@ hands land on the drum skin, the ukulele, the flute and the marimba bars),
 and each instrument has its own generated music that gets steadier as her
 music skill grows.
 
+She moves like she means it: she stirs the pot, carves and whittles with a
+knife and a piece of wood, strokes her dog lying beside her, casts her rod,
+dances when life is good, and waves back when you tap her. Butterflies,
+pond fish, frogs (croaking in the evening) and the odd curious crab keep her
+company, and the "Her story" tab tells her life so far in chapters, one per
+season.
+
 A stray dog may wash ashore and, if she earns its trust, follows her
 everywhere. Storms strip the berry bushes and can damage her buildings until
 she repairs them; on hot days she cools off in the sea. Crabs, gulls and

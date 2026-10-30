@@ -76,10 +76,16 @@ export function createDog(scene: Scene) {
       target.z = her.position.z + Math.sin(t * 1.4) * 2.4;
       speed = 5;
     } else {
-      // heel: a little behind and to the side of her
+      // heel: a little behind and to the side of her; when she sits, lie down right
+      // beside her (at her right hand, where she can stroke it)
       const a = her.rotation.y;
-      target.x = her.position.x - Math.sin(a) * 1.0 + Math.cos(a) * 0.6;
-      target.z = her.position.z - Math.cos(a) * 1.0 - Math.sin(a) * 0.6;
+      if (S.sitting && !S.lift) {
+        target.x = her.position.x - Math.cos(a) * 0.62 + Math.sin(a) * 0.05;
+        target.z = her.position.z + Math.sin(a) * 0.62 + Math.cos(a) * 0.05;
+      } else {
+        target.x = her.position.x - Math.sin(a) * 1.0 + Math.cos(a) * 0.6;
+        target.z = her.position.z - Math.cos(a) * 1.0 - Math.sin(a) * 0.6;
+      }
       lying = S.sitting;
       speed = 4.5;
     }
@@ -98,6 +104,7 @@ export function createDog(scene: Scene) {
       dog.position.z += dz / leg * step;
       if (dist > 0.3 || playing) dog.rotation.y = Math.atan2(dx, dz);
     }
+    if (lying && dist < 0.3 && d.state === 'friend') dog.rotation.y = her.rotation.y; // settled beside her, facing the same way
     dog.position.y = surfaceY(dog.position.x, dog.position.z);
     const moving = dist > 0.3;
     // lying down: body lowered, legs tucked

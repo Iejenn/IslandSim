@@ -5,7 +5,7 @@ import './style.css';
 import { Raycaster, Vector2, Vector3, type Fog } from 'three';
 import { createSound } from './audio/sound';
 import { createAnimator } from './character/animation';
-import { createPerformer } from './character/perform';
+import { createPerformer, type Playing } from './character/perform';
 import { loadCharacter } from './character/model';
 import { createHeldTools, type HeldTool } from './character/heldTools';
 import { createBody } from './character/movement';
@@ -28,6 +28,7 @@ import { createProps } from './world/props';
 import { createFlowers } from './world/flowers';
 import { createJoys } from './world/joys';
 import { createWaterfall } from './world/waterfall';
+import { createCritters } from './world/critters';
 import { createPaths } from './world/paths';
 import { createRabbits } from './world/rabbits';
 import { createRain } from './world/rain';
@@ -70,6 +71,7 @@ const updateEvents = createEvents(scene);
 const updateAtmosphere = createAtmosphere(scene);
 const updateJoys = createJoys(scene);
 const updateWaterfall = createWaterfall(scene);
+const updateCritters = createCritters(scene);
 
 /* ---------- sim + her ---------- */
 const S = initState(save?.state);
@@ -149,6 +151,7 @@ renderer.domElement.addEventListener('pointerup', e => {
     hud.setFollow(true);
     panel.expand();
     say(S.thought || 'Hm?');
+    waveUntil = clockT + 2.5; // she waves back
     infoCard.hide();
     return;
   }
@@ -171,7 +174,7 @@ function loadModel() {
     if (save) say('Oh, you’re back.');
     else {
       say('Where… am I?');
-      log('She woke up on a beach. No boat, no people. Just her and this island.');
+      log('She woke up on a beach. No boat, no people. Just her and this island.', 'big');
     }
   }, err => {
     loading.textContent = 'Couldn’t load her model. Try reloading the page.';
@@ -180,7 +183,7 @@ function loadModel() {
 }
 
 /* ---------- main loop ---------- */
-let last = performance.now(), lastUI = 0, lastSave = 0, clockT = 0;
+let last = performance.now(), lastUI = 0, lastSave = 0, clockT = 0, waveUntil = 0;
 const tmpV = new Vector3();
 function frame(now: number) {
   const dt = Math.min(0.1, (now - last) / 1000); // real seconds, capped so a background tab doesn't jump
@@ -194,10 +197,17 @@ function frame(now: number) {
     if (!S.dead) runTask(dt * animScale, dm);
   }
   animator?.mixer.update(S.dead ? dt : dt * animScale);
-  // playing music: her arms follow the instrument (only while she's actually at it, not walking there)
-  const step = S.task?.steps[S.task.i];
-  const playing = S.task?.id === 'drum' && step?.type === 'do' && S.task.instrument ? S.task.instrument : null;
-  performer?.update(sp > 0 ? playing : null, dt, clockT, Math.min(2.6, 1.4 + 0.12 * S.skills.music.lvl) * Math.min(animScale || 1, 2));
+  // what her hands are doing right now (only while she's actually at it, not walking there)
+  const step = S.task?.steps[S.task.i], doing = step?.type === 'do' ? S.task!.id : null;
+  const playing = doing === 'drum' && S.task!.instrument ? S.task!.instrument : null;
+  const gesture: Playing = clockT < waveUntil ? (S.sitting ? 'sitWave' : 'wave')
+    : playing ?? (doing === 'cook' && S.sitting ? 'stir'
+    : (doing === 'write' || doing === 'whittle') && S.sitting ? 'carve'
+    : doing === 'dance' ? 'dance'
+    : doing === 'fish' && S.items.rod && S.sitting ? 'cast'
+    : doing === 'relax' && S.sitting && S.dog.state === 'friend' && clockT % 14 < 6 ? 'pet' // now and then she strokes her dog
+    : null);
+  performer?.update(sp > 0 || clockT < waveUntil ? gesture : null, dt, clockT, Math.min(2.6, 1.4 + 0.12 * S.skills.music.lvl) * Math.min(animScale || 1, 2));
   if (ready) { settleHeight(); body.update(dt); }
   // she carries the right tool for the whole task (rod for fishing, axe for chopping, pick for mining)
   const id = S.task?.id;
@@ -215,6 +225,7 @@ function frame(now: number) {
   updateFlowers(S);
   updateEvents(S, body.her, clockT);
   updateJoys(S);
+  updateCritters(S, dt, clockT);
   const dry = drought() ? 0.75 : 1; // the pond shrinks in a drought (and the waterfall dwindles)
   props.pond.scale.set(dry, 1, dry);
   updateWaterfall(clockT, drought() ? 1 : 0);
