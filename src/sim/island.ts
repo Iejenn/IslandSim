@@ -19,7 +19,7 @@ export function dirXZ(a: Pt, b: Pt): Pt {
 // Overall island size. Everything placed relative to the coast (forest, rocks,
 // beach walks, the fishing spot, dock and canoe route) scales with it; the camp
 // around the fire keeps its fixed positions so her daily walks stay short.
-export const ISLAND_SCALE = 1.45;
+export const ISLAND_SCALE = 1.55;
 // Broad lobes stick out of the main island: the forest to the west, the rocky
 // area to the east and the pond meadow to the north, so each has room of its own.
 export const FOREST_A = 2.6, ROCKS_A = -0.875, POND_A = -2.3; // directions (radians) of the lobes
@@ -32,7 +32,7 @@ const lobe = (a: number, centre: number, width: number, size: number) => {
 };
 export function islandR(a: number) {
   // the forest is a big, wide headland of its own (with a rabbit warren deep inside)
-  const lobes = lobe(a, FOREST_A, 0.45, 27) + lobe(a, ROCKS_A, 0.36, 11) + lobe(a, POND_A, 0.42, 11);
+  const lobes = lobe(a, FOREST_A, 0.45, 27) + lobe(a, ROCKS_A, 0.36, 11) + lobe(a, POND_A, 0.45, 14);
   // a big smooth bump makes a squarish headland; ragged it up so the coast looks natural
   // (capped, or the much bigger forest headland would get a wildly jagged coast)
   const ragged = (Math.min(lobes, 14) / 12) * (1.6 * Math.sin(7 * a + 1.3) + 1.0 * Math.sin(11 * a + 0.4) + 0.7 * Math.sin(17 * a + 2.2));
@@ -46,6 +46,16 @@ export function forestness(a: number) {
 export function tAt(x: number, z: number) {
   return Math.hypot(x, z) / islandR(Math.atan2(z, x));
 }
+/* ---------- the land's shape: rolling hills, a rocky ridge, and the pond under its hill ---------- */
+// The pond sits in a basin at the foot of a hill on the pond headland; a
+// stream runs off the hilltop and drops into it as a small waterfall.
+export const POND_C = pointAt(POND_A, 0.4);
+export const POND_R = 2.4, POND_LEVEL = 0.72; // water radius, and the basin floor (the water sits a little above)
+export const HILL_C = pointAt(POND_A, 0.58);
+const HILL_H = 4.2, HILL_S = 3.0;
+const RIDGE_C = pointAt(ROCKS_A, 0.62);
+const bump = (x: number, z: number, c: Pt, s: number) => Math.exp(-((x - c.x) ** 2 + (z - c.z) ** 2) / (2 * s * s));
+
 export function height(x: number, z: number) {
   const t = tAt(x, z);
   let h: number;
@@ -53,6 +63,15 @@ export function height(x: number, z: number) {
   else if (t < 1.02) h = lerp(0.8, 0.02, smooth((t - 0.6) / 0.42));
   else h = 0.02 - Math.min(2.4, (t - 1.02) * 7);
   if (t < 0.95) h += 0.05 * Math.sin(x * 1.3) * Math.cos(z * 1.1) * (1 - smooth((t - 0.8) / 0.15));
+  // gentle rolling hills inland, fading out towards the camp (kept flat) and the beaches
+  const inland = smooth((Math.hypot(x, z) - 11) / 7) * (1 - smooth((t - 0.55) / 0.3));
+  h += inland * (0.45 * Math.sin(x * 0.19 + 1.3) * Math.cos(z * 0.23 - 0.4) + 0.3 * Math.sin(x * 0.09 - z * 0.12 + 2));
+  // a rocky ridge in the stone area, and the pond's hill
+  h += 1.3 * bump(x, z, RIDGE_C, 7) * (1 - smooth((t - 0.75) / 0.25));
+  h += HILL_H * bump(x, z, HILL_C, HILL_S) * (1 - smooth((t - 0.85) / 0.15));
+  // the pond: a flat basin (with a steep bank where it meets the hill)
+  const dp = Math.hypot(x - POND_C.x, z - POND_C.z);
+  if (dp < POND_R + 1.6) h = lerp(h, POND_LEVEL - (dp < POND_R ? 0.15 : 0), smooth(1 - (dp - POND_R) / 1.6));
   return h;
 }
 export function pointAt(a: number, t: number) {
@@ -108,21 +127,32 @@ const shelterDir = dirXZ(SH, FIRE);
 export const SHELTER_BED: Spot = { spot: ground(addScaled(SH, shelterDir, 0.65)), face: addScaled(SH, shelterDir, -4) }; // head under the low back of the roof
 
 /* the pond (her spring) out on the north meadow, ringed by berry bushes */
-export const SP = ground(pointAt(POND_A, 0.42));
-export const SPRING: Spot = { spot: standNear(SP, 1.45), face: SP };
-reserve(SP);
+export const SP: Pt = { x: POND_C.x, y: POND_LEVEL, z: POND_C.z };
+export const SPRING: Spot = { spot: standNear(SP, POND_R + 0.35), face: SP };
+reserve(SP, ...[0, 1.5, 3, 4.5].map(a => V(SP.x + Math.cos(a) * POND_R, SP.z + Math.sin(a) * POND_R)));
 
-/* berry bushes around the pond (berry counts live in sim state) */
-export const BUSHES = [0.6, 1.5, 2.6, 3.7, 4.6, 5.5].map(k => {
-  const pos = ground(V(SP.x + Math.cos(POND_A + k) * 3.1, SP.z + Math.sin(POND_A + k) * 3.1));
+/* berry bushes around the camp side of the pond (berry counts live in sim state) */
+const toCamp = Math.atan2(-SP.z, -SP.x); // direction from the pond back towards the camp
+export const BUSHES = [-1.45, -0.87, -0.29, 0.29, 0.87, 1.45].map(k => {
+  const pos = ground(V(SP.x + Math.cos(toCamp + k) * (POND_R + 1.5), SP.z + Math.sin(toCamp + k) * (POND_R + 1.5)));
   reserve(pos);
   return { pos, stand: standNear(pos, 1.0) };
 });
 
-// clay at the pond's edge, between two bushes; a bathhouse could stand on the far side
-export const CLAY_P = ground(V(SP.x + Math.cos(POND_A + 2.05) * 1.9, SP.z + Math.sin(POND_A + 2.05) * 1.9));
+/* the waterfall: from the hilltop spring, a stream runs down to the edge of the hill and falls into the pond */
+const toHill = dirXZ(SP, HILL_C), hillDist = Math.hypot(HILL_C.x - SP.x, HILL_C.z - SP.z);
+export const WATERFALL = {
+  source: ground(addScaled(SP, toHill, hillDist - 0.4)), // near the hilltop
+  top: ground(addScaled(SP, toHill, POND_R + 1.5)), // where it tips over the bank
+  bottom: { ...addScaled(SP, toHill, POND_R - 0.5), y: POND_LEVEL + 0.07 }, // splashing into the pond
+};
+reserve(WATERFALL.source, WATERFALL.top, ground(addScaled(SP, toHill, (hillDist + POND_R) / 2)));
+
+// clay at the pond's edge between two bushes; a bathhouse could stand just outside the ring of bushes
+// (both on the flat camp side: the far side rises into the hill)
+export const CLAY_P = ground(V(SP.x + Math.cos(toCamp + 1.16) * (POND_R + 0.6), SP.z + Math.sin(toCamp + 1.16) * (POND_R + 0.6)));
 export const CLAY_STAND = standNear(CLAY_P, 0.8);
-export const BATH_P = ground(V(SP.x + Math.cos(POND_A) * 2.3, SP.z + Math.sin(POND_A) * 2.3));
+export const BATH_P = ground(V(SP.x + Math.cos(toCamp - 1.16) * (POND_R + 3.2), SP.z + Math.sin(toCamp - 1.16) * (POND_R + 3.2)));
 reserve(CLAY_P, BATH_P);
 
 /* fishing spot on the north beach */

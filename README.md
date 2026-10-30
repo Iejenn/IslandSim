@@ -20,7 +20,8 @@ for cooking when the campfire is out). Chickens and sheep roam the island
 from day one, but they're no use to her until she fences off her home and
 builds a coop: then she herds them in one by one, collects eggs for omelettes
 and shears the sheep for wool (a blanket, a sweater for rainy days). Her
-spring sits on a headland on the far side, ringed by berry bushes.
+pond sits at the foot of a hill on a headland on the far side, fed by a
+waterfall from a spring on the hilltop, with berry bushes around it.
 
 Every castaway is different. Besides her two traits she has her own taste
 (cosy comforts, practical things, animals, gardening, the sea, making things,

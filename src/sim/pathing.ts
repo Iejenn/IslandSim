@@ -4,7 +4,7 @@
 // gates). Most walks are a straight line; only when that's blocked does she
 // search a small grid around the obstacle (A*) and smooth the result.
 import {
-  SHED_P, BARREL_P, BATH_P, BOULDERS, COOP_P, DRUM_P, FENCE_GATES, FENCE_R, FIRE, FOREST, GARDEN_P, HIVE_P, KILN_P, LODGE_SIZE,
+  POND_R, SHED_P, BARREL_P, BATH_P, BOULDERS, COOP_P, DRUM_P, FENCE_GATES, FENCE_R, FIRE, FOREST, GARDEN_P, HIVE_P, KILN_P, LODGE_SIZE,
   lodgeLocal, LOOKOUT_P, OVEN_P, RACK_P, SH, SP, SUNDIAL_P, TABLE_P, V, WARREN_P, WOODPILE_P, yawTo, type Pt,
 } from './island';
 import { S } from './state';
@@ -31,7 +31,7 @@ function rebuild() {
   c(FIRE, done('hearth') ? 1.2 : 0.8);
   S.trees.forEach((t, i) => { if (t.state === 'tree' || t.state === 'stump') c(FOREST[i].pos, t.state === 'tree' ? 0.3 : 0.22); });
   S.boulders.forEach((left, i) => { if (left > 0) c(BOULDERS[i].pos, 0.75 * (0.45 + 0.55 * left / 8) + 0.05); });
-  c(WOODPILE_P, 0.55); c(SP, 1.35); c(WARREN_P, 1.2);
+  c(WOODPILE_P, 0.55); c(SP, POND_R + 0.15); c(WARREN_P, 1.2);
   if (S.items.drum) c(DRUM_P, 0.3);
   if (S.items.table) c(TABLE_P, 0.55);
   if (done('rack')) { const y = yawTo(RACK_P, FIRE) + Math.PI / 2; wall(local(RACK_P, y, -0.9, 0), local(RACK_P, y, 0.9, 0)); }

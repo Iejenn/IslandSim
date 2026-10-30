@@ -3,7 +3,8 @@
 // a wary dog wanders near its spot, a friend trots after her, lies down when
 // she sits, and bounds around her while they play fetch.
 import { BoxGeometry, ConeGeometry, Group, type Object3D, type Scene } from 'three';
-import { DOCK_START } from '../sim/island';
+import { DOCK_START, V } from '../sim/island';
+import { route } from '../sim/pathing';
 import { surfaceY } from '../sim/plans';
 import type { SimState } from '../sim/state';
 import { pickable } from './inspect';
@@ -42,8 +43,10 @@ export function createDog(scene: Scene) {
     ? { title: S.dog.name, lines: [S.dog.since ? `Her friend since day ${S.dog.since}` : 'Her best friend', 'Follows her everywhere'] }
     : { title: 'A stray dog', lines: [S.dog.trust > 0.5 ? 'Warming up to her' : 'Still wary of her'] });
 
-  let wanderAngle = 0, wanderT = 0;
+  let wanderAngle = 0, wanderT = 0, repath = 0;
   const target = { x: 0, z: 0 };
+  // the dog uses the same route-finding as her (sim/pathing.ts), refreshed a few times a second
+  let path: { x: number; z: number }[] = [];
 
   /**
    * @param dt real seconds  @param t real seconds since start
@@ -80,12 +83,19 @@ export function createDog(scene: Scene) {
       lying = S.sitting;
       speed = 4.5;
     }
-    const dx = target.x - dog.position.x, dz = target.z - dog.position.z, dist = Math.hypot(dx, dz);
-    if (dist > 15) { dog.position.x = target.x; dog.position.z = target.z; } // e.g. after loading a save
-    else if (dist > 0.05) {
-      const step = Math.min(dist, speed * dt * Math.min(1, dist)); // slows down as it arrives
-      dog.position.x += dx / dist * step;
-      dog.position.z += dz / dist * step;
+    const dist = Math.hypot(target.x - dog.position.x, target.z - dog.position.z);
+    repath -= dt;
+    if (repath <= 0) {
+      repath = 0.4;
+      path = dist > 0.3 ? route(V(dog.position.x, dog.position.z), V(target.x, target.z)) : [];
+    }
+    while (path.length > 1 && Math.hypot(path[0].x - dog.position.x, path[0].z - dog.position.z) < 0.3) path.shift();
+    const next = path[0] ?? target, dx = next.x - dog.position.x, dz = next.z - dog.position.z, leg = Math.hypot(dx, dz);
+    if (dist > 15) { dog.position.x = target.x; dog.position.z = target.z; path = []; } // e.g. after loading a save
+    else if (leg > 0.05) {
+      const step = Math.min(leg, speed * dt * Math.min(1, dist)); // slows down as it arrives
+      dog.position.x += dx / leg * step;
+      dog.position.z += dz / leg * step;
       if (dist > 0.3 || playing) dog.rotation.y = Math.atan2(dx, dz);
     }
     dog.position.y = surfaceY(dog.position.x, dog.position.z);
