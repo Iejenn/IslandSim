@@ -111,6 +111,17 @@ workbench to craft at. Much later, once she has a kiln, she may build a stone
 furnace, dig red ore from a seam in the ridge and smelt it into iron for iron
 tools, the best she'll ever have.
 
+She has a life beyond the work, too. Each day she wakes up in a mood that
+colours what she feels like doing (cheerful, restless, thoughtful, lazy, or
+homesick and staring out to sea). Now and then she catches a cold or, after
+eating raw fish, an upset stomach, and rests until she's better; herbs from
+her garden make a tea that helps. She celebrates her birthday (with a cake if
+she has an oven) and marks each year since she washed ashore. And whatever she
+spends her time on, she gets good at: a master carver carves totem poles for
+her camp, an island angler mounts her record fish, a master builder carves a
+sign naming her island, a green thumb grows a prize pumpkin, a storyteller
+finishes her book, and a troubadour writes her own songs.
+
 The nights have their own life. The moon waxes and wanes over eight days,
 shooting stars streak low over the sea, and two island constellations (the
 turtle and the canoe) hang over the horizon; tilt the camera up to see them.

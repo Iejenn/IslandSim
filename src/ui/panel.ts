@@ -1,6 +1,8 @@
 // Observer panel: her name/traits/activity and goal, then Status (vitals,
 // needs, skills), Camp (what she has and has made) and Diary tabs, plus the
 // death overlay. The player only watches; this never changes sim state.
+import { birthdayToday, DAY_MOOD, ill, ILL_LABEL, titles } from '../sim/life';
+import { injured } from '../sim/events';
 import { freePlots, growingPlots, ripePlots } from '../sim/garden';
 import { happiness } from '../sim/needs';
 import { missing, PLANS } from '../sim/plans';
@@ -51,6 +53,12 @@ function renderCamp() {
   if (S.stock.bamboo || S.isletFound) stock.push(['Bamboo', String(S.stock.bamboo)]);
   if (S.stock.flint || S.projects.cave.done) stock.push(['Flint', String(S.stock.flint)]);
   if (S.stock.salt || S.projects.saltpans.done) stock.push(['Salt', String(S.stock.salt)]);
+  if (S.stock.herbs) stock.push(['Dried herbs', `${S.stock.herbs} (for tea)`]);
+  // what she has to show for her mastery
+  if (S.song) stock.push(['Her song', `“${S.song}”`]);
+  if (S.book) stock.push(['Her book', `“${S.book}”`]);
+  if (S.recordFish) stock.push(['Record catch', `${S.recordFish} kg`]);
+  if (S.islandName) stock.push(['Her island', S.islandName]);
   if (S.stock.ore || S.stock.iron || S.projects.furnace.done) stock.push(['Iron', `${S.stock.iron} (and ${S.stock.ore} ore)`]);
   if (S.stock.honey || S.projects.beehive.done) stock.push(['Honey', S.stock.honey ? n(S.stock.honey, 'jar', 'jars') : 'none yet']);
   if (S.stock.fruit || S.orchard.some(t => t.kind)) stock.push(['Fruit', S.stock.fruit ? n(S.stock.fruit, 'piece', 'pieces') : 'none ripe yet']);
@@ -181,8 +189,12 @@ export function createPanel(onNewIsland: () => void) {
     },
     render() {
       $('name').textContent = S.name;
-      if (!$('traits').childElementCount) $('traits').innerHTML = S.traits.map(t => `<li>${TRAITS[t]}</li>`).join('');
-      $('doing').innerHTML = `<strong>${S.activity}</strong>`;
+      // her traits, plus any titles she's earned (life.ts)
+      const chips = [...S.traits.map(t => TRAITS[t]), ...titles()];
+      if ($('traits').childElementCount !== chips.length) $('traits').innerHTML = chips.map((t, i) => `<li${i >= S.traits.length ? ' class="title"' : ''}>${t}</li>`).join('');
+      // what she's doing, and how she's doing today (mood, a cold, a sore ankle)
+      const today = [ill() && S.ill ? ILL_LABEL[S.ill.kind] : '', injured() ? 'Resting a sore ankle' : '', birthdayToday() ? 'It’s her birthday!' : DAY_MOOD[S.dayMood ?? 'ordinary']].filter(Boolean).join(' · ');
+      $('doing').innerHTML = `<strong>${S.activity}</strong>${today ? `<span class="today">${today}</span>` : ''}`;
       renderGoal();
       $('thought').textContent = S.thought ? `“${S.thought}”` : '';
 

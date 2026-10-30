@@ -10,6 +10,7 @@ import { preservedCap, standingTrees } from './resources';
 import { dayNum, hour, isNight, S, tr, type TaskId } from './state';
 import { activityBias } from './taste';
 import { injured } from './events';
+import { ill, isMaster, moodBias, partyTime } from './life';
 import { fullMoon, glowingSea } from './night';
 import { lowTide } from './tide';
 import { fx, season } from './seasons';
@@ -38,6 +39,8 @@ export function decide() {
       + (S.curious.some(k => CURIOUS_TASK[k] === id) ? 0.8 : 0) // new things get tried first
       + (HOBBIES.has(id) ? 0.12 * liking(id) : 0) // things she's come to love (or dread)
       + activityBias(id) // what kind of life she leans towards (taste.ts)
+      + moodBias(id) // the mood she woke up in (life.ts)
+      + (ill() ? (STRENUOUS.has(id) ? -0.5 : id === 'sleep' || id === 'relax' ? 0.3 : 0) : 0) // under the weather: rest
       - (injured() && STRENUOUS.has(id) ? 0.6 : 0) // resting a sprained ankle
       // Never start something a critical need would cancel at once. (Before this,
       // a starving castaway at night could loop: pick a hobby → interrupted → pick it again…)
@@ -113,6 +116,10 @@ export function decide() {
   else if (S.style === 'bamboo' && S.isletFound && toIslet && S.stock.bamboo < 5) add('bamboo', 0.3 + 0.15 * S.taste.green - dark - wet);
   if (!S.isletFound && lowTide() && dayNum() >= 3 && !night) add('bamboo', 0.75 + 0.4 * S.taste.adventure + (S.style === 'bamboo' ? 0.2 : 0) + 0.2 * u(n.fun) - wet); // curious about that islet
   if (need.flint > 0) add('flint', 0.6 + busy - dark);
+  // her life: tea when she's ill, a party on her birthday, totem poles once she's a master carver
+  if (ill() && S.stock.herbs >= 1 && S.fire > 0) add('tea', 0.9);
+  if (partyTime()) add('party', 1.1);
+  if (isMaster('crafting') && S.totems < 3 && !night && S.stock.wood >= 3 + FIREWOOD_RESERVE) add('totem', 0.6 + 0.3 * S.taste.creative - wet);
   // salt from the pans, fish into the smokehouse, iron from ore
   if (works('saltpans') && S.saltPans >= 3) add('salt', 0.42 + busy + (S.saltPans >= 5 ? 0.15 : 0) - dark - wet);
   if (works('smokehouse') && S.stock.raw + S.stock.meat >= 2 && S.stock.fish < preservedCap() && n.food > 35) add('smoke', 0.55 + busy - dark);

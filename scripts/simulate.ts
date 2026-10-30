@@ -16,13 +16,13 @@ const rows: string[] = [];
 // variety between islands: what each made first, its first three things, and everything it made
 const firsts: Record<string, number> = {}, openings = new Set<string>(), camps: Set<string>[] = [];
 let dreams = 0, dreamsMet = 0, idle = 0;
-const styles: Record<string, number> = {};
-const totals = { saltpans: 0, firecover: 0, smokehouse: 0, workshop: 0, furnace: 0, irontools: 0, saltMade: 0, reworks: 0, isletFound: 0, bridge: 0, cave: 0, water: 0, flinttools: 0, chimes: 0, styledMade: 0, styledMatch: 0, tidepools: 0, orchard: 0, fruitTrees: 0, bearing: 0, crops: 0, nightwalk: 0, beachstars: 0, moondance: 0, treesNow: 0, bornHens: 0, bornSheep: 0, cairns: 0, carvings: 0, hobbyMin: 0, salvaged: 0, hatched: 0, gullPet: 0, treasure: 0, kiln: 0, clayItems: 0, rareBuilt: 0, rareAllowed: 0, present: 0, spear: 0, snare: 0, hunted: 0, freed: 0, rabbitsLeft: 0, houseboat: 0, lodge: 0, fence: 0, coop: 0, penned: 0, eggs: 0, wool: 0, lodgeFurniture: 0, died: 0, built: 0, crafted: 0, furniture: 0, felled: 0, standing: 0, meals: 0, stews: 0, fireOutHours: 0, dogFriend: 0, storms: 0, repairs: 0, broken: 0, comfort: 0 };
+const styles: Record<string, number> = {}, masterOf: Record<string, number> = {};
+const totals = { ill: 0, masters: 0, totems: 0, birthdays: 0, moods: 0, saltpans: 0, firecover: 0, smokehouse: 0, workshop: 0, furnace: 0, irontools: 0, saltMade: 0, reworks: 0, isletFound: 0, bridge: 0, cave: 0, water: 0, flinttools: 0, chimes: 0, styledMade: 0, styledMatch: 0, tidepools: 0, orchard: 0, fruitTrees: 0, bearing: 0, crops: 0, nightwalk: 0, beachstars: 0, moondance: 0, treesNow: 0, bornHens: 0, bornSheep: 0, cairns: 0, carvings: 0, hobbyMin: 0, salvaged: 0, hatched: 0, gullPet: 0, treasure: 0, kiln: 0, clayItems: 0, rareBuilt: 0, rareAllowed: 0, present: 0, spear: 0, snare: 0, hunted: 0, freed: 0, rabbitsLeft: 0, houseboat: 0, lodge: 0, fence: 0, coop: 0, penned: 0, eggs: 0, wool: 0, lodgeFurniture: 0, died: 0, built: 0, crafted: 0, furniture: 0, felled: 0, standing: 0, meals: 0, stews: 0, fireOutHours: 0, dogFriend: 0, storms: 0, repairs: 0, broken: 0, comfort: 0 };
 const FURNITURE = ['chair', 'table', 'bed', 'shelf', 'rocker'], LODGE_FURNITURE = ['realbed', 'sofa', 'kitchen'], WOOL_ITEMS = ['blanket', 'sweater'];
 for (let r = 0; r < runs; r++) {
   const S = initState();
   const made: string[] = [];
-  let fireOutMin = 0, lastTask = '';
+  let fireOutMin = 0, lastTask = '', lastIll = 0;
   const crops = new Set<string>();
   const dream = S.dream, passion = strongest(S.taste);
   while (!S.dead && S.min < 420 + days * 1440) {
@@ -31,6 +31,7 @@ for (let r = 0; r < runs; r++) {
     if (!S.dead) runTask(DT * 6, DM);
     settleHeight();
     if (S.fire <= 0) fireOutMin += DM;
+    if (S.ill && S.ill.until !== lastIll) { lastIll = S.ill.until; totals.ill++; }
     for (const p of S.plots) if (p.crop && p.state !== 'empty') crops.add(p.crop);
     const label = S.task ? S.task.id + S.task.label : '';
     if (label !== lastTask && S.task) {
@@ -92,6 +93,8 @@ for (let r = 0; r < runs; r++) {
   totals.fireOutHours += fireOutMin / 60;
   totals.orchard += S.projects.orchard.done ? 1 : 0;
   totals.reworks += S.stats.reworks ?? 0;
+  totals.masters += Object.keys(S.mastery).length; totals.totems += S.totems;
+  for (const k of Object.keys(S.mastery)) masterOf[k] = (masterOf[k] ?? 0) + 1;
   for (const k of ['saltpans', 'firecover', 'smokehouse', 'workshop', 'furnace'] as const) totals[k] += S.projects[k].done ? 1 : 0;
   totals.irontools += S.items.irontools ? 1 : 0;
   totals.isletFound += S.isletFound ? 1 : 0; totals.bridge += S.projects.bridge.done ? 1 : 0; totals.cave += S.projects.cave.done ? 1 : 0;
@@ -114,7 +117,8 @@ console.log(`\n${runs} islands × ${days} days: ${totals.died} died · avg ${avg
   `garden & night: ${avg(totals.crops)} kinds of crop sown · orchard on ${totals.orchard}/${runs}, ${avg(totals.fruitTrees)}/6 fruit trees (${avg(totals.bearing)} grown) · ` +
   `${avg(totals.nightwalk)} glowing-sea walks, ${avg(totals.beachstars)} nights stargazing on the beach, ${avg(totals.moondance)} moonlight dances, ${avg(totals.tidepools)} tide-pool visits\n` +
   `island growth: styles ${Object.entries(styles).map(([k, v]) => `${k} ${v}`).join(', ')} · islet found on ${totals.isletFound}/${runs}, bridge ${totals.bridge}, cave ${totals.cave}, water at camp ${totals.water}, flint tools ${totals.flinttools}, chimes ${totals.chimes} · ${totals.styledMatch}/${totals.styledMade} styled things in her favourite material, ${totals.reworks} reworked\n` +
-  `v1.5: salt pans ${totals.saltpans}, fire hood ${totals.firecover}, smokehouse ${totals.smokehouse}, workshop ${totals.workshop}, furnace ${totals.furnace}, iron tools ${totals.irontools} (of ${runs})`);
+  `v1.5: salt pans ${totals.saltpans}, fire hood ${totals.firecover}, smokehouse ${totals.smokehouse}, workshop ${totals.workshop}, furnace ${totals.furnace}, iron tools ${totals.irontools} (of ${runs})\n` +
+  `v1.6: ${avg(totals.masters)} masteries per island (${Object.entries(masterOf).map(([k, v]) => `${k} ${v}`).join(', ')}) · ${avg(totals.totems)} totems · ${avg(totals.ill)} illnesses`);
 // how different two finished camps are: 0 = made exactly the same things, 1 = nothing in common
 let diff = 0, pairs = 0;
 for (let i = 0; i < camps.length; i++) for (let j = i + 1; j < camps.length; j++) {

@@ -5,6 +5,7 @@ import type { AnimKey } from '../config/animations';
 import { BAMBOO, ORCHARD, BOULDERS, BUSHES, CHICKEN_HOMES, copy, FOREST, FOREST_START, PLOTS, SHEEP_HOMES, START, type Pt } from './island';
 import { rollEvents } from './events';
 import { rollDream, rollStyle, rollTaste } from './taste';
+import { YEAR_DAYS, type DayMood, type Illness } from './life';
 import { clamp, mergeInto, pick, rand } from './util';
 
 export const NAMES = ['Mara', 'Lena', 'Iris', 'Noor', 'Sofie', 'Ava', 'Elin', 'Tess', 'Yara', 'Fenna'];
@@ -44,7 +45,7 @@ export type TaskId =
   | 'befriend' | 'play' | 'repair' | 'swim' | 'herd' | 'shear' | 'collect' | 'checktrap' | 'hunt' | 'checksnares' | 'mushrooms'
   | 'clay' | 'salvage' | 'turtles' | 'tendgull' | 'dig' | 'honey' | 'bathe'
   | 'cairn' | 'sandcastle' | 'clouds' | 'bouquet' | 'whittle' | 'dance'
-  | 'plantfruit' | 'pickfruit' | 'nightwalk' | 'beachstars' | 'tidepools' | 'bamboo' | 'flint' | 'salt' | 'smoke' | 'ore' | 'smelt'
+  | 'plantfruit' | 'pickfruit' | 'nightwalk' | 'beachstars' | 'tidepools' | 'bamboo' | 'flint' | 'salt' | 'smoke' | 'ore' | 'smelt' | 'tea' | 'party' | 'totem'
   | 'celebrate' | 'stand';
 
 /* ---------- task steps ---------- */
@@ -86,7 +87,7 @@ export interface Task {
 export interface DiaryEntry { t: string; text: string; day?: number; kind?: 'big' | 'recap' }
 
 /** One garden bed. growth 0→1 is ripe; water 0→100 drains over time. */
-export type Crop = 'greens' | 'tomato' | 'corn' | 'pumpkin' | 'flowers';
+export type Crop = 'greens' | 'tomato' | 'corn' | 'pumpkin' | 'flowers' | 'herbs';
 export interface Plot {
   state: 'empty' | 'growing' | 'ripe' | 'withered';
   crop?: Crop; // what's growing in it (older saves: tomatoes)
@@ -161,7 +162,7 @@ function createState() {
 
     /* ---------- island life ---------- */
     // logs on the woodpile, stones, plant fibre, saplings to replant, fresh fish to cook, dried fish, garden seeds
-    stock: { wood: 2, stone: 0, fibre: 0, saplings: 0, raw: 0, fish: 0, seeds: 0, veg: 0, shells: 0, eggs: 0, wool: 0, meat: 0, clay: 0, honey: 0, fruit: 0, bamboo: 0, flint: 0, salt: 0, ore: 0, iron: 0 }, // veg: stored garden vegetables; shells: her collection
+    stock: { wood: 2, stone: 0, fibre: 0, saplings: 0, raw: 0, fish: 0, seeds: 0, veg: 0, shells: 0, eggs: 0, wool: 0, meat: 0, clay: 0, honey: 0, fruit: 0, bamboo: 0, flint: 0, salt: 0, ore: 0, iron: 0, herbs: 0 }, // veg: stored garden vegetables; shells: her collection
     rawSince: 0, // game minute the oldest uncooked fish was caught
     meatSince: 0, // …and the oldest uncooked rabbit
     lastMeal: 0, // game minute of her last cooked meal
@@ -255,6 +256,14 @@ function createState() {
     wear: {} as Record<string, number>, // trodden paths: how worn each grid cell is, 0…1 (see paths.ts)
     wearVersion: 0, // bumped whenever wear changes, so the world knows to redraw
     injuredUntil: 0, // game minute her sprained ankle has healed
+    // her life (see life.ts): today's mood, the odd illness, her birthday, what she's mastered
+    dayMood: 'ordinary' as DayMood,
+    ill: null as { kind: Illness; until: number } | null,
+    ateRawAt: -99999, // when she last ate raw fish (a bad idea)
+    birthday: Math.floor(rand(4, YEAR_DAYS + 1)), // day of the island year
+    partied: false, // has she celebrated today's birthday yet?
+    mastery: {} as Partial<Record<SkillKey, number>>, // day she became known for each skill
+    song: '', book: '', islandName: '', recordFish: 0, totems: 0, // what she has to show for it
     treasure: { found: 0, spots: [] as number[] }, // spots: beach angles still to dig (0 = none)
     // a stray dog that may wash ashore; she has to win its trust
     dog: { state: 'none' as 'none' | 'wild' | 'friend', trust: 0, name: '', home: copy(START), since: 0 },

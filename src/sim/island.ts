@@ -444,3 +444,6 @@ export const FURNACE_STAND = standNear(FURNACE_P, 1.2);
 // a seam of red, iron-rich rock in the ridge
 export const ORE_P = ground(pointAt(ROCKS_A, 0.5));
 export const ORE_STAND = standNear(ORE_P, 1.0);
+
+/* ---------- v1.6: a master carver's totem poles, just inside the fence (clear of the gates) ---------- */
+export const TOTEM_SPOTS = [0.55, 3.55, -1.6].map(a => ground(V(Math.cos(a) * (FENCE_R - 0.9), Math.sin(a) * (FENCE_R - 0.9))));
