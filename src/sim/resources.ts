@@ -4,6 +4,7 @@
 // trees, and fish she can't cook goes bad (or dries, with a rack).
 import { BOULDERS, dist, FOREST, type Pt } from './island';
 import { works } from './plans';
+import { fx, season } from './seasons';
 import { highlight, log, S } from './state';
 
 const SAPLING_DAYS = 3.5; // replanted sapling → full tree
@@ -21,9 +22,11 @@ export function updateResources(dm: number) {
   // the fish trap fills up slowly (fish keep alive in it); rain fills the barrel
   if (works('trap')) S.trapFish = Math.min(3, S.trapFish + days * 1.6);
   if (works('barrel') && S.weather.raining) S.barrel = Math.min(8, S.barrel + dm / 25);
+  // in autumn, mushrooms keep popping up under the trees; at other times they're gone
+  S.mushrooms = season() === 'autumn' ? Math.min(6, S.mushrooms + days * 3) : 0;
   // rabbits breed back (fastest when there are some but not too many); her snares catch some of them
   const r = S.rabbits;
-  S.rabbits = Math.min(RABBITS_MAX, r + days * (0.35 * r * (1 - r / RABBITS_MAX) + 0.15));
+  S.rabbits = Math.min(RABBITS_MAX, r + days * (0.35 * fx().rabbits * r * (1 - r / RABBITS_MAX) + 0.15));
   if (S.items.snare && S.snareCatch < 2 && S.rabbits >= 2) {
     const caught = Math.min(2 - S.snareCatch, days * 0.9 * S.rabbits / RABBITS_MAX);
     S.snareCatch += caught;

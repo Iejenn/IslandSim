@@ -4,10 +4,12 @@ import { updateAnimals } from './animals';
 import { maybeDogArrives } from './companion';
 import { updateGarden } from './garden';
 import { endOfDay } from './memory';
-import { chooseGoal, comfort } from './plans';
+import { chooseGoal, comfort, indoors as hasWalls, maybeGiveUp } from './plans';
 import { updateResources } from './resources';
 import { dreamLine, noteTaste } from './taste';
-import { dayNum, hooks, hour, log, S, say, tr, type TaskId } from './state';
+import { fx, noteSeason } from './seasons';
+import { dist, FIRE } from './island';
+import { dayNum, hooks, hour, isNight, log, S, say, tr, type TaskId } from './state';
 import { interrupt, INTERRUPTIBLE } from './tasks';
 import { clamp } from './util';
 import { maybeHotDay, updateWeather } from './weather';
@@ -23,6 +25,10 @@ export function updateNeeds(dm: number) {
   n.company -= dm * (tr('social') ? 3 : 2) * (dog ? 0.5 : 1) / 60; // a dog is good company
   if (!asleep) n.energy -= dm * 4 / 60;
   if (S.weather.raining && !indoors) n.fun -= dm * (S.weather.storm ? 4 : 2) * (S.items.sweater ? 0.5 : 1) / 60; // being soaked isn't fun (less so in a sweater)
+  // the cold (autumn nights, winter): fine by the fire, indoors, or wrapped up warm
+  const cold = fx().cold * (isNight() ? 1 : 0.4) * (S.quirk === 'hardy' ? 0.3 : 1) * (S.items.sweater ? 0.5 : 1) * (asleep && S.items.blanket ? 0.5 : 1);
+  const warm = (S.fire > 0 && dist(S.pos, FIRE) < 4) || (indoors && sheltered());
+  if (cold > 0 && !warm) { n.fun -= dm * 3 * cold / 60; n.energy -= dm * 2 * cold / 60; }
   for (const k in n) n[k as keyof typeof n] = clamp(n[k as keyof typeof n], 0, 100);
 
   if (n.food < 8) S.health -= dm * 6 / 60;
@@ -32,7 +38,7 @@ export function updateNeeds(dm: number) {
   S.health = clamp(S.health, 0, 100);
   S.mood = Math.max(0, S.mood - dm * 6 / 60);
   const wasLit = S.fire > 0;
-  S.fire = Math.max(0, S.fire - dm * (S.projects.hearth.done ? 1.8 : 3) / 60); // a stone hearth burns wood slower
+  S.fire = Math.max(0, S.fire - dm * (S.projects.hearth.done ? 1.8 : 3) * fx().fire / 60); // a stone hearth burns wood slower (cold weather faster)
   if (wasLit && S.fire <= 0) log('The campfire went out.');
 
   if (S.health < 50 && S.warned < 1) { S.warned = 1; log('She’s getting weak.'); say('I don’t feel well…'); }
@@ -53,11 +59,13 @@ export function updateNeeds(dm: number) {
   if (di > S.dayIdx) {
     endOfDay(dayNum() - 1, happiness());
     S.dayIdx = di;
-    S.berries = S.berries.map(b => clamp(b + 3, 0, 6));
+    S.berries = S.berries.map(b => clamp(b + fx().berries, 0, 6)); // lots in spring and autumn, few in winter
     log(`Day ${dayNum()} begins.`);
     maybeHotDay();
     maybeDogArrives();
     noteComfort();
+    noteSeason();
+    maybeGiveUp();
     // every few days she's reminded of her dream, until it comes true
     if (dayNum() % 4 === 0 && dreamLine() && S.feelingsNoted.includes('dream')) say(dreamLine());
   }
@@ -69,10 +77,13 @@ export function updateNeeds(dm: number) {
 }
 
 /** True if this task would be interrupted right away because a need is critical. */
+/** Sleeping or sheltering behind walls (the lodge or a walled shelter, not the hammock, treehouse or houseboat). */
+const sheltered = () => hasWalls() && !/hammock|treehouse|houseboat/i.test(S.activity);
+
 export function wouldBeCutShort(id: TaskId) {
   const n = S.needs;
   // with the fire out, fetching wood IS getting food (no fire, no cooking her catch)
-  const feedsHer = id === 'forage' || id === 'fish' || id === 'eat' || id === 'cook' || id === 'harvest' || id === 'checktrap' || id === 'hunt' || id === 'checksnares'
+  const feedsHer = id === 'forage' || id === 'fish' || id === 'eat' || id === 'cook' || id === 'harvest' || id === 'checktrap' || id === 'hunt' || id === 'checksnares' || id === 'mushrooms'
     || (S.fire <= 0 && (id === 'sticks' || id === 'chop' || id === 'wood'));
   const crit = (n.water < 12 && id !== 'drink') || (n.food < 12 && !feedsHer) || (n.energy < 6 && id !== 'sleep');
   return crit && INTERRUPTIBLE.has(id);

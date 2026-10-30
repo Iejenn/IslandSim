@@ -52,7 +52,7 @@ const TASK_LEANING: Partial<Record<TaskId, Leaning>> = {
   herd: 'animals', collect: 'animals', shear: 'animals', befriend: 'animals', play: 'animals',
   plant: 'green', water: 'green', harvest: 'green', replant: 'green',
   drum: 'creative', write: 'creative',
-  explore: 'adventure', hunt: 'adventure', checksnares: 'practical', watch: 'adventure', stargaze: 'adventure',
+  mushrooms: 'green', explore: 'adventure', hunt: 'adventure', checksnares: 'practical', watch: 'adventure', stargaze: 'adventure',
   relax: 'comfort',
 };
 /** −0.05 … +0.1 extra score for activities that match her taste. */
@@ -92,10 +92,27 @@ const DREAM_SAY: Partial<Record<PlanKey, string>> = {
   lookout: 'I want to see the whole island from up high one day.',
 };
 
+// what washed ashore with her, and the little quirks the player can spot
+const WASHED: Record<string, [string, string]> = {
+  knife: ['Washed up beside her: a rusty pocket knife. It still cuts.', 'A knife! That’ll make things easier.'],
+  line: ['Tangled in the seaweed: a real fishing line with a hook.', 'A fishing line… with a hook!'],
+  pot: ['A dented cooking pot washed up with her.', 'A pot! Proper cooking.'],
+  tarp: ['A big sheet of tarp washed up on the beach. Good for a roof.', 'A tarp. That’ll keep the rain off.'],
+};
+const QUIRK_HINT: Record<string, string> = {
+  earlybird: 'She was up before the sun again. Always the early riser.',
+  nightowl: 'She stayed up late again, watching the fire. A night owl, through and through.',
+  collector: 'Her pockets are already full of pretty stones and shells. She can’t help collecting.',
+  seasick: 'Even watching the waves makes her a little queasy. She was always seasick.',
+  hardy: 'The chilly night didn’t bother her one bit. Tough as old boots.',
+};
+
 /** Diary notes about her taste and dream, once each (and a reminder of the dream now and then). */
 export function noteTaste(dayNum: number) {
   const note = (key: string, text: string) => { if (!S.feelingsNoted.includes(key)) { S.feelingsNoted.push(key); log(text); return true; } return false; };
   if (S.min > 10 * 60) note('taste:hint', HINT[strongest(S.taste)]);
+  if (S.washedUp && S.min > 7.5 * 60 && note('washed', WASHED[S.washedUp][0])) say(WASHED[S.washedUp][1]);
+  if (S.quirk && dayNum >= 2 && S.min % 1440 > 9 * 60) note('quirk', QUIRK_HINT[S.quirk]);
   const line = dreamLine();
   if (dayNum >= 2 && line && note('dream', `She told the island about her dream: “${line}”`)) say(line);
 }

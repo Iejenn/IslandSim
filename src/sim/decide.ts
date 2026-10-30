@@ -9,17 +9,20 @@ import { canWork, damaged, FIREWOOD_RESERVE, missing, PLANS, REPAIRABLE, works }
 import { standingTrees } from './resources';
 import { hour, isNight, S, tr, type TaskId } from './state';
 import { activityBias } from './taste';
-import { catchChance as gearCatch, CURIOUS_TASK, startTask, T } from './tasks';
+import { fx, season } from './seasons';
+import { catchChance as gearCatch, CURIOUS_TASK, sleepShift, startTask, T } from './tasks';
 
 // Hobbies her memories can make more (or less) appealing.
-const HOBBIES = new Set<TaskId>(['hunt', 'checktrap', 'fish', 'explore', 'talk', 'relax', 'drum', 'write', 'chop', 'mine', 'build', 'craft', 'cook', 'sail', 'stargaze', 'watch', 'plant', 'harvest', 'play', 'swim']);
+const HOBBIES = new Set<TaskId>(['mushrooms', 'hunt', 'checktrap', 'fish', 'explore', 'talk', 'relax', 'drum', 'write', 'chop', 'mine', 'build', 'craft', 'cook', 'sail', 'stargaze', 'watch', 'plant', 'harvest', 'play', 'swim']);
 // Chores she doesn't mind doing twice in a row.
 const REPEATABLE = new Set<TaskId>(['drink', 'forage', 'sleep', 'fish', 'build', 'craft', 'chop', 'sticks', 'fibre', 'stones', 'mine', 'eat', 'cook', 'wood', 'repair', 'befriend']);
 
 const dark0 = (night: boolean) => night ? 0.6 : 0;
 
 export function decide() {
-  const n = S.needs, night = isNight(), h = hour(), late = h >= 22 || h < 5;
+  const n = S.needs, night = isNight(), h = hour();
+  // her body clock: an early riser gets sleepy earlier, a night owl later
+  const hb = (h - sleepShift() + 24) % 24, sleepy = hb >= 21 || hb < 6, late = hb >= 22 || hb < 5;
   const rain = S.weather.raining, wet = rain ? 0.35 : 0; // outdoor activities lose appeal in the rain
   const u = (v: number) => Math.pow((100 - v) / 100, 2); // urgency: grows fast as a need empties
   const c: { id: TaskId; score: number }[] = [];
@@ -54,6 +57,8 @@ export function decide() {
   const canCook = fireLit || (S.items.kitchen && S.projects.lodge.done && S.stock.wood > 0);
   const hasMeal = uncooked > 0 || S.stock.veg >= 2 || S.stock.eggs >= 2;
   if (hasMeal && canCook) add('cook', 1.8 * u(n.food) + (uncooked > 0 ? 0.45 : 0.25));
+  // autumn: mushrooms under the forest trees
+  if (season() === 'autumn' && S.mushrooms >= 1 && !night) add('mushrooms', 1.2 * u(n.food) + 0.25 - wet);
   // rabbits: a long walk into the deep forest with her spear, or snares she checks now and then
   if (S.items.spear && S.rabbits >= 2 && !night) add('hunt', (0.7 * u(n.food) + craving * 0.9) * haveCatch + 0.2 - wet);
   if (S.items.snare && S.snareCatch >= 1) add('checksnares', 0.8 + 0.6 * u(n.food) + craving * 0.5 - dark0(night) - wet); // a routine round, like collecting eggs
@@ -64,7 +69,7 @@ export function decide() {
   add('drink', 2.2 * u(n.water));
   // keeping the fire alive is a priority: it's how she cooks, and it's home
   if (S.stock.wood > 0) add('wood', (S.fire < 40 ? 0.8 * (1 - S.fire / 40) : 0.02) + (fireLit ? 0 : 0.3) + (h >= 15 && h < 20 ? 0.12 : 0) + (!fireLit && uncooked > 0 ? 0.6 + craving + 0.8 * u(n.food) : 0));
-  add('sleep', night ? 0.6 + 1.5 * u(n.energy) + (late ? 0.6 : 0) : (n.energy < 30 ? 1.6 * u(n.energy) : -1));
+  add('sleep', sleepy ? 0.6 + 1.5 * u(n.energy) + (late ? 0.6 : 0) : (n.energy < 30 ? 1.6 * u(n.energy) : -1));
   if (rain) add('shelter', 0.5 + (works('hut') ? 0.15 : 0) + (S.weather.storm ? 0.4 : 0));
 
   /* gathering: for her goal, and enough firewood to keep the fire alive */
@@ -85,7 +90,8 @@ export function decide() {
   if (nextToHerd(S.pos)) add('herd', 0.85 + Math.max(0, busy) - dark - wet);
   if (S.coopEggs >= 2) add('collect', 0.62 + S.coopEggs * 0.04 - dark);
   if (sheepToShear()) add('shear', 0.88 + 0.05 * sheepToShear() + (need.wool > 0 ? 0.3 : 0) - dark - wet); // heavy fleeces need taking off
-  const woodLow = S.stock.wood < 3, desperate = !fireLit && S.stock.wood === 0 ? 0.4 : 0; // no fire, no cooking
+  // in autumn and winter she keeps a bigger woodpile: the fire burns faster and the nights are cold
+  const woodLow = S.stock.wood < (fx().cold > 0 ? 6 : 3), desperate = !fireLit && S.stock.wood === 0 ? 0.4 : 0; // no fire, no cooking
   const canChop = !!S.items.axe && standingTrees() > 0;
   if (need.wood > 0 || woodLow) {
     const base = (need.wood > 0 ? 0.6 : 0.36) + busy + desperate - dark - wet;
@@ -115,13 +121,13 @@ export function decide() {
   }
 
   /* hobbies */
-  if (fireLit) add('relax', 0.9 * u(n.fun) + 0.2 * u(n.energy) + (h >= 18 ? 0.15 : 0) + (tr('lazy') ? 0.15 : 0) - wet);
+  if (fireLit) add('relax', 0.9 * u(n.fun) + 0.2 * u(n.energy) + (h >= 18 ? 0.15 : 0) + (tr('lazy') ? 0.15 : 0) + 0.2 * fx().cold - wet); // the fire is extra cosy when it's cold
   if (!night) add('explore', 0.8 * u(n.fun) + (tr('curious') ? 0.2 : 0) + 0.05 - wet);
   add('talk', 1.1 * u(n.company) + (tr('social') ? 0.1 : 0) - (night ? 0.3 : 0) - wet * 0.5);
   if (S.items.drum) add('drum', 1.3 * u(n.fun) + 0.2 * u(n.company) + 0.25 + (tr('musical') ? 0.3 : 0) - wet);
   if (S.items.journal) add('write', 1.1 * u(n.fun) + 0.15 + (tr('curious') ? 0.25 : 0) - wet * 0.6);
-  if (S.projects.canoe.done && works('dock') && !night && !rain) add('sail', 0.9 * u(n.fun) + 0.2 + (tr('curious') ? 0.15 : 0));
-  if (!night && !rain) add('swim', S.weather.hot ? 0.55 + 0.7 * u(n.fun) : 0.5 * u(n.fun) - 0.1);
+  if (S.projects.canoe.done && works('dock') && !night && !rain && S.quirk !== 'seasick') add('sail', 0.9 * u(n.fun) + 0.2 + (tr('curious') ? 0.15 : 0));
+  if (!night && !rain && season() !== 'winter') add('swim', S.weather.hot ? 0.55 + 0.7 * u(n.fun) : 0.5 * u(n.fun) - 0.1 - fx().cold * 0.3);
   /* the dog: win its trust, then play */
   if (S.dog.state === 'wild') add('befriend', 0.45 + 0.7 * u(n.company) + (tr('social') ? 0.2 : 0) - dark - wet);
   if (S.dog.state === 'friend') add('play', 0.9 * u(n.fun) + 0.6 * u(n.company) + 0.2 - dark - wet);

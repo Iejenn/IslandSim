@@ -89,10 +89,12 @@ export function createLivestock(scene: Scene) {
     const herding = S.task?.id === 'herd' && S.task.animal && S.task.i >= 2 && S.task.i <= 3 ? S.task.animal : null;
     chickens.forEach((c, i) => {
       const penned = S.chickens[i].penned, mine = herding?.kind === 'chicken' && herding.i === i;
+      c.g.visible = !S.chickens[i].away; // not every island has a full flock
       wander(c, penned ? COOP_P : c.home, penned ? 1.8 : 1.6, 0.6, dt, t, mine ? her : null, mine);
     });
     sheep.forEach((s, i) => {
       const penned = S.sheep[i].penned, mine = herding?.kind === 'sheep' && herding.i === i;
+      s.g.visible = !S.sheep[i].away;
       wander(s, penned ? SHEEP_PEN_P : s.home, penned ? 2.2 : 2.5, 0.35, dt, t, mine ? her : null, false);
       // a full fleece makes them visibly fluffier
       const fluff = penned ? 0.8 + 0.35 * S.sheep[i].wool : 1.1;

@@ -4,7 +4,7 @@
 import type { AnimKey } from '../config/animations';
 import { BOULDERS, BUSHES, CHICKEN_HOMES, copy, FOREST, PLOTS, SHEEP_HOMES, START, type Pt } from './island';
 import { rollDream, rollTaste } from './taste';
-import { clamp, mergeInto, pick } from './util';
+import { clamp, mergeInto, pick, rand } from './util';
 
 export const NAMES = ['Mara', 'Lena', 'Iris', 'Noor', 'Sofie', 'Ava', 'Elin', 'Tess', 'Yara', 'Fenna'];
 export const TRAITS = { musical: 'Musical', curious: 'Curious', hardworking: 'Hard-working', lazy: 'Easy-going', social: 'Sociable' };
@@ -29,7 +29,7 @@ export type TaskId =
   | 'forage' | 'fish' | 'cook' | 'eat' | 'drink' | 'wood' | 'sleep' | 'shelter' | 'relax' | 'explore' | 'talk'
   | 'sticks' | 'chop' | 'fibre' | 'stones' | 'mine' | 'replant' | 'craft' | 'build'
   | 'plant' | 'water' | 'harvest' | 'drum' | 'write' | 'sail' | 'stargaze' | 'watch'
-  | 'befriend' | 'play' | 'repair' | 'swim' | 'herd' | 'shear' | 'collect' | 'checktrap' | 'hunt' | 'checksnares'
+  | 'befriend' | 'play' | 'repair' | 'swim' | 'herd' | 'shear' | 'collect' | 'checktrap' | 'hunt' | 'checksnares' | 'mushrooms'
   | 'celebrate' | 'stand';
 
 /* ---------- task steps ---------- */
@@ -89,6 +89,13 @@ function rollTraits(): [Trait, Trait] {
 
 // Random looks for the things she makes (0…1 each, the world maps them onto a
 // colour palette), so one island's tent is green and another's blue.
+// Small things that make one castaway unlike another (see diary hints in taste.ts)
+export const QUIRKS = ['earlybird', 'nightowl', 'collector', 'seasick', 'hardy'] as const;
+export type Quirk = typeof QUIRKS[number];
+export const DISHES = ['fish', 'rabbit', 'eggs', 'veg', 'stew', 'berries'] as const;
+// what washed ashore with her (or nothing)
+export const WASHED_UP = ['knife', 'line', 'pot', 'tarp'] as const;
+
 export const LOOK_KEYS = ['tarp', 'bedding', 'hammock', 'cushion', 'blanket', 'roof', 'wood'] as const;
 
 function createState() {
@@ -98,6 +105,15 @@ function createState() {
     traits: rollTraits(),
     taste, // what kind of life she leans towards (see taste.ts)
     dream: rollDream(taste) as PlanKey | null, // the one big thing she's set on
+    quirk: (Math.random() < 0.7 ? pick(QUIRKS) : null) as Quirk | null,
+    favFood: pick(DISHES) as typeof DISHES[number],
+    washedUp: (Math.random() < 0.6 ? pick(WASHED_UP) : null) as typeof WASHED_UP[number] | null,
+    // the island's own character: when its year starts, how rainy it is, who lives there
+    island: {
+      seasonStart: Math.floor(Math.random() * 4), // 0 spring … 3 winter
+      rain: rand(0.65, 1.5), // a dry island or a wet one
+      dog: Math.random() < 0.75, // not every island gets a stray dog
+    },
     look: Object.fromEntries(LOOK_KEYS.map(k => [k, Math.random()])) as Record<typeof LOOK_KEYS[number], number>,
     min: 7 * 60, // game minutes since day 1, 00:00
     dayIdx: 0,
@@ -147,6 +163,7 @@ function createState() {
     } as Record<ProjectKey, Project>,
     goal: null as PlanKey | null, // what she's working towards (something to craft or build)
     goalSince: 0, // game minute the goal was set
+    gaveUp: {} as Partial<Record<PlanKey, number>>, // goals she dropped, and the day she dropped them
     crafting: { started: false, progress: 0 }, // progress on the current goal when it's a craft
     plots: PLOTS.map((): Plot => ({ state: 'empty', growth: 0, water: 0, dryMin: 0 })),
     // how much she likes each activity, -1..1, learned from how it went
@@ -158,13 +175,15 @@ function createState() {
     today: [] as string[],
     weather: { raining: false, until: 0, storm: false, hot: false },
     // chickens and sheep roam wild until she fences her home and herds them in
-    chickens: CHICKEN_HOMES.map(() => ({ penned: false })),
-    sheep: SHEEP_HOMES.map(() => ({ penned: false, wool: 0 })), // wool: 0…1, ready to shear at 1
+    // not every island has the same flock: some homes stay empty ("away")
+    chickens: CHICKEN_HOMES.map((_, i) => ({ penned: false, away: i >= 2 && Math.random() < 0.4 })),
+    sheep: SHEEP_HOMES.map((_, i) => ({ penned: false, wool: 0, away: i >= 1 && Math.random() < 0.4 })), // wool: 0…1, ready to shear at 1
     coopEggs: 0, // eggs waiting in the coop
     trapFish: 0, // fish waiting in her fish trap
     barrel: 0, // drinks of rainwater in the barrel
-    rabbits: 8, // wild rabbits around the warren deep in the forest (they breed back)
+    rabbits: Math.round(rand(4, 12)), // wild rabbits around the warren deep in the forest (they breed back)
     snareCatch: 0, // rabbits waiting in her snares
+    mushrooms: 0, // patches of mushrooms in the forest (autumn only)
     // a stray dog that may wash ashore; she has to win its trust
     dog: { state: 'none' as 'none' | 'wild' | 'friend', trust: 0, name: '', home: copy(START) },
     sailing: false, // in the boat

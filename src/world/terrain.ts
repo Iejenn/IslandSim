@@ -34,4 +34,5 @@ export function createTerrain(scene: Scene) {
   const terrain = new Mesh(g, new MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 }));
   terrain.receiveShadow = true;
   scene.add(terrain);
+  return terrain.material; // its colour tints the whole island per season (see world/seasons.ts)
 }
