@@ -5,6 +5,7 @@ import './style.css';
 import { Raycaster, Vector2, Vector3, type Fog } from 'three';
 import { createSound } from './audio/sound';
 import { createAnimator } from './character/animation';
+import { createPerformer } from './character/perform';
 import { loadCharacter } from './character/model';
 import { createHeldTools, type HeldTool } from './character/heldTools';
 import { createBody } from './character/movement';
@@ -79,6 +80,7 @@ if (import.meta.env.DEV) {
   Object.assign(window, {
     __S: S, __camera: camera, __controls: controls,
     __play: (k: AnimKey) => hooks.play(k, true), // try an animation, e.g. __play('death')
+    __pose: (p: Parameters<NonNullable<typeof performer>['setTest']>[0]) => performer?.setTest(p), // try bone rotations
     __look: (x: number, y: number) => { // what a tap at these screen pixels would show
       const r = new Raycaster(); r.setFromCamera(new Vector2(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1), camera);
       return inspect(r, S);
@@ -88,9 +90,11 @@ if (import.meta.env.DEV) {
   });
 }
 const body = createBody(scene);
+if (import.meta.env.DEV) Object.defineProperty(window, '__her', { get: () => body.her }); // (dev) her body, for poking at bones
 const heldTools = createHeldTools(scene);
 let ready = false;
 let animator: ReturnType<typeof createAnimator> | null = null;
+let performer: ReturnType<typeof createPerformer> | null = null;
 
 /* ---------- sound (made in the browser, off until the player turns it on) ---------- */
 const sound = createSound();
@@ -160,6 +164,7 @@ function loadModel() {
     body.attach(gltf.scene);
     heldTools.attach(gltf.scene);
     animator = createAnimator(gltf.scene, gltf.animations);
+    performer = createPerformer(gltf.scene, body.her, scene);
     animator.play('idle');
     ready = true;
     loading.style.opacity = '0';
@@ -189,12 +194,16 @@ function frame(now: number) {
     if (!S.dead) runTask(dt * animScale, dm);
   }
   animator?.mixer.update(S.dead ? dt : dt * animScale);
+  // playing music: her arms follow the instrument (only while she's actually at it, not walking there)
+  const step = S.task?.steps[S.task.i];
+  const playing = S.task?.id === 'drum' && step?.type === 'do' && S.task.instrument ? S.task.instrument : null;
+  performer?.update(sp > 0 ? playing : null, dt, clockT, Math.min(2.6, 1.4 + 0.12 * S.skills.music.lvl) * Math.min(animScale || 1, 2));
   if (ready) { settleHeight(); body.update(dt); }
   // she carries the right tool for the whole task (rod for fishing, axe for chopping, pick for mining)
   const id = S.task?.id;
   const held: HeldTool | null = !ready ? null : id === 'fish' && S.items.rod ? 'rod' : (id === 'fish' || id === 'hunt') && S.items.spear ? 'spear' : id === 'chop' && S.items.axe ? 'axe' : id === 'mine' && S.items.pick ? 'pick' : null;
   heldTools.update(held, body.her, clockT);
-  updateCrafted(S, held);
+  updateCrafted(S, held ?? (playing === 'flute' || playing === 'ukulele' ? playing : null)); // (a flute or ukulele in her hands isn't in its spot)
   updateForest(S);
   props.syncBerries(S.berries);
   updateBuildings(S, body.her, clockT);

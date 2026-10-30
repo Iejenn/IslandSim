@@ -3,14 +3,14 @@
 import { ONE_SHOT_SECONDS } from '../config/animations';
 import { freePlots, growingPlots, ripePlots } from './garden';
 import {
-  SHED_P, TABLE_P, addScaled, dirXZ, SP, BATH_P, CLAY_P, CLAY_STAND, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SUNDIAL_P, BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
+  BANDSTAND_FLOOR, BANDSTAND_P, BAND_SPOTS, bandLocal, MARIMBA_P, type Instrument, SHED_P, TABLE_P, addScaled, dirXZ, SP, BATH_P, CLAY_P, CLAY_STAND, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SUNDIAL_P, BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
   HAMMOCK_BED, SHELTER_BED, LOOKOUT_DECK, LOOKOUT_P, pointAt, RACK_P, SAIL_ROUTE, SCREE_P, SCREE_STAND, SEATS, SH, SHELTER, SPRING, standNear,
   V, WOODPILE_P, type Pt,
 } from './island';
 import { feelingAbout, remember } from './memory';
 import { nextToHerd, sheepToShear } from './animals';
 import { gainTrust } from './companion';
-import { storageCap, checkFinished, damaged, indoors, minutesLeft, PLANS, REPAIRABLE, startPlan, workOn, works } from './plans';
+import { INSTRUMENTS, storageCap, checkFinished, damaged, indoors, minutesLeft, PLANS, REPAIRABLE, startPlan, workOn, works } from './plans';
 import { addMeat, addRawFish, nearestBoulder, nearestTree } from './resources';
 import { addXp } from './skills';
 import {
@@ -62,7 +62,25 @@ const BARREL_STAND = standNear(BARREL_P, 0.8, FIRE);
 const CRAFT_SEAT = SEATS[0]; // she crafts sitting by the fire
 /** Her seat by the fire: the chair once she's made one, otherwise a log. */
 const fireSeat = () => S.items.chair ? CHAIR_P : CRAFT_SEAT.p;
-const DRUM_SEAT = standNear(DRUM_P, 0.6, FIRE);
+// (close enough to reach the drum skin; her hands are calibrated for this in character/perform.ts)
+const DRUM_SEAT = standNear(DRUM_P, 0.22, FIRE);
+/** Where she plays each instrument, and what she faces. */
+function musicSpot(k: Instrument, band: boolean): { player: Pt; face: Pt } {
+  if (band) {
+    const s = BAND_SPOTS[k];
+    return { player: s.player, face: k === 'drum' || k === 'marimba' ? s.at : bandLocal(0, 4) };
+  }
+  if (k === 'drum') return { player: DRUM_SEAT, face: DRUM_P };
+  if (k === 'marimba') return { player: ground(addScaled(MARIMBA_P, dirXZ(FIRE, MARIMBA_P), 0.38)), face: MARIMBA_P };
+  if (k === 'ukulele') return { player: SEATS[1].p, face: FIRE };
+  return { player: standNear(DRUM_P, 1.1, FIRE), face: FIRE }; // the flute: standing by the fire
+}
+const TH_MUSIC: Record<Instrument, string[][]> = {
+  drum: [['Boom. Boom-boom. Hm.', 'Rhythm is harder than it looks.'], ['I’ve almost got a groove going.', 'The waves are keeping time with me.'], ['The whole island is dancing.', 'I’ve never played this well in my life.']],
+  flute: [['Squeak. Sorry, birds.', 'Which hole was that again?'], ['That almost sounded like a song.', 'The birds are answering me!'], ['Even the wind stops to listen.', 'A tune my mother used to hum.']],
+  ukulele: [['Plink. Plonk. Hmm.', 'My fingers don’t want to cooperate.'], ['Three chords and the truth.', 'Sing along, island!'], ['This one’s for you, sea.', 'I could play this all night.']],
+  marimba: [['Bonk. Bonk.', 'Which bar is which…'], ['Like raindrops in tune.', 'Pling-plong-pling!'], ['The bars are singing.', 'Listen to that ripple!']],
+};
 /** Lie down on her back (feet at p, head towards face), then get up again. */
 function lieAt(p: Pt, face: Pt, min: number, tick?: (dm: number) => void, done?: (() => void) | null, lift?: number): Step[] {
   return [go(p), act({ pose: 'lie', face, min, tick, done, lift }), standUp()];
@@ -90,6 +108,7 @@ const SITE: Record<string, { stand: Pt; face: Pt }> = {
   sundial: { stand: standNear(SUNDIAL_P, 0.9, FIRE), face: SUNDIAL_P },
   mosaic: { stand: standNear(MOSAIC_P, 1.0, FIRE), face: MOSAIC_P },
   bathhouse: { stand: standNear(BATH_P, 1.3, SP), face: BATH_P },
+  bandstand: { stand: bandLocal(0, 2.2), face: BANDSTAND_P },
 };
 /* where event things are: on the beach at the event's angle */
 export const wreckPos = () => ground(pointAt(S.wreck.a, 0.88));
@@ -503,12 +522,22 @@ export const T: Record<string, () => Task | null> = {
       done() { remember('talk', tr('social') ? 0.03 : 0.005); },
     })]);
   },
+  /** Making music: one of her instruments, on the bandstand if she has one (the task id stays 'drum' for old saves). */
   drum() {
-    if (!has('drum')) return null;
-    const l = S.skills.music.lvl;
-    const th = l < 2 ? pick(['Boom. Boom-boom. Hm.', 'Rhythm is harder than it looks.']) : l < 5 ? pick(['I’ve almost got a groove going.', 'The waves are keeping time with me.']) : pick(['The whole island is dancing.', 'I’ve never played this well in my life.']);
-    return mk('drum', 'Playing the drum', th, sitAt(DRUM_SEAT, DRUM_P, 50, dm => { feed('fun', dm * 16 / 60); feed('company', dm * 4 / 60); addXp('music', dm * 14 / 60); },
-      () => { remember('drum', tr('musical') ? 0.06 : 0.03); highlight('played the drum'); }));
+    const owned = INSTRUMENTS.filter(k => has(k));
+    if (!owned.length) return null;
+    const k = owned.find(i => S.curious.includes(i)) ?? pick(owned); // a new instrument first, then whatever she fancies
+    const l = S.skills.music.lvl, band = works('bandstand');
+    const th = l < 2 ? pick(TH_MUSIC[k][0]) : l < 5 ? pick(TH_MUSIC[k][1]) : pick(TH_MUSIC[k][2]);
+    const funK = band ? 1.3 : 1; // playing on a real stage is the best
+    const tick = (dm: number) => { feed('fun', dm * 16 * funK / 60); feed('company', dm * (band ? 7 : 4) / 60); addXp('music', dm * 14 / 60); };
+    const done = () => { remember('drum', tr('musical') ? 0.06 : 0.03); highlight(`played the ${PLANS[k].name}${band ? ' on her bandstand' : ''}`); };
+    const where = musicSpot(k, band), seated = k === 'drum' || k === 'ukulele';
+    const steps: Step[] = [go(where.player), act({ pose: seated ? 'sit' : 'idle', face: where.face, min: 50, tick, done, lift: band ? BANDSTAND_FLOOR : 0 })];
+    if (seated) steps.push(standUp());
+    const t = mk('drum', `Playing the ${PLANS[k].name}${band ? ' on her bandstand' : ''}`, th, steps);
+    t.instrument = k;
+    return t;
   },
   write() {
     if (!has('journal')) return null;
@@ -862,7 +891,7 @@ export const INTERRUPTIBLE = new Set<TaskId>(['cairn', 'sandcastle', 'clouds', '
 // Outdoor tasks a sudden shower sends her away from.
 export const RAIN_STOPS = new Set<TaskId>(['cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'salvage', 'turtles', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
 // Which task "tries out" each newly made thing.
-export const CURIOUS_TASK: Partial<Record<CraftKey, TaskId>> = { rod: 'fish', spear: 'fish', drum: 'drum', journal: 'write', axe: 'chop', pick: 'mine', chair: 'relax', rocker: 'watch' };
+export const CURIOUS_TASK: Partial<Record<CraftKey, TaskId>> = { rod: 'fish', spear: 'fish', drum: 'drum', flute: 'drum', ukulele: 'drum', marimba: 'drum', journal: 'write', axe: 'chop', pick: 'mine', chair: 'relax', rocker: 'watch' };
 
 /* ---------- task lifecycle ---------- */
 export function startTask(t: Task) {

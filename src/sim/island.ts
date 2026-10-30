@@ -212,6 +212,30 @@ export const MOSAIC_P = ground(V(6.6, -0.8));
 reserve(KILN_P, OVEN_P, HIVE_P, SUNDIAL_P, MOSAIC_P);
 export const SHED_P = ground(V(-5.2, 2.0)); // tool shed, between the woodpile and the sheep pen
 reserve(SHED_P);
+
+/* ---------- music: where she plays each instrument ---------- */
+// (each spot: where she sits or stands, what she faces, and how high she is)
+export type Instrument = 'drum' | 'flute' | 'ukulele' | 'marimba';
+export const MARIMBA_P = ground(V(1.3, 2.5)); // by the fire, opposite the log seats
+reserve(MARIMBA_P);
+// The bandstand: a raised, roofed platform south of the camp; once it's built
+// she keeps her instruments there and plays them on it.
+export const BANDSTAND_P = ground(V(2.5, -7.0));
+export const BANDSTAND_YAW = yawTo(BANDSTAND_P, FIRE);
+export const BANDSTAND_FLOOR = 0.35;
+reserve(BANDSTAND_P);
+/** A point on the bandstand from its own frame (x along the front, z towards the fire). */
+export function bandLocal(lx: number, lz: number): Pt {
+  const c = Math.cos(BANDSTAND_YAW), s = Math.sin(BANDSTAND_YAW);
+  return ground(V(BANDSTAND_P.x + lx * c + lz * s, BANDSTAND_P.z - lx * s + lz * c));
+}
+// where each instrument stands on the bandstand, and where she plays it from
+export const BAND_SPOTS: Record<Instrument, { at: Pt; player: Pt }> = {
+  drum: { at: bandLocal(-0.75, 0.25), player: bandLocal(-0.75, 0.03) },
+  marimba: { at: bandLocal(0.6, 0.35), player: bandLocal(0.6, -0.03) },
+  flute: { at: bandLocal(0.95, -0.95), player: bandLocal(0, -0.1) },
+  ukulele: { at: bandLocal(-1.0, -0.9), player: bandLocal(0, -0.4) },
+};
 export const RACK_P = ground(V(4.0, 0.0));
 export const GARDEN_P = ground(V(2.6, 5.0));
 // 2×2 beds around the garden centre

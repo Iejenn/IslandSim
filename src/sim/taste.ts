@@ -26,7 +26,7 @@ const DREAMS: Record<Leaning, PlanKey[]> = {
   animals: ['coop', 'blanket'],
   green: ['garden', 'barrel'],
   sea: ['canoe', 'dock', 'trap', 'houseboat'],
-  creative: ['shelf', 'drum', 'treehouse', 'kiln'],
+  creative: ['shelf', 'drum', 'treehouse', 'kiln', 'bandstand'],
   adventure: ['treehouse', 'lookout', 'canoe', 'houseboat'],
 };
 export function rollDream(t: Taste): PlanKey {
@@ -90,6 +90,7 @@ const DREAM_SAY: Partial<Record<PlanKey, string>> = {
   treehouse: 'A house up in the trees… like when I was little.',
   houseboat: 'One day I’ll live on the water. A little houseboat.',
   lookout: 'I want to see the whole island from up high one day.',
+  bandstand: 'One day I’ll have a little stage, and play my music to the whole island.',
   kiln: 'One day I’ll fire my own pottery. There must be clay somewhere.',
   shed: 'One day every tool I make will have its own hook on a wall.',
 };

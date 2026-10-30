@@ -138,7 +138,9 @@ export function decide() {
   if (fireLit) add('relax', 0.9 * u(n.fun) + 0.2 * u(n.energy) + (h >= 18 ? 0.15 : 0) + (tr('lazy') ? 0.15 : 0) + 0.2 * fx().cold - wet); // the fire is extra cosy when it's cold
   if (!night) add('explore', 0.8 * u(n.fun) + (tr('curious') ? 0.2 : 0) + 0.05 - wet);
   add('talk', 1.1 * u(n.company) + (tr('social') ? 0.1 : 0) - (night ? 0.3 : 0) - wet * 0.5);
-  if (S.items.drum) add('drum', 1.3 * u(n.fun) + 0.2 * u(n.company) + 0.25 + (tr('musical') ? 0.3 : 0) - wet);
+  // making music: any instrument she owns (a few more of them, and a bandstand, make it more tempting)
+  const instruments = (['drum', 'flute', 'ukulele', 'marimba'] as const).filter(k => S.items[k]).length;
+  if (instruments) add('drum', 1.3 * u(n.fun) + 0.2 * u(n.company) + 0.2 + 0.05 * instruments + (works('bandstand') ? 0.1 : 0) + (tr('musical') ? 0.3 : 0) - (works('bandstand') ? 0 : wet));
   if (S.items.journal) add('write', 1.1 * u(n.fun) + 0.15 + (tr('curious') ? 0.25 : 0) - wet * 0.6);
   if (S.projects.canoe.done && works('dock') && !night && !rain && S.quirk !== 'seasick') add('sail', 0.9 * u(n.fun) + 0.2 + (tr('curious') ? 0.15 : 0));
   if (!night && !rain && season() !== 'winter') add('swim', S.weather.hot ? 0.55 + 0.7 * u(n.fun) : 0.5 * u(n.fun) - 0.1 - fx().cold * 0.3);

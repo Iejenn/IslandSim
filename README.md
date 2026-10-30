@@ -73,6 +73,14 @@ bouquet for her table, whittling small wooden animals, and hanging lanterns
 along her most-worn paths. Tap anything on the island (a building, a tree, an
 animal, something she made) to see a little card with its story.
 
+Music grows with her: after the drum may come a bamboo flute, a ukulele and a
+marimba, and a castaway with a few instruments may build a bandstand to keep
+them on and play from. The model has no instrument animations, so her arm
+bones are posed on top of the sitting or standing clip (calibrated so her
+hands land on the drum skin, the ukulele, the flute and the marimba bars),
+and each instrument has its own generated music that gets steadier as her
+music skill grows.
+
 A stray dog may wash ashore and, if she earns its trust, follows her
 everywhere. Storms strip the berry bushes and can damage her buildings until
 she repairs them; on hot days she cools off in the sea. Crabs, gulls and
@@ -146,7 +154,7 @@ src/
                    paths, wildflowers, atmosphere (mist, rainbow, fireflies,
                    leaves, songbirds), traces of her hobbies, tap-to-look
   audio/           sound effects and ambience, generated with the Web Audio API
-  character/       loading the model, playing animations, moving the body,
+  character/       loading the model, posing her arms for each instrument (perform.ts), playing animations, moving the body,
                    tools in her hand
   save.ts          localStorage save/load and the island's layout seed
   ui/              observer panel, HUD (clock/speed/follow/sound), thought bubble,

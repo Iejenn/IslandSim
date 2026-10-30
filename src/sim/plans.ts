@@ -119,6 +119,32 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     tags: ['practical'],
   },
 
+  /* ---------- more instruments, as her music grows ---------- */
+  flute: {
+    kind: 'craft', name: 'bamboo flute', a: 'a bamboo flute', cost: { wood: 1 }, minutes: 40,
+    unlocked: () => (!!S.items.drum && S.skills.music.lvl >= 1) || (tr('musical') && dayNum() >= 3),
+    want: 'A hollow stem, a few holes… I could make a flute.',
+    done: 'A flute! It squeaks, but it sings.',
+    weight: () => tr('musical') ? 3 : 1,
+    tags: ['creative'],
+  },
+  ukulele: {
+    kind: 'craft', name: 'ukulele', a: 'a ukulele', cost: { wood: 3, fibre: 3 }, minutes: 120,
+    unlocked: () => S.skills.music.lvl >= 2 && S.skills.crafting.lvl >= 2,
+    want: 'A little ukulele, with strings of twisted fibre. I could sing along.',
+    done: 'A ukulele! Four strings and a whole lot of happiness.',
+    weight: () => tr('musical') ? 3 : 0.8,
+    tags: ['creative'],
+  },
+  marimba: {
+    kind: 'craft', name: 'marimba', a: 'a marimba', cost: { wood: 6, fibre: 2 }, minutes: 160,
+    unlocked: () => S.skills.music.lvl >= 3 && S.skills.crafting.lvl >= 3,
+    want: 'Wooden bars of different lengths… each one a note. A marimba!',
+    done: 'A marimba! It sounds like rain on a tin roof, in tune.',
+    weight: () => tr('musical') ? 2.5 : 0.6,
+    tags: ['creative'],
+  },
+
   /* ---------- furniture: she only thinks of these once her crafting is good enough ---------- */
   chair: {
     kind: 'craft', name: 'chair', a: 'a chair', cost: { wood: 3 }, minutes: 70,
@@ -357,6 +383,15 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     weight: () => 1.3 + (tr('curious') ? 0.7 : 0),
     tags: ['sea', 'adventure'],
   },
+  bandstand: {
+    kind: 'build', name: 'bandstand', a: 'a bandstand', cost: { wood: 12, stone: 4, fibre: 2 }, minutes: 280,
+    // somewhere proper to keep her instruments and to play them
+    unlocked: () => dayNum() >= 8 && INSTRUMENTS.filter(k => S.items[k]).length >= 2,
+    want: 'My instruments deserve a proper stage. A little bandstand, with a roof!',
+    done: 'The bandstand is finished. Time for a concert, even if the audience is a seagull.',
+    weight: () => 1.5 + (tr('musical') ? 2.5 : 0),
+    tags: ['creative', 'comfort'],
+  },
   shed: {
     kind: 'build', name: 'tool shed', a: 'a tool shed', cost: { wood: 6, stone: 2 }, minutes: 150,
     // once her tools are piling up around camp
@@ -485,6 +520,7 @@ export function chooseGoal() {
   return true;
 }
 
+export const INSTRUMENTS = ['drum', 'flute', 'ukulele', 'marimba'] as const;
 const TOOLS: CraftKey[] = ['axe', 'pick', 'rod', 'spear', 'bucket', 'basket', 'snare'];
 /** How much of a material she can keep: a tool shed gives room for half as much again. */
 export function storageCap(r: 'wood' | 'stone' | 'fibre' | 'clay') {
@@ -563,7 +599,7 @@ export function checkFinished(k: PlanKey) {
 /* ---------- storm damage ---------- */
 // What the storm can damage, and what fixing it costs.
 export const REPAIRABLE: Partial<Record<ProjectKey, Partial<Record<Resource, number>>>> = {
-  rack: { wood: 1 }, dock: { wood: 3 }, hut: { wood: 1, stone: 2 }, lookout: { wood: 2 }, lodge: { wood: 2, stone: 1 },
+  rack: { wood: 1 }, dock: { wood: 3 }, hut: { wood: 1, stone: 2 }, lookout: { wood: 2 }, bandstand: { wood: 2 }, lodge: { wood: 2, stone: 1 },
   trap: { wood: 2 }, treehouse: { wood: 2 }, houseboat: { wood: 3 }, shed: { wood: 1 },
 };
 /** A finished project that isn't storm-damaged right now. */
@@ -571,11 +607,11 @@ export const works = (k: ProjectKey) => S.projects[k].done && !S.projects[k].dam
 export const damaged = () => (Object.keys(REPAIRABLE) as ProjectKey[]).filter(k => S.projects[k].damaged);
 
 /* ---------- home comfort: how much the camp feels like a home ---------- */
-const COMFORT_ITEMS: CraftKey[] = ['jug', 'chair', 'table', 'bed', 'shelf', 'rocker', 'hammock', 'drum', 'realbed', 'sofa', 'kitchen', 'blanket'];
+const COMFORT_ITEMS: CraftKey[] = ['flute', 'ukulele', 'marimba', 'jug', 'chair', 'table', 'bed', 'shelf', 'rocker', 'hammock', 'drum', 'realbed', 'sofa', 'kitchen', 'blanket'];
 /** 0…25: furniture and comforts she has made, plus a sound roof (or a whole lodge) and hearth. */
 export function comfort() {
   return COMFORT_ITEMS.filter(k => S.items[k]).length + (works('lodge') ? 4 : works('hut') ? 2 : 0) + (works('treehouse') ? 2 : 0) + (works('houseboat') ? 2 : 0)
-    + (['sundial', 'mosaic', 'bathhouse', 'oven'] as ProjectKey[]).filter(works).length + (S.projects.hearth.done ? 1 : 0);
+    + (['sundial', 'mosaic', 'bathhouse', 'oven', 'bandstand'] as ProjectKey[]).filter(works).length + (S.projects.hearth.done ? 1 : 0);
 }
 /** Somewhere dry and solid to sleep and shelter: the lodge, or the shelter with stone walls. */
 export const indoors = () => works('lodge') || works('hut');
