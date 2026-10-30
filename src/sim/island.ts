@@ -67,14 +67,17 @@ export const onIslet = (p: { x: number; z: number }) => isletT(p.x, p.z) < 1.1;
 const barA = V(Math.cos(ISLET_A) * islandR(ISLET_A) * 0.98, Math.sin(ISLET_A) * islandR(ISLET_A) * 0.98);
 const barB = V(ISLET_C.x - isletDir.x * ISLET_R * 0.98, ISLET_C.z - isletDir.z * ISLET_R * 0.98);
 /** How far (x, z) is from the sandbar's line. */
-function barDist(x: number, z: number) {
+export function barDist(x: number, z: number) {
   const dx = barB.x - barA.x, dz = barB.z - barA.z, l2 = dx * dx + dz * dz;
   const k = Math.max(0, Math.min(1, ((x - barA.x) * dx + (z - barA.z) * dz) / l2));
   return Math.hypot(x - barA.x - dx * k, z - barA.z - dz * k);
 }
 export const BAR_TOP = 0.085; // just above the sea at low tide (0.02), under it the rest of the time
+export const BAR_ENDS = { a: barA, b: barB }; // where the sandbar meets each beach
 /** 0…1 along the sandbar for the terrain colours (wet sand), or Infinity off it. */
-export const barT = (x: number, z: number) => { const d = barDist(x, z); return d < 2.2 ? 1.0 + d * 0.05 : Infinity; };
+export const barT = (x: number, z: number) => { const d = barDist(x, z); return d < 3 ? 1.0 + d * 0.04 : Infinity; };
+/** The sandbar's height at a distance d from its middle line: a broad, gently sloping ridge. */
+export const barHeight = (d: number) => { const s = Math.min(1, Math.max(0, (d - 0.6) / 2.2)); return BAR_TOP - 0.6 * s * s * (3 - 2 * s); };
 
 /** Height from the middle of an island (t = 0) out past its shore (t > 1). */
 function profile(t: number) {
@@ -86,7 +89,8 @@ export function height(x: number, z: number) {
   const t = tAt(x, z);
   let h = profile(t);
   // the islet rises out of the bay with the same shape (grass, then beach), and the sandbar joins it
-  h = Math.max(h, profile(isletT(x, z) * 1.0), BAR_TOP - 0.45 * Math.max(0, barDist(x, z) - 0.9));
+  // (the sandbar's sides slope gently, so it rises out of the water smoothly as the tide goes out)
+  h = Math.max(h, profile(isletT(x, z) * 1.0), barHeight(barDist(x, z)));
   if (t < 0.95) h += 0.05 * Math.sin(x * 1.3) * Math.cos(z * 1.1) * (1 - smooth((t - 0.8) / 0.15));
   // gentle rolling hills inland, fading out towards the camp (kept flat) and the beaches
   const inland = smooth((Math.hypot(x, z) - 11) / 7) * (1 - smooth((t - 0.55) / 0.3));
