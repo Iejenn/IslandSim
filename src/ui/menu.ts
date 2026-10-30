@@ -3,7 +3,7 @@
 // device, and what's new.
 import { SEASON_DAYS, SEASONS } from '../sim/seasons';
 import { activeSlot, clearSlot, exportSlot, importSlot, playActiveSlot, readSlot, setActiveSlot, SLOTS, type SaveFile } from '../save';
-import { UPDATES } from './updates';
+import { UPDATES, VERSION } from './updates';
 
 const $ = (id: string) => document.getElementById(id)!;
 
@@ -123,9 +123,11 @@ export function createMenu(h: MenuHooks) {
   $('importCancel').addEventListener('click', () => view('main'));
 
   // what's new
+  $('menuVersion').textContent = `v${VERSION}`;
   $('news').replaceChildren(...UPDATES.map(u => {
     const li = document.createElement('li');
     const b = document.createElement('b'); b.textContent = u.title;
+    const v = document.createElement('small'); v.textContent = `v${u.version}`; b.prepend(v);
     const p = document.createElement('span'); p.textContent = u.text;
     li.append(b, p);
     return li;

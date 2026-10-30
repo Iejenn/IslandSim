@@ -186,3 +186,5 @@ body.menu-open .hud,body.menu-open .settings,body.menu-open .panel,body.menu-ope
 [aria-checked="true"] .switch{background:var(--lagoon)}
 [aria-checked="true"] .switch::after{transform:translateX(14px)}
 @media (prefers-reduced-motion:reduce){.gear,.switch,.switch::after{transition:none}}
+.menu-version{font-size:13px;font-weight:600;color:var(--soft);letter-spacing:0;vertical-align:middle;margin-left:4px}
+.news li b small{display:inline-block;font-size:11px;font-weight:700;color:var(--lagoon);background:var(--chip);border-radius:999px;padding:1px 7px;margin-right:6px;vertical-align:1px}
