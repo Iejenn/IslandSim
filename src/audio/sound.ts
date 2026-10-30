@@ -13,6 +13,7 @@ const PREF = 'islandsim.sound';
 export function createSound() {
   let ctx: AudioContext | null = null, master: GainNode, noise: AudioBuffer;
   let waves: GainNode, wind: GainNode, rain: GainNode, fireBed: GainNode, fall: GainNode, windFilter: BiquadFilterNode;
+  let nextFrog = 0;
   let on = false, nextStep = 0, nextCrackle = 0, nextBird = 0, nextHit = 0, nextCricket = 0;
 
   /** A looping noise source through a filter into its own (initially silent) gain. */
@@ -168,6 +169,13 @@ export function createSound() {
         for (let i = 0; i < n; i++) tone(0.025, f, f * (1.2 + Math.random() * 0.3), 0.08 + Math.random() * 0.05, 'sine', i * 0.12);
         nextBird = now + (season() === 'spring' ? 1.5 : 3.5) + Math.random() * 5;
       }
+      // frogs croak at the pond in the evening (if the camera's anywhere near)
+      const pondDist = Math.hypot(camera.position.x - WATERFALL.bottom.x, camera.position.z - WATERFALL.bottom.z);
+      if (h > 18 && h < 23.5 && season() !== 'winter' && pondDist < 40 && now > nextFrog) {
+        const v = 0.05 * Math.max(0.15, 1 - pondDist / 40);
+        tone(v, 180, 150, 0.08, 'square'); tone(v, 200, 160, 0.08, 'square', 0.12);
+        nextFrog = now + 1.2 + Math.random() * 3;
+      }
       if (night && season() !== 'winter' && rainLevel < 0.3 && now > nextCricket) {
         for (let i = 0; i < 3; i++) tone(0.008, 4300, 4250, 0.04, 'triangle', i * 0.07);
         nextCricket = now + 0.6 + Math.random() * 1.2;
@@ -183,6 +191,7 @@ export function createSound() {
         if (st.pose === 'chop') { tone(0.12 * near, 140, 70, 0.12); burst(0.08 * near, 900, 0.08); nextHit = now + 0.9; }
         else if (st.pose === 'hammer') { tone(0.08 * near, 320, 200, 0.06, 'triangle'); nextHit = now + 0.55; }
         else if (S.task?.id === 'drum' && S.task.instrument) nextHit = now + music(S.task.instrument, S.skills.music.lvl, near);
+        else if (S.task?.id === 'dance') nextHit = now + music('drum', 4, near * 0.6); // she dances to a beat
         else nextHit = now + 0.3;
       }
     },

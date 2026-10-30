@@ -3,7 +3,7 @@
 // that's actually possible right now.
 import { driest, freePlots, growingPlots, ripePlots } from './garden';
 import { liking } from './memory';
-import { wouldBeCutShort } from './needs';
+import { happiness, wouldBeCutShort } from './needs';
 import { nextToHerd, sheepToShear } from './animals';
 import { canWork, damaged, FIREWOOD_RESERVE, missing, PLANS, REPAIRABLE, works } from './plans';
 import { standingTrees } from './resources';
@@ -14,7 +14,7 @@ import { fx, season } from './seasons';
 import { catchChance as gearCatch, CURIOUS_TASK, sleepShift, startTask, T } from './tasks';
 
 // Hobbies her memories can make more (or less) appealing.
-const HOBBIES = new Set<TaskId>(['cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'bathe', 'turtles', 'mushrooms', 'hunt', 'checktrap', 'fish', 'explore', 'talk', 'relax', 'drum', 'write', 'chop', 'mine', 'build', 'craft', 'cook', 'sail', 'stargaze', 'watch', 'plant', 'harvest', 'play', 'swim']);
+const HOBBIES = new Set<TaskId>(['dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'bathe', 'turtles', 'mushrooms', 'hunt', 'checktrap', 'fish', 'explore', 'talk', 'relax', 'drum', 'write', 'chop', 'mine', 'build', 'craft', 'cook', 'sail', 'stargaze', 'watch', 'plant', 'harvest', 'play', 'swim']);
 // What a sprained ankle keeps her from (mostly).
 const STRENUOUS = new Set<TaskId>(['chop', 'mine', 'build', 'hunt', 'swim', 'play', 'explore', 'sail', 'dig', 'salvage', 'herd', 'stones', 'repair', 'clay']);
 // Chores she doesn't mind doing twice in a row.
@@ -146,6 +146,8 @@ export function decide() {
   if (!night && !rain && season() !== 'winter') add('swim', S.weather.hot ? 0.55 + 0.7 * u(n.fun) : 0.5 * u(n.fun) - 0.1 - fx().cold * 0.3);
   /* the dog: win its trust, then play */
   /* little joys */
+  // a dance when life is good (more likely with music in her life)
+  if (happiness() > 68 && !rain && n.energy > 40) add('dance', 0.25 + 0.4 * u(n.fun) + (S.items.drum || works('bandstand') ? 0.1 : 0) + (tr('musical') ? 0.1 : 0) - (late ? 0.5 : 0));
   const bloom = season() === 'spring' || season() === 'summer';
   // (a steady little pull like drumming or storytelling has, so they get their turn)
   if (!night) add('cairn', 0.7 * u(n.fun) + 0.3 - wet);

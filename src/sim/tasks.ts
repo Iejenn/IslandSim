@@ -157,7 +157,8 @@ export const T: Record<string, () => Task | null> = {
         addRawFish(n); addXp('fishing', 15); S.fishFails = 0; S.stats.fishCaught += n;
         feed('food', 5); // a nibble; the real meal needs the fire
         say(n > 1 ? 'Two fish! Time to light up the grill.' : pick(['Got one! Now to cook it.', 'Fish for dinner, if the fire’s going.']));
-        log(n > 1 ? 'Caught two fish.' : 'Caught a fish.');
+        if (S.stats.fishCaught === n) log('She caught her very first fish!', 'big');
+        else log(n > 1 ? 'Caught two fish.' : 'Caught a fish.');
         highlight('caught a fish');
         remember('fish', 0.08);
         if (S.task) S.task.celebrate = true;
@@ -670,6 +671,15 @@ export const T: Record<string, () => Task | null> = {
       act({ pose: 'gather', face: dest, min: 3, done() { S.bouquetAt = S.min; S.mood = Math.min(40, S.mood + 8); feed('fun', 8); highlight('picked a bouquet of wildflowers'); remember('bouquet', 0.05); } }),
     ]);
   },
+  dance() {
+    // when she's really happy: a little dance on her bandstand, or by the fire
+    const band = works('bandstand'), p = band ? BAND_SPOTS.ukulele.player : standNear(FIRE, 2.4, SEATS[0].p);
+    return mk('dance', band ? 'Dancing on her bandstand' : 'Dancing by the fire', pick(['La la laaa!', 'Nobody’s watching. Dance!', 'Spin, spin, spin!']), [go(p), act({
+      pose: 'idle', face: band ? bandLocal(0, 4) : FIRE, min: 25, lift: band ? BANDSTAND_FLOOR : 0,
+      tick: dm => { feed('fun', dm * 20 / 60); feed('energy', -dm * 2 / 60); },
+      done() { S.mood = Math.min(40, S.mood + 10); remember('dance', 0.08); highlight('danced'); },
+    })]);
+  },
   whittle() {
     if (!has('axe') && S.washedUp !== 'knife') return null;
     const s = SEATS[0];
@@ -887,7 +897,7 @@ export const T: Record<string, () => Task | null> = {
 };
 
 // Tasks that urgent needs (or something new to try) are allowed to cut short.
-export const INTERRUPTIBLE = new Set<TaskId>(['cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'honey', 'bathe', 'salvage', 'turtles', 'tendgull', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
+export const INTERRUPTIBLE = new Set<TaskId>(['dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'honey', 'bathe', 'salvage', 'turtles', 'tendgull', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
 // Outdoor tasks a sudden shower sends her away from.
 export const RAIN_STOPS = new Set<TaskId>(['cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'salvage', 'turtles', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
 // Which task "tries out" each newly made thing.

@@ -8,7 +8,7 @@ const LABEL: Partial<Record<TaskId, string>> = {
   fish: 'fishing', explore: 'walking the beach', talk: 'talking to the seagulls', relax: 'sitting by the fire',
   drum: 'making music', write: 'carving stories', chop: 'chopping wood', mine: 'breaking stones', build: 'building things',
   craft: 'making things', cook: 'cooking', plant: 'gardening', water: 'gardening', harvest: 'gardening',
-  sail: 'paddling', stargaze: 'stargazing', watch: 'watching the sea', play: 'playing with her dog', swim: 'swimming', cairn: 'stacking stones', sandcastle: 'building sandcastles', clouds: 'watching the clouds', bouquet: 'picking flowers', whittle: 'whittling', hunt: 'hunting', mushrooms: 'mushroom picking', bathe: 'hot baths', turtles: 'watching over the turtle nest', herd: 'looking after the animals', shear: 'looking after the animals',
+  sail: 'paddling', stargaze: 'stargazing', watch: 'watching the sea', play: 'playing with her dog', swim: 'swimming', dance: 'dancing', cairn: 'stacking stones', sandcastle: 'building sandcastles', clouds: 'watching the clouds', bouquet: 'picking flowers', whittle: 'whittling', hunt: 'hunting', mushrooms: 'mushroom picking', bathe: 'hot baths', turtles: 'watching over the turtle nest', herd: 'looking after the animals', shear: 'looking after the animals',
 };
 
 export const liking = (id: TaskId) => S.likes[id] ?? 0;
@@ -22,12 +22,12 @@ export function remember(id: TaskId, delta: number) {
   if (!what) return;
   // note it in the diary the first time a like or dislike becomes strong
   // (only once per activity, even if it fades and comes back)
-  const note = (key: string, text: string) => {
+  const note = (key: string, text: string, kind?: 'big') => {
     if (S.feelingsNoted.includes(key)) return;
     S.feelingsNoted.push(key);
-    log(text);
+    log(text, kind);
   };
-  if (before < 0.45 && after >= 0.45) note(`love:${what}`, `She’s really come to love ${what}.`);
+  if (before < 0.45 && after >= 0.45) note(`love:${what}`, `She’s really come to love ${what}.`, 'big');
   if (before > -0.35 && after <= -0.35) note(`dread:${what}`, `She’s starting to dread ${what}.`);
 }
 

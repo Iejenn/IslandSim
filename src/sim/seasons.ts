@@ -50,7 +50,7 @@ export function noteSeason() {
   S.feelingsNoted.push(key);
   if (dayNum() === 1) { log(`It’s ${s} on the island.`); return; }
   const [diary, thought] = ARRIVES[s];
-  log(diary, 'big');
+  log(diary, 'big', undefined, false); // (the story already has a chapter per season)
   highlight(`saw ${s} arrive`);
   const loved = LOVES[s];
   if (loved && S.taste[loved] > 0.6) {
