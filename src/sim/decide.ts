@@ -12,7 +12,7 @@ import { activityBias } from './taste';
 import { catchChance as gearCatch, CURIOUS_TASK, startTask, T } from './tasks';
 
 // Hobbies her memories can make more (or less) appealing.
-const HOBBIES = new Set<TaskId>(['checktrap', 'fish', 'explore', 'talk', 'relax', 'drum', 'write', 'chop', 'mine', 'build', 'craft', 'cook', 'sail', 'stargaze', 'watch', 'plant', 'harvest', 'play', 'swim']);
+const HOBBIES = new Set<TaskId>(['hunt', 'checktrap', 'fish', 'explore', 'talk', 'relax', 'drum', 'write', 'chop', 'mine', 'build', 'craft', 'cook', 'sail', 'stargaze', 'watch', 'plant', 'harvest', 'play', 'swim']);
 // Chores she doesn't mind doing twice in a row.
 const REPEATABLE = new Set<TaskId>(['drink', 'forage', 'sleep', 'fish', 'build', 'craft', 'chop', 'sticks', 'fibre', 'stones', 'mine', 'eat', 'cook', 'wood', 'repair', 'befriend']);
 
@@ -47,19 +47,23 @@ export function decide() {
   add('forage', 1.6 * u(n.food) + (tr('hardworking') ? 0.05 : 0) - (night && n.food >= 20 ? 0.4 : 0) - wet * 0.3);
   // a catch is only worth much if she can cook it (or dry it)
   // with fish already waiting to be cooked, another catch doesn't help: light the fire instead
-  const haveCatch = S.stock.raw >= 2 ? 0.2 : 1;
+  const uncooked = S.stock.raw + S.stock.meat; // fish or rabbit waiting to be cooked
+  const haveCatch = uncooked >= 2 ? 0.2 : 1;
   add('fish', 1.4 * u(n.food) * catchChance * (fishUseful ? 1 : 0.3) * haveCatch + (S.items.rod || S.items.spear ? 0.05 : 0) + 0.2 * u(n.fun)
     + craving * haveCatch + (S.projects.dock.done ? 0.1 : 0) - (night ? 0.6 : 0) + (tr('hardworking') ? 0.05 : 0) - wet * 0.7);
   const canCook = fireLit || (S.items.kitchen && S.projects.lodge.done && S.stock.wood > 0);
-  const hasMeal = S.stock.raw > 0 || S.stock.veg >= 2 || S.stock.eggs >= 2;
-  if (hasMeal && canCook) add('cook', 1.8 * u(n.food) + (S.stock.raw > 0 ? 0.45 : 0.25));
+  const hasMeal = uncooked > 0 || S.stock.veg >= 2 || S.stock.eggs >= 2;
+  if (hasMeal && canCook) add('cook', 1.8 * u(n.food) + (uncooked > 0 ? 0.45 : 0.25));
+  // rabbits: a long walk into the deep forest with her spear, or snares she checks now and then
+  if (S.items.spear && S.rabbits >= 2 && !night) add('hunt', (0.7 * u(n.food) + craving * 0.9) * haveCatch + 0.2 - wet);
+  if (S.items.snare && S.snareCatch >= 1) add('checksnares', 0.8 + 0.6 * u(n.food) + craving * 0.5 - dark0(night) - wet); // a routine round, like collecting eggs
   // a full trap: fish she doesn't have to wait for
   if (S.trapFish >= 1 && works('trap')) add('checktrap', 0.45 + 0.12 * S.trapFish + 0.8 * u(n.food) + craving * 0.5 - dark0(night) - wet);
   if (S.stock.fish > 0 || S.stock.veg > 0) add('eat', 1.9 * u(n.food) * (S.stock.fish > 0 ? 1 : 0.8) + 0.05);
   else if (S.stock.raw > 0 && n.food < 15 && !canCook) add('eat', 1.5 * u(n.food));
   add('drink', 2.2 * u(n.water));
   // keeping the fire alive is a priority: it's how she cooks, and it's home
-  if (S.stock.wood > 0) add('wood', (S.fire < 40 ? 0.8 * (1 - S.fire / 40) : 0.02) + (fireLit ? 0 : 0.3) + (h >= 15 && h < 20 ? 0.12 : 0) + (!fireLit && S.stock.raw > 0 ? 0.6 + craving + 0.8 * u(n.food) : 0));
+  if (S.stock.wood > 0) add('wood', (S.fire < 40 ? 0.8 * (1 - S.fire / 40) : 0.02) + (fireLit ? 0 : 0.3) + (h >= 15 && h < 20 ? 0.12 : 0) + (!fireLit && uncooked > 0 ? 0.6 + craving + 0.8 * u(n.food) : 0));
   add('sleep', night ? 0.6 + 1.5 * u(n.energy) + (late ? 0.6 : 0) : (n.energy < 30 ? 1.6 * u(n.energy) : -1));
   if (rain) add('shelter', 0.5 + (works('hut') ? 0.15 : 0) + (S.weather.storm ? 0.4 : 0));
 

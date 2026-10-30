@@ -2,7 +2,7 @@
 // woodpile, the rod against the shelter, the drum by the fire and so on.
 // Everything is built up front (hidden) and shown once the sim says she has it.
 import { BoxGeometry, ConeGeometry, CylinderGeometry, Group, TorusGeometry, type Object3D, type Scene } from 'three';
-import { CHAIR_P, FIRE, LODGE_YAW, lodgeLocal, GARDEN_P, ground, HAMMOCK_P, JOURNAL_P, DRUM_P, LOOKOUT_DECK, LOOKOUT_P, SH, SHELF_P, TABLE_P, WOODPILE_P, yawTo } from '../sim/island';
+import { BURROWS, WARREN_P, CHAIR_P, FIRE, LODGE_YAW, lodgeLocal, GARDEN_P, ground, HAMMOCK_P, JOURNAL_P, DRUM_P, LOOKOUT_DECK, LOOKOUT_P, SH, SHELF_P, TABLE_P, WOODPILE_P, yawTo } from '../sim/island';
 import type { CraftKey, SimState } from '../sim/state';
 import { M, mat, mesh } from './materials';
 import { v3 } from './stage';
@@ -105,6 +105,19 @@ export function createCrafted(scene: Scene) {
       const holder = new Group();
       holder.add(g);
       return place(holder, SH.x + 1.9, SH.z + 0.1);
+    },
+    snare() {
+      // three little loops on stakes by the burrows
+      const g = new Group();
+      for (const b of BURROWS) {
+        const s = new Group();
+        s.position.set(b.x - WARREN_P.x, b.y - WARREN_P.y, b.z - WARREN_P.z + 0.45);
+        s.add(mesh(new CylinderGeometry(0.015, 0.015, 0.3, 4), M.log, 0, 0.15, 0));
+        const loop = mesh(new TorusGeometry(0.09, 0.008, 4, 10), fibre, 0, 0.12, 0.1);
+        s.add(loop);
+        g.add(s);
+      }
+      return place(g, WARREN_P.x, WARREN_P.z);
     },
     journal() {
       const g = new Group();

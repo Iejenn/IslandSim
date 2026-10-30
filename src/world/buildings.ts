@@ -5,7 +5,7 @@ import {
   BoxGeometry, CylinderGeometry, ExtrudeGeometry, TorusGeometry, Group, IcosahedronGeometry, Shape, SphereGeometry,
   type Material, type Mesh, type Object3D, type Scene, ConeGeometry, DodecahedronGeometry,
 } from 'three';
-import { BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
+import { HOUSEBOAT_P, HOUSEBOAT_YAW, BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
 import type { ProjectKey, SimState } from '../sim/state';
 import { M, mat, mesh } from './materials';
 
@@ -307,6 +307,33 @@ export function createBuildings(scene: Scene) {
     return parts;
   })();
 
+  /* houseboat: a log raft with a deck, a little cabin with a tarp roof, a bedroll
+     under it and a rail at the bow. Bobs on the water next to the dock. */
+  const houseboat = (() => {
+    const g = new Group(), parts: Object3D[] = [];
+    at(g, HOUSEBOAT_P.x, WATER_Y, HOUSEBOAT_P.z, HOUSEBOAT_YAW); // local z points out to sea
+    scene.add(g);
+    for (let i = 0; i < 6; i++) { // raft logs
+      const l = mesh(new CylinderGeometry(0.19, 0.19, 4.4, 7), M.log, -0.95 + i * 0.38, -0.02, 0);
+      l.rotation.x = Math.PI / 2;
+      parts.push(l);
+    }
+    parts.push(mesh(new BoxGeometry(2.3, 0.06, 4.2), M.wood, 0, 0.12, 0)); // deck (her feet at ~0.24 when aboard)
+    for (const [x, z] of [[-1.05, -1.8], [1.05, -1.8], [-1.05, 0.2], [1.05, 0.2]]) parts.push(mesh(new CylinderGeometry(0.05, 0.05, 1.7, 5), M.log, x, 1.0, z));
+    parts.push(mesh(new BoxGeometry(2.2, 0.9, 0.08), M.wood, 0, 0.6, -1.85)); // back wall of the cabin
+    parts.push(mesh(new BoxGeometry(1.4, 0.06, 1.9), M.bed, 0, 0.17, -0.9)); // bedroll
+    for (const sd of [-1, 1]) {
+      const r = mesh(new BoxGeometry(1.35, 0.05, 2.4), M.tarp, sd * 0.6, 2.0, -0.8);
+      r.rotation.z = -sd * 0.45;
+      parts.push(r);
+    }
+    const rail = mesh(new BoxGeometry(2.2, 0.05, 0.05), M.wood, 0, 0.6, 2.0); // bow rail
+    parts.push(rail);
+    for (const x of [-1.05, 1.05]) parts.push(mesh(new BoxGeometry(0.05, 0.5, 0.05), M.wood, x, 0.4, 2.0));
+    for (const p of parts) { p.visible = false; g.add(p); }
+    return { g, parts };
+  })();
+
   /* woodpile: logs stacked in a little pyramid, one per log in stock */
   const woodpile = (() => {
     const g = new Group();
@@ -348,7 +375,7 @@ export function createBuildings(scene: Scene) {
     const n = started ? Math.max(1, Math.ceil(progress * (damaged ? 0.7 : 1) * parts.length)) : 0;
     parts.forEach((p, i) => { p.visible = i < n; });
   };
-  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop, trap: trap.parts, barrel: barrel.parts, treehouse };
+  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop, trap: trap.parts, barrel: barrel.parts, treehouse, houseboat: houseboat.parts };
   /** Is this world point inside the lodge's walls? */
   const inLodge = (x: number, z: number) => {
     const dx = x - LODGE_P.x, dz = z - LODGE_P.z, c = Math.cos(LODGE_YAW), s = Math.sin(LODGE_YAW);
@@ -374,6 +401,8 @@ export function createBuildings(scene: Scene) {
       canoe.g.rotation.y = Math.atan2(DOCK.dir.x, DOCK.dir.z);
     }
     canoe.g.position.y += 0.04 * Math.sin(t * 1.6);
+    houseboat.g.position.y = WATER_Y + 0.03 * Math.sin(t * 1.2 + 1);
+    houseboat.g.rotation.z = 0.015 * Math.sin(t * 0.9);
     rack.fish.forEach((f, i) => { f.visible = S.projects.rack.done && i < S.stock.fish; });
     woodpile.forEach((l, i) => { l.visible = i < S.stock.wood; });
     trap.fish.forEach((f, i) => { f.visible = S.projects.trap.done && i < Math.floor(S.trapFish); f.rotation.y = Math.sin(t * 2 + i * 2) * 0.6; });

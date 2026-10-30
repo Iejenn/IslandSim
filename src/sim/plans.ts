@@ -109,6 +109,16 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     tags: ['sea', 'adventure'],
   },
 
+  snare: {
+    kind: 'craft', name: 'rabbit snares', a: 'some rabbit snares', cost: { fibre: 3, wood: 1 }, minutes: 40,
+    // the patient way to hunt: set them by the warren and come back later (animal lovers rarely want this)
+    unlocked: () => dayNum() >= 4,
+    want: 'There are rabbits deep in the forest. A few snares by the warren…',
+    done: 'Snares, set and ready. Sorry, bunnies.',
+    weight: () => (2.2 + (tr('lazy') ? 0.8 : 0)) * (1.2 - S.taste.animals),
+    tags: ['practical'],
+  },
+
   /* ---------- furniture: she only thinks of these once her crafting is good enough ---------- */
   chair: {
     kind: 'craft', name: 'chair', a: 'a chair', cost: { wood: 3 }, minutes: 70,
@@ -302,6 +312,15 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     weight: () => 1 + (tr('curious') ? 1 : 0),
     tags: ['adventure', 'creative'],
   },
+  houseboat: {
+    kind: 'build', name: 'houseboat', a: 'a houseboat', cost: { wood: 18, fibre: 6 }, minutes: 420,
+    // a real builder's project: a raft with a cabin, moored at the dock
+    unlocked: () => works('dock') && S.skills.building.lvl >= 4 && dayNum() >= 10,
+    want: 'A raft with a little cabin, moored at the dock… I could sleep on the sea.',
+    done: 'A houseboat! Rocked to sleep by the waves.',
+    weight: () => 1.3 + (tr('curious') ? 0.7 : 0),
+    tags: ['sea', 'adventure'],
+  },
   lodge: {
     kind: 'build', name: 'lodge', a: 'a lodge', cost: { wood: 16, stone: 12 }, minutes: 420,
     // usually after stone walls, but a skilled builder can go straight for the house
@@ -417,7 +436,7 @@ export function checkFinished(k: PlanKey) {
 // What the storm can damage, and what fixing it costs.
 export const REPAIRABLE: Partial<Record<ProjectKey, Partial<Record<Resource, number>>>> = {
   rack: { wood: 1 }, dock: { wood: 3 }, hut: { wood: 1, stone: 2 }, lookout: { wood: 2 }, lodge: { wood: 2, stone: 1 },
-  trap: { wood: 2 }, treehouse: { wood: 2 },
+  trap: { wood: 2 }, treehouse: { wood: 2 }, houseboat: { wood: 3 },
 };
 /** A finished project that isn't storm-damaged right now. */
 export const works = (k: ProjectKey) => S.projects[k].done && !S.projects[k].damaged;
@@ -425,9 +444,9 @@ export const damaged = () => (Object.keys(REPAIRABLE) as ProjectKey[]).filter(k 
 
 /* ---------- home comfort: how much the camp feels like a home ---------- */
 const COMFORT_ITEMS: CraftKey[] = ['chair', 'table', 'bed', 'shelf', 'rocker', 'hammock', 'drum', 'realbed', 'sofa', 'kitchen', 'blanket'];
-/** 0…18: furniture and comforts she has made, plus a sound roof (or a whole lodge) and hearth. */
+/** 0…20: furniture and comforts she has made, plus a sound roof (or a whole lodge) and hearth. */
 export function comfort() {
-  return COMFORT_ITEMS.filter(k => S.items[k]).length + (works('lodge') ? 4 : works('hut') ? 2 : 0) + (works('treehouse') ? 2 : 0) + (S.projects.hearth.done ? 1 : 0);
+  return COMFORT_ITEMS.filter(k => S.items[k]).length + (works('lodge') ? 4 : works('hut') ? 2 : 0) + (works('treehouse') ? 2 : 0) + (works('houseboat') ? 2 : 0) + (S.projects.hearth.done ? 1 : 0);
 }
 /** Somewhere dry and solid to sleep and shelter: the lodge, or the shelter with stone walls. */
 export const indoors = () => works('lodge') || works('hut');

@@ -33,7 +33,7 @@ export function createStage(host: HTMLElement) {
   controls.enableDamping = true;
   controls.maxPolarAngle = 1.38;
   controls.minDistance = 4;
-  controls.maxDistance = 95;
+  controls.maxDistance = 120; // room to see the whole (bigger) island
 
   addEventListener('resize', () => {
     camera.aspect = innerWidth / innerHeight;

@@ -72,7 +72,7 @@ export function updateNeeds(dm: number) {
 export function wouldBeCutShort(id: TaskId) {
   const n = S.needs;
   // with the fire out, fetching wood IS getting food (no fire, no cooking her catch)
-  const feedsHer = id === 'forage' || id === 'fish' || id === 'eat' || id === 'cook' || id === 'harvest' || id === 'checktrap'
+  const feedsHer = id === 'forage' || id === 'fish' || id === 'eat' || id === 'cook' || id === 'harvest' || id === 'checktrap' || id === 'hunt' || id === 'checksnares'
     || (S.fire <= 0 && (id === 'sticks' || id === 'chop' || id === 'wood'));
   const crit = (n.water < 12 && id !== 'drink') || (n.food < 12 && !feedsHer) || (n.energy < 6 && id !== 'sleep');
   return crit && INTERRUPTIBLE.has(id);
