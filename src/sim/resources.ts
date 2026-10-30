@@ -33,6 +33,13 @@ export function updateResources(dm: number) {
     S.rabbits -= caught;
   }
   seedForest(days);
+  // fruit trees grow up in about twelve days (not in winter), then bear fruit through the warm seasons
+  const s = season(), grow = { spring: 1.3, summer: 1, autumn: 0.6, winter: 0 }[s], bear = { spring: 0.3, summer: 0.8, autumn: 0.6, winter: 0 }[s];
+  for (const t of S.orchard) {
+    if (!t.kind) continue;
+    if (t.growth < 1) { t.growth = Math.min(1, t.growth + days / 12 * grow); if (t.growth >= 1) log(`Her ${t.kind} tree is grown. Soon there’ll be fruit.`); }
+    else t.fruit = Math.min(4, t.fruit + days * bear);
+  }
   // the tide takes her sandcastle within the day
   if (S.sandcastle && S.min - S.sandcastle.at > 18 * 60) S.sandcastle = null;
   for (const t of S.trees) {

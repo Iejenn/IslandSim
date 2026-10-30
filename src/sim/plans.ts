@@ -383,6 +383,15 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     weight: () => 1.3 + (tr('curious') ? 0.7 : 0),
     tags: ['sea', 'adventure'],
   },
+  orchard: {
+    kind: 'build', name: 'orchard', a: 'an orchard', cost: { wood: 3, fibre: 2 }, minutes: 90,
+    // stakes and ties for young fruit trees, just outside the fence; then she plants them one by one
+    unlocked: () => dayNum() >= 6 && (S.projects.garden.done || S.taste.green > 0.6),
+    want: 'I kept the pits from every fruit I found. Imagine an orchard: mangoes, bananas, lemons…',
+    done: 'The orchard is laid out. Now to plant the trees and be patient.',
+    weight: () => 1.5 + 1.5 * S.taste.green,
+    tags: ['green'],
+  },
   bandstand: {
     kind: 'build', name: 'bandstand', a: 'a bandstand', cost: { wood: 12, stone: 4, fibre: 2 }, minutes: 280,
     // somewhere proper to keep her instruments and to play them

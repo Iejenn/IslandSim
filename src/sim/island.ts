@@ -213,6 +213,14 @@ reserve(KILN_P, OVEN_P, HIVE_P, SUNDIAL_P, MOSAIC_P);
 export const SHED_P = ground(V(-5.2, 2.0)); // tool shed, between the woodpile and the sheep pen
 reserve(SHED_P);
 
+/* ---------- the orchard: six fruit-tree spots just east of camp, outside the fence ---------- */
+export const ORCHARD = [[0, 10.6], [0.2, 10.6], [0.4, 10.6], [0.1, 12.8], [0.3, 12.8], [0.5, 12.8]].map(([da, r]) => {
+  const pos = ground(V(Math.cos(6.0 + da) * r, Math.sin(6.0 + da) * r));
+  reserve(pos);
+  return { pos, stand: standNear(pos, 1.0) };
+});
+export const ORCHARD_P = ground(V(11.6, -0.3)); // its middle (where she works on it)
+
 /* ---------- music: where she plays each instrument ---------- */
 // (each spot: where she sits or stands, what she faces, and how high she is)
 export type Instrument = 'drum' | 'flute' | 'ukulele' | 'marimba';

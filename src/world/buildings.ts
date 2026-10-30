@@ -5,15 +5,18 @@ import {
   BoxGeometry, Color, CylinderGeometry, ExtrudeGeometry, TorusGeometry, type MeshStandardMaterial, Group, IcosahedronGeometry, Shape, SphereGeometry,
   type Material, type Mesh, type Object3D, type Scene, ConeGeometry, DodecahedronGeometry,
 } from 'three';
-import { BANDSTAND_FLOOR, BANDSTAND_P, SHED_P, BATH_P, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SP, SUNDIAL_P, HOUSEBOAT_P, HOUSEBOAT_YAW, BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
+import { ORCHARD, ORCHARD_P, BANDSTAND_FLOOR, BANDSTAND_P, SHED_P, BATH_P, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SP, SUNDIAL_P, HOUSEBOAT_P, HOUSEBOAT_YAW, BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
 import { PLANS } from '../sim/plans';
-import type { ProjectKey, SimState } from '../sim/state';
+import type { Crop, FruitKind, ProjectKey, SimState } from '../sim/state';
 import { cap, onDay, pickable } from './inspect';
 import { M, mat, mesh } from './materials';
 
 const soil = mat('#6B4A33'), withered = mat('#8A7A4E'), fruitRed = mat('#D9452B', { roughness: 0.5 }), hull = mat('#8A5A34');
 const WATER_Y = 0.12;
 const terracotta = mat('#B8643E'), clayMat = mat('#C47A4E'), honeyMat = mat('#E3A63A', { roughness: 0.5 }), hiveWood = mat('#D9B77A');
+const cornGold = mat('#E8C547', { roughness: 0.6 }), pumpkinMat = mat('#E07B24', { roughness: 0.6 }), stalkMat = mat('#9BB05A');
+const PETALS = ['#E85C8A', '#F2D14B', '#FFFFFF', '#B07CE0', '#F08A3C'].map(c => mat(c, { roughness: 0.6 }));
+const FRUIT_MAT: Record<FruitKind, ReturnType<typeof mat>> = { mango: mat('#F0A030', { roughness: 0.5 }), banana: mat('#F2DB4A', { roughness: 0.5 }), lemon: mat('#F5E65A', { roughness: 0.4 }) };
 const trapFishMat = mat('#8FB6C4', { roughness: 0.4, metalness: 0.2 }), rainwater = mat('#5FB8C9', { roughness: 0.2 });
 
 export function createBuildings(scene: Scene) {
@@ -466,22 +469,93 @@ export function createBuildings(scene: Scene) {
     return logs;
   })();
 
-  /* a plant in each bed: grows with its growth value, fruits when ripe, browns when withered */
+  /* a plant in each bed, shaped by what she sowed there: grows with its growth
+     value, fruits (or blooms) when ripe, browns when withered */
   const plants = PLOTS.map(p => {
     const g = new Group();
     at(g, p.x, p.y + 0.1, p.z);
-    const leaves = mesh(new IcosahedronGeometry(0.28, 0), M.leaf);
-    leaves.position.y = 0.2;
-    leaves.scale.set(1, 0.8, 1);
-    const fruits = [0, 1, 2].map(i => {
-      const f = mesh(new SphereGeometry(0.07, 6, 4), fruitRed, Math.cos(i * 2.1) * 0.2, 0.22, Math.sin(i * 2.1) * 0.2, false);
-      g.add(f);
-      return f;
-    });
-    g.add(leaves);
+    const crops = {} as Record<Crop, { g: Group; leaves: Mesh[]; ripe: Object3D[] }>;
+    const kit = (crop: Crop) => { const c = { g: new Group(), leaves: [] as Mesh[], ripe: [] as Object3D[] }; g.add(c.g); crops[crop] = c; return c; };
+    const leafBall = (c: ReturnType<typeof kit>, r: number, x: number, y: number, z: number, sy = 0.8) => {
+      const l = mesh(new IcosahedronGeometry(r, 0), M.leaf, x, y, z); l.scale.set(1, sy, 1); c.g.add(l); c.leaves.push(l); return l;
+    };
+    // greens: a few leafy heads, no fruit
+    const greens = kit('greens');
+    for (let i = 0; i < 3; i++) leafBall(greens, 0.17, Math.cos(i * 2.1) * 0.22, 0.12, Math.sin(i * 2.1) * 0.22, 0.7);
+    // tomatoes: a bush with red fruit
+    const tomato = kit('tomato');
+    leafBall(tomato, 0.28, 0, 0.2, 0);
+    for (let i = 0; i < 3; i++) { const f = mesh(new SphereGeometry(0.07, 6, 4), fruitRed, Math.cos(i * 2.1) * 0.2, 0.22, Math.sin(i * 2.1) * 0.2, false); tomato.g.add(f); tomato.ripe.push(f); }
+    // corn: tall stalks with golden cobs
+    const corn = kit('corn');
+    for (let i = 0; i < 4; i++) {
+      const x = (i % 2 - 0.5) * 0.4, z = (Math.floor(i / 2) - 0.5) * 0.4;
+      const s = mesh(new CylinderGeometry(0.025, 0.035, 0.9, 5), stalkMat, x, 0.45, z); corn.g.add(s); corn.leaves.push(s);
+      const cob = mesh(new CylinderGeometry(0.045, 0.035, 0.18, 6), cornGold, x + 0.05, 0.55, z, false); cob.rotation.z = -0.4; corn.g.add(cob); corn.ripe.push(cob);
+    }
+    // pumpkins: low sprawling leaves and one big orange pumpkin
+    const pumpkin = kit('pumpkin');
+    for (let i = 0; i < 4; i++) leafBall(pumpkin, 0.16, Math.cos(i * 1.6) * 0.3, 0.06, Math.sin(i * 1.6) * 0.3, 0.4);
+    const pk = mesh(new SphereGeometry(0.2, 10, 6), pumpkinMat, 0.02, 0.14, 0); pk.scale.set(1, 0.75, 1); pumpkin.g.add(pk); pumpkin.ripe.push(pk);
+    // flowers: green tufts that burst into colour
+    const flowers = kit('flowers');
+    for (let i = 0; i < 6; i++) {
+      const a = i * 1.05 + (p.x * 7) % 1, r = 0.12 + (i % 3) * 0.1, x = Math.cos(a) * r, z = Math.sin(a) * r;
+      leafBall(flowers, 0.08, x, 0.1, z, 1.4);
+      const bloom = mesh(new SphereGeometry(0.06, 6, 4), PETALS[(i + Math.round(p.z * 3)) % PETALS.length], x, 0.24, z, false);
+      bloom.scale.set(1, 0.5, 1); flowers.g.add(bloom); flowers.ripe.push(bloom);
+    }
     g.visible = false;
     scene.add(g);
-    return { g, leaves, fruits };
+    return { g, crops };
+  });
+
+  /* orchard: a stake by each planting spot and a little sign, then the trees she plants there */
+  const orchard = staged([
+    ...ORCHARD.map(o => mesh(new CylinderGeometry(0.03, 0.03, 0.7, 5), M.wood, o.pos.x + 0.35, o.pos.y + 0.35, o.pos.z)),
+    at(mesh(new BoxGeometry(0.5, 0.3, 0.04), M.wood, 0, 0, 0), ORCHARD_P.x, ORCHARD_P.y + 0.7, ORCHARD_P.z, yawTo(ORCHARD_P, FIRE)),
+    mesh(new CylinderGeometry(0.03, 0.03, 0.75, 5), M.wood, ORCHARD_P.x, ORCHARD_P.y + 0.37, ORCHARD_P.z),
+  ]);
+  // one tree per spot: trunk + canopy (a shape per kind), and fruit hanging when there's some to pick
+  const fruitTrees = ORCHARD.map((o, i) => {
+    const g = new Group();
+    at(g, o.pos.x, o.pos.y, o.pos.z, i * 1.3);
+    const trunk = mesh(new CylinderGeometry(0.07, 0.11, 1.4, 6), M.log, 0, 0.7, 0);
+    const kinds = {} as Record<FruitKind, { canopy: Group; fruit: Mesh[] }>;
+    for (const kind of ['mango', 'banana', 'lemon'] as FruitKind[]) {
+      const canopy = new Group(), fruit: Mesh[] = [];
+      if (kind === 'banana') {
+        // big drooping leaves fanning out from the top
+        for (let k = 0; k < 6; k++) {
+          const leaf = mesh(new BoxGeometry(0.34, 0.02, 0.95), M.leaf, 0, 0, 0.42); const arm = new Group();
+          arm.position.y = 1.4; arm.rotation.set(0.5, k * 1.05, 0); arm.add(leaf); canopy.add(arm);
+        }
+        for (let k = 0; k < 4; k++) fruit.push(mesh(new CylinderGeometry(0.03, 0.02, 0.2, 5), FRUIT_MAT.banana, Math.cos(k * 1.6) * 0.1, 1.2, Math.sin(k * 1.6) * 0.1, false));
+      } else {
+        const r = kind === 'mango' ? 0.75 : 0.55;
+        const c = mesh(new IcosahedronGeometry(r, 1), M.leaf, 0, 1.4 + r * 0.5, 0); c.scale.set(1, 0.8, 1); canopy.add(c);
+        for (let k = 0; k < 4; k++) {
+          const a = k * 1.6 + 0.3;
+          const f = mesh(new SphereGeometry(kind === 'mango' ? 0.09 : 0.07, 6, 4), FRUIT_MAT[kind], Math.cos(a) * r * 0.85, 1.25 + (k % 2) * 0.2, Math.sin(a) * r * 0.85, false);
+          if (kind === 'mango') f.scale.set(0.8, 1.2, 0.8);
+          fruit.push(f);
+        }
+      }
+      for (const f of fruit) canopy.add(f);
+      g.add(canopy);
+      kinds[kind] = { canopy, fruit };
+    }
+    g.add(trunk);
+    g.visible = false;
+    scene.add(g);
+    pickable(trunk, S => {
+      const t = S.orchard[i];
+      if (!t.kind) return null;
+      const lines = [onDay(t.planted, 'Planted')];
+      lines.push(t.growth < 1 ? `Still growing · ${Math.round(t.growth * 100)}%` : t.fruit >= 1 ? `${Math.floor(t.fruit)} ripe ${t.kind}${t.fruit >= 2 ? 's' : ''} to pick` : 'Fully grown');
+      return { title: `${cap(t.kind)} tree`, lines };
+    });
+    return { g, kinds };
   });
 
   const showParts = (parts: Object3D[], started: boolean, progress: number, damaged = false) => {
@@ -489,7 +563,7 @@ export function createBuildings(scene: Scene) {
     const n = started ? Math.max(1, Math.ceil(progress * (damaged ? 0.7 : 1) * parts.length)) : 0;
     parts.forEach((p, i) => { p.visible = i < n; });
   };
-  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop, trap: trap.parts, barrel: barrel.parts, treehouse, houseboat: houseboat.parts, shed, bandstand, kiln, oven, beehive, sundial, mosaic, bathhouse };
+  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop, trap: trap.parts, barrel: barrel.parts, treehouse, houseboat: houseboat.parts, shed, bandstand, kiln, oven, beehive, sundial, mosaic, bathhouse, orchard };
   /* ---------- weathering: wood greys, stone gathers moss, fabric fades ---------- */
   // Each building gets its own copies of the shared materials (made on the
   // first update, after the island's colours are applied), which drift towards
@@ -537,7 +611,11 @@ export function createBuildings(scene: Scene) {
 
   /* ---------- tap to look: what each building is, and its story ---------- */
   const extra: Partial<Record<ProjectKey, (S: SimState) => string | null>> = {
-    garden: S => `${S.plots.filter(p => p.state === 'growing').length} beds growing, ${S.plots.filter(p => p.state === 'ripe').length} ripe`,
+    garden: S => {
+      const crops = [...new Set(S.plots.filter(p => p.state !== 'empty' && p.crop).map(p => p.crop!))];
+      return `${S.plots.filter(p => p.state === 'growing').length} beds growing, ${S.plots.filter(p => p.state === 'ripe').length} ripe${crops.length ? ` · ${crops.join(', ')}` : ''}`;
+    },
+    orchard: S => { const n = S.orchard.filter(t => t.kind).length; return n ? `${n} of ${S.orchard.length} trees planted` : 'Waiting for its first tree'; },
     coop: S => { const n = S.chickens.filter(c => c.penned).length + S.bredHens; return n ? `Home to ${n} hen${n > 1 ? 's' : ''}${S.young.some(y => y.kind === 'chick') ? ' and their chicks' : ''}` : 'Waiting for its first hens'; },
     fence: S => { const n = S.chickens.filter(c => c.penned).length + S.sheep.filter(c => c.penned).length + S.bredHens + S.bredSheep.length; return n ? `Keeps ${n} animal${n > 1 ? 's' : ''} safe` : 'No animals inside yet'; },
     trap: S => S.trapFish >= 1 ? `${Math.floor(S.trapFish)} fish waiting` : 'Empty for now',
@@ -597,14 +675,29 @@ export function createBuildings(scene: Scene) {
     trap.fish.forEach((f, i) => { f.visible = S.projects.trap.done && i < Math.floor(S.trapFish); f.rotation.y = Math.sin(t * 2 + i * 2) * 0.6; });
     barrel.water.visible = S.projects.barrel.done && S.barrel >= 0.5;
     barrel.water.position.y = 0.15 + 0.08 * Math.min(8, S.barrel);
-    plants.forEach(({ g, leaves, fruits }, i) => {
+    plants.forEach(({ g, crops }, i) => {
       const p = S.plots[i];
       g.visible = S.projects.garden.done && p.state !== 'empty';
       if (!g.visible) return;
       const size = p.state === 'withered' ? 0.7 : 0.25 + 0.75 * Math.min(1, p.growth);
       g.scale.setScalar(size);
-      leaves.material = (p.state === 'withered' ? withered : M.leaf) as Material;
-      fruits.forEach(f => { f.visible = p.state === 'ripe'; });
+      const crop = p.crop ?? 'tomato'; // (beds sown before crops existed were tomatoes)
+      for (const [k, c] of Object.entries(crops) as [Crop, typeof crops[Crop]][]) {
+        c.g.visible = k === crop;
+        if (k !== crop) continue;
+        for (const l of c.leaves) l.material = (p.state === 'withered' ? withered : k === 'corn' ? stalkMat : M.leaf) as Material;
+        for (const f of c.ripe) f.visible = p.state === 'ripe';
+      }
+    });
+    fruitTrees.forEach(({ g, kinds }, i) => {
+      const tr = S.orchard[i];
+      g.visible = !!tr.kind;
+      if (!tr.kind) return;
+      g.scale.setScalar(0.3 + 0.7 * Math.min(1, tr.growth)); // sapling → tree
+      for (const [k, v] of Object.entries(kinds) as [FruitKind, typeof kinds[FruitKind]][]) {
+        v.canopy.visible = k === tr.kind;
+        v.fruit.forEach((f, j) => { f.visible = j < Math.floor(tr.fruit); });
+      }
     });
   };
 }

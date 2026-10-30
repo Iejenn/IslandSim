@@ -54,7 +54,7 @@ const seed = save?.seed ?? newSeed();
 const { renderer, scene, camera, controls } = createStage(document.getElementById('scene')!);
 const { animateWater, updateSky, props, terrain } = withSeed(seed, () => {
   const terrain = createTerrain(scene);
-  return { animateWater: createWater(scene), updateSky: createSky(scene), props: createProps(scene), terrain };
+  return { animateWater: createWater(scene), updateSky: createSky(scene, camera), props: createProps(scene), terrain };
 });
 const updatePaths = createPaths(terrain);
 const updateFlowers = createFlowers(scene);

@@ -1,12 +1,22 @@
 // Garden beds: planted seeds grow over ~2 game days if kept watered, then
 // need harvesting. Dry beds wither; ripe crops left too long rot.
 import { drought } from './events';
-import { fx } from './seasons';
-import { highlight, log, S } from './state';
+import { fx, season } from './seasons';
+import { highlight, log, S, type Crop } from './state';
 
 const GROW_MIN = 2 * 1440; // game minutes to ripen
 const WITHER_DRY_MIN = 0.75 * 1440; // completely dry this long → withered
 const ROT_AT = 2.2; // growth value where an unharvested crop rots
+
+/** Days each crop takes to ripen (at an ordinary pace), and how many vegetables a bed gives. */
+export const CROP_DAYS: Record<Crop, number> = { greens: 1.6, tomato: 2, corn: 2.6, pumpkin: 3, flowers: 1.6 };
+export const CROP_YIELD: Record<Crop, number> = { greens: 1, tomato: 2, corn: 2, pumpkin: 3, flowers: 0 };
+/** What she sows: whatever suits the season (and a bed of flowers now and then, more for a gardener). */
+export function chooseCrop(): Crop {
+  if (Math.random() < 0.08 + 0.2 * S.taste.green) return 'flowers';
+  const options: Crop[] = { spring: ['greens', 'tomato'], summer: ['corn', 'tomato', 'greens'], autumn: ['pumpkin', 'greens'], winter: ['greens'] }[season()] as Crop[];
+  return options[Math.floor(Math.random() * options.length)];
+}
 
 export const freePlots = () => S.plots.filter(p => p.state === 'empty' || p.state === 'withered');
 export const growingPlots = () => S.plots.filter(p => p.state === 'growing');
@@ -34,7 +44,8 @@ export function updateGarden(dm: number) {
         continue;
       }
       p.dryMin = 0;
-      p.growth += dm / GROW_MIN * (1 + 0.05 * S.skills.gardening.lvl) * fx().grow; // fast in spring, barely in winter
+      // fast in spring, barely in winter; pumpkins and corn take their time (and give more)
+      p.growth += dm / GROW_MIN * (1 + 0.05 * S.skills.gardening.lvl) * fx().grow / (CROP_DAYS[p.crop ?? 'tomato'] / 2);
       if (p.growth >= 1) { p.state = 'ripe'; ripened++; }
     } else {
       p.growth += dm / GROW_MIN;

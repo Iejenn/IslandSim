@@ -10,11 +10,12 @@ import { standingTrees } from './resources';
 import { dayNum, hour, isNight, S, tr, type TaskId } from './state';
 import { activityBias } from './taste';
 import { injured } from './events';
+import { fullMoon, glowingSea } from './night';
 import { fx, season } from './seasons';
 import { catchChance as gearCatch, CURIOUS_TASK, sleepShift, startTask, T } from './tasks';
 
 // Hobbies her memories can make more (or less) appealing.
-const HOBBIES = new Set<TaskId>(['dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'bathe', 'turtles', 'mushrooms', 'hunt', 'checktrap', 'fish', 'explore', 'talk', 'relax', 'drum', 'write', 'chop', 'mine', 'build', 'craft', 'cook', 'sail', 'stargaze', 'watch', 'plant', 'harvest', 'play', 'swim']);
+const HOBBIES = new Set<TaskId>(['nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'bathe', 'turtles', 'mushrooms', 'hunt', 'checktrap', 'fish', 'explore', 'talk', 'relax', 'drum', 'write', 'chop', 'mine', 'build', 'craft', 'cook', 'sail', 'stargaze', 'watch', 'plant', 'harvest', 'play', 'swim']);
 // What a sprained ankle keeps her from (mostly).
 const STRENUOUS = new Set<TaskId>(['chop', 'mine', 'build', 'hunt', 'swim', 'play', 'explore', 'sail', 'dig', 'salvage', 'herd', 'stones', 'repair', 'clay']);
 // Chores she doesn't mind doing twice in a row.
@@ -59,7 +60,7 @@ export function decide() {
   add('fish', 1.4 * u(n.food) * catchChance * (fishUseful ? 1 : 0.3) * haveCatch + (S.items.rod || S.items.spear ? 0.05 : 0) + 0.2 * u(n.fun)
     + craving * haveCatch + (S.projects.dock.done ? 0.1 : 0) - (night ? 0.6 : 0) + (tr('hardworking') ? 0.05 : 0) - wet * 0.7);
   const canCook = fireLit || (S.items.kitchen && S.projects.lodge.done && S.stock.wood > 0);
-  const pie = works('oven') && S.stock.veg > 0 && (S.stock.eggs > 0 || uncooked > 0) && S.stock.wood > 0;
+  const pie = works('oven') && ((S.stock.veg > 0 && (S.stock.eggs > 0 || uncooked > 0)) || S.stock.fruit >= 2) && S.stock.wood > 0;
   const hasMeal = uncooked > 0 || S.stock.veg >= 2 || S.stock.eggs >= 2 || pie;
   if (hasMeal && (canCook || pie)) add('cook', 1.8 * u(n.food) + (uncooked > 0 ? 0.45 : 0.25));
   // autumn: mushrooms under the forest trees
@@ -69,7 +70,7 @@ export function decide() {
   if (S.items.snare && S.snareCatch >= 1) add('checksnares', 0.8 + 0.6 * u(n.food) + craving * 0.5 - dark0(night) - wet); // a routine round, like collecting eggs
   // a full trap: fish she doesn't have to wait for
   if (S.trapFish >= 1 && works('trap')) add('checktrap', 0.45 + 0.12 * S.trapFish + 0.8 * u(n.food) + craving * 0.5 - dark0(night) - wet);
-  if (S.stock.fish > 0 || S.stock.veg > 0 || S.stock.honey > 0) add('eat', 1.9 * u(n.food) * (S.stock.fish > 0 ? 1 : 0.8) + 0.05);
+  if (S.stock.fish > 0 || S.stock.veg > 0 || S.stock.honey > 0 || S.stock.fruit > 0) add('eat', 1.9 * u(n.food) * (S.stock.fish > 0 ? 1 : 0.8) + 0.05);
   else if (S.stock.raw > 0 && n.food < 15 && !canCook) add('eat', 1.5 * u(n.food));
   add('drink', 2.2 * u(n.water));
   // keeping the fire alive is a priority: it's how she cooks, and it's home
@@ -145,9 +146,18 @@ export function decide() {
   if (S.projects.canoe.done && works('dock') && !night && !rain && S.quirk !== 'seasick') add('sail', 0.9 * u(n.fun) + 0.2 + (tr('curious') ? 0.15 : 0));
   if (!night && !rain && season() !== 'winter') add('swim', S.weather.hot ? 0.55 + 0.7 * u(n.fun) : 0.5 * u(n.fun) - 0.1 - fx().cold * 0.3);
   /* the dog: win its trust, then play */
+  /* the orchard: plant a tree in each spot (one at a time), pick what's ripe */
+  if (works('orchard') && S.orchard.some(t => !t.kind) && season() !== 'winter') add('plantfruit', 0.6 + 0.3 * S.taste.green + busy - dark - wet);
+  if (S.orchard.some(t => t.kind && t.fruit >= 1)) add('pickfruit', 0.5 + 0.8 * u(n.food) + 0.1 * Math.max(...S.orchard.map(t => t.fruit)) - dark - wet);
+  /* after dark: a walk along the glowing waves, stars from the beach, a dance under the full moon */
+  const evening = h >= 20.5 || h < 1;
+  if (evening && glowingSea()) add('nightwalk', 0.75 + 0.3 * S.taste.adventure + 0.3 * u(n.fun) - (late ? 0.3 : 0));
+  if (evening && !rain && n.energy > 25) add('beachstars', 0.35 + 0.5 * u(n.fun) + 0.25 * S.taste.adventure - (late ? 0.3 : 0));
   /* little joys */
   // a dance when life is good (more likely with music in her life)
-  if (happiness() > 68 && !rain && n.energy > 40) add('dance', 0.25 + 0.4 * u(n.fun) + (S.items.drum || works('bandstand') ? 0.1 : 0) + (tr('musical') ? 0.1 : 0) - (late ? 0.5 : 0));
+  const moonlit = (h >= 19.5 || h < 1) && fullMoon(); // a full moon tempts her to dance even on an ordinary day
+  if (happiness() > (moonlit ? 42 : 68) && !rain && n.energy > (moonlit ? 25 : 40)) add('dance', 0.25 + 0.4 * u(n.fun) + (S.items.drum || works('bandstand') ? 0.1 : 0) + (tr('musical') ? 0.1 : 0) - (late ? 0.5 : 0)
+    + (moonlit ? 0.5 : 0));
   const bloom = season() === 'spring' || season() === 'summer';
   // (a steady little pull like drumming or storytelling has, so they get their turn)
   if (!night) add('cairn', 0.7 * u(n.fun) + 0.3 - wet);
