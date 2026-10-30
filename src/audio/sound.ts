@@ -16,7 +16,7 @@ const PREF = 'islandsim.sound';
 
 export function createSound() {
   let ctx: AudioContext | null = null, master: GainNode, noise: AudioBuffer;
-  let cicada: GainNode, nextSurf = 0, nextHum = 0, barks = 0;
+  let cicada: GainNode, nextSurf = 0, nextHum = 0, barks = 0, nextChime = 0;
   let waves: GainNode, wind: GainNode, rain: GainNode, fireBed: GainNode, fall: GainNode, windFilter: BiquadFilterNode;
   let nextFrog = 0;
   let on = false, nextStep = 0, nextCrackle = 0, nextBird = 0, nextHit = 0, nextCricket = 0;
@@ -188,6 +188,12 @@ export function createSound() {
       if (now > nextSurf) {
         burst((night ? 0.07 : 0.045) + (w.storm ? 0.05 : 0), 500 + Math.random() * 300, 1.4 + Math.random() * 0.8, 'lowpass');
         nextSurf = now + 3.5 + Math.random() * 5;
+      }
+      // her wind chimes, when there's a breeze (and more in a storm)
+      if (S.items.chimes && now > nextChime && rainLevel < 0.9) {
+        const breeze = (w.storm ? 1 : 0.3 + gather * 0.5), n = 1 + Math.floor(Math.random() * 3 * breeze);
+        for (let i = 0; i < n; i++) { const f = SCALE[5 + Math.floor(Math.random() * 4)] * 2; tone(0.012 * near, f, f, 1.6, 'sine', i * 0.18); tone(0.004 * near, f * 2.76, f * 2.76, 0.8, 'sine', i * 0.18); }
+        nextChime = now + (w.storm ? 0.6 : 3 + Math.random() * 6) / breeze;
       }
       // the dog
       if (dogBarks.n !== barks) {

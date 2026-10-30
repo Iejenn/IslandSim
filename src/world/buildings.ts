@@ -5,10 +5,10 @@ import {
   BoxGeometry, Color, CylinderGeometry, ExtrudeGeometry, TorusGeometry, type MeshStandardMaterial, Group, IcosahedronGeometry, Shape, SphereGeometry,
   type Material, type Mesh, type Object3D, type Scene, ConeGeometry, DodecahedronGeometry,
 } from 'three';
-import { ORCHARD, ORCHARD_P, BANDSTAND_FLOOR, BANDSTAND_P, SHED_P, BATH_P, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SP, SUNDIAL_P, HOUSEBOAT_P, HOUSEBOAT_YAW, BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
+import { BAR_A, BAR_B, BRIDGE_Y, CAVE_FACE, CAVE_P, height, PIPE_FROM, SPOUT_P, WELL_P, ORCHARD, ORCHARD_P, BANDSTAND_FLOOR, BANDSTAND_P, SHED_P, BATH_P, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SP, SUNDIAL_P, HOUSEBOAT_P, HOUSEBOAT_YAW, BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
 import { PLANS } from '../sim/plans';
 import { tideOffset } from '../sim/tide';
-import type { Crop, FruitKind, ProjectKey, SimState } from '../sim/state';
+import type { Crop, FruitKind, ProjectKey, SimState, Style } from '../sim/state';
 import { cap, onDay, pickable } from './inspect';
 import { M, mat, mesh } from './materials';
 
@@ -18,6 +18,7 @@ const terracotta = mat('#B8643E'), clayMat = mat('#C47A4E'), honeyMat = mat('#E3
 const cornGold = mat('#E8C547', { roughness: 0.6 }), pumpkinMat = mat('#E07B24', { roughness: 0.6 }), stalkMat = mat('#9BB05A');
 const PETALS = ['#E85C8A', '#F2D14B', '#FFFFFF', '#B07CE0', '#F08A3C'].map(c => mat(c, { roughness: 0.6 }));
 const FRUIT_MAT: Record<FruitKind, ReturnType<typeof mat>> = { mango: mat('#F0A030', { roughness: 0.5 }), banana: mat('#F2DB4A', { roughness: 0.5 }), lemon: mat('#F5E65A', { roughness: 0.4 }) };
+const bambooMat = mat('#C9B26B'), bambooNode = mat('#9C8A45'), rope = mat('#B9A26A'), caveDark = mat('#141210', { roughness: 1 }), wellWater = mat('#3F8FA0', { roughness: 0.2 });
 const trapFishMat = mat('#8FB6C4', { roughness: 0.4, metalness: 0.2 }), rainwater = mat('#5FB8C9', { roughness: 0.2 });
 
 export function createBuildings(scene: Scene) {
@@ -190,26 +191,35 @@ export function createBuildings(scene: Scene) {
     return { g, parts, roofs, bedroll };
   })();
 
-  /* fence: a ring of posts and rails around her home, with gaps for gates */
-  const fence = (() => {
-    const parts: Object3D[] = [], n = 40;
+  /* fence: a ring around her home, with gaps for gates, in her style: posts and
+     rails of wood, of bamboo lashed with fibre, or a low dry-stone wall */
+  const fenceStyles = (() => {
+    const n = 40;
     const isGate = (a: number) => FENCE_GATES.some(gA => Math.abs(Math.atan2(Math.sin(a - gA), Math.cos(a - gA))) < 0.12);
     const pt = (a: number) => ground(V(Math.cos(a) * FENCE_R, Math.sin(a) * FENCE_R));
+    const out = { wood: [] as Object3D[], bamboo: [] as Object3D[], stone: [] as Object3D[] };
     for (let i = 0; i < n; i++) {
       const a = i / n * Math.PI * 2, a2 = (i + 1) / n * Math.PI * 2;
       if (isGate(a)) continue;
       const p = pt(a);
-      parts.push(mesh(new CylinderGeometry(0.06, 0.07, 1.0, 5), M.log, p.x, p.y + 0.45, p.z));
+      out.wood.push(mesh(new CylinderGeometry(0.06, 0.07, 1.0, 5), M.log, p.x, p.y + 0.45, p.z));
+      out.bamboo.push(mesh(new CylinderGeometry(0.04, 0.045, 1.05, 6), bambooMat, p.x, p.y + 0.48, p.z));
+      out.bamboo.push(mesh(new CylinderGeometry(0.05, 0.05, 0.03, 6), bambooNode, p.x, p.y + 0.62, p.z));
       if (isGate(a2)) continue;
-      const q = pt(a2), len = Math.hypot(q.x - p.x, q.z - p.z);
-      for (const y of [0.45, 0.8]) {
-        const rail = mesh(new BoxGeometry(len, 0.05, 0.05), M.wood, (p.x + q.x) / 2, (p.y + q.y) / 2 + y, (p.z + q.z) / 2);
-        rail.rotation.y = -Math.atan2(q.z - p.z, q.x - p.x);
-        parts.push(rail);
+      const q = pt(a2), len = Math.hypot(q.x - p.x, q.z - p.z), yaw = -Math.atan2(q.z - p.z, q.x - p.x);
+      const mid = (y: number) => [(p.x + q.x) / 2, (p.y + q.y) / 2 + y, (p.z + q.z) / 2] as const;
+      for (const y of [0.45, 0.8]) { const r = mesh(new BoxGeometry(len, 0.05, 0.05), M.wood, ...mid(y)); r.rotation.y = yaw; out.wood.push(r); }
+      for (const y of [0.3, 0.6, 0.88]) { const r = mesh(new CylinderGeometry(0.025, 0.025, len, 5), bambooMat, ...mid(y)); r.rotation.set(0, yaw, Math.PI / 2); out.bamboo.push(r); }
+      // a stretch of dry-stone wall: two courses of uneven stones, and flat capstones
+      for (const [y, h, w] of [[0.16, 0.32, 0.38], [0.45, 0.26, 0.32]] as const) {
+        const b = mesh(new BoxGeometry(len + 0.08, h, w), M.rock, ...mid(y)); b.rotation.set(0, yaw + (i % 3 - 1) * 0.03, 0); out.stone.push(b);
       }
+      const cap = mesh(new BoxGeometry(len * 0.9, 0.07, 0.36), M.rock, ...mid(0.62)); cap.rotation.y = yaw + 0.02 * (i % 2 ? 1 : -1); out.stone.push(cap);
     }
-    return staged(parts);
+    staged(out.wood); staged(out.bamboo); staged(out.stone);
+    return out;
   })();
+  const fence = [...fenceStyles.wood, ...fenceStyles.bamboo, ...fenceStyles.stone];
 
   /* chicken coop: a little house on stilts with a ramp */
   const coop = (() => {
@@ -559,12 +569,122 @@ export function createBuildings(scene: Scene) {
     return { g, kinds };
   });
 
+  /* ---------- island growth (v1.4) ---------- */
+  /* bridge to the islet, in her style: a bamboo walkway, a plank bridge, or a stone causeway */
+  const bridgeStyles = (() => {
+    const out = { wood: [] as Object3D[], bamboo: [] as Object3D[], stone: [] as Object3D[] };
+    const dx = BAR_B.x - BAR_A.x, dz = BAR_B.z - BAR_A.z, L = Math.hypot(dx, dz), yaw = Math.atan2(dx, dz), px = dz / L, pz = -dx / L;
+    const at = (k: number, side = 0) => [BAR_A.x + dx * k + px * side, BAR_A.z + dz * k + pz * side] as const;
+    // posts first (both sides, down into the sea floor), then the deck from her beach outwards, then rails
+    for (let k = 0; k <= 1.001; k += 1.3 / L) for (const side of [-0.55, 0.55]) {
+      const [x, z] = at(k, side), floor = Math.min(height(x, z), 0);
+      const h = BRIDGE_Y + 0.6 - floor;
+      out.wood.push(mesh(new CylinderGeometry(0.07, 0.08, h, 5), M.log, x, floor + h / 2, z));
+      out.bamboo.push(mesh(new CylinderGeometry(0.05, 0.055, h, 6), bambooMat, x, floor + h / 2, z));
+    }
+    for (let k = 0; k <= 1.001; k += 0.2 / L) {
+      const [x, z] = at(k);
+      const plank = mesh(new BoxGeometry(1.15, 0.06, 0.18), M.wood, x, BRIDGE_Y - 0.03, z); plank.rotation.y = yaw; out.wood.push(plank);
+    }
+    for (let k = 0; k <= 1.001; k += 0.11 / L) {
+      const [x, z] = at(k);
+      const cane = mesh(new CylinderGeometry(0.05, 0.05, 1.15, 6), bambooMat, x, BRIDGE_Y - 0.05, z); cane.rotation.set(0, yaw, Math.PI / 2); out.bamboo.push(cane);
+    }
+    for (const side of [-0.55, 0.55]) {
+      const [x, z] = at(0.5, side);
+      const rail = mesh(new BoxGeometry(0.06, 0.06, L), M.wood, x, BRIDGE_Y + 0.55, z); rail.rotation.y = yaw; out.wood.push(rail);
+      const brail = mesh(new CylinderGeometry(0.03, 0.03, L, 5), bambooMat, x, BRIDGE_Y + 0.55, z); brail.rotation.set(Math.PI / 2, yaw, 0, 'YXZ'); out.bamboo.push(brail);
+      const r2 = mesh(new CylinderGeometry(0.015, 0.015, L, 4), rope, x, BRIDGE_Y + 0.3, z); r2.rotation.set(Math.PI / 2, yaw, 0, 'YXZ'); out.bamboo.push(r2);
+    }
+    // the causeway: big flat-topped stones laid end to end, from the sea floor up to deck height
+    for (let k = 0, i = 0; k <= 1.001; k += 0.55 / L, i++) {
+      const [x, z] = at(k, ((i * 7) % 5 - 2) * 0.04), floor = Math.min(height(x, z), 0), h = BRIDGE_Y - floor;
+      const b = mesh(new BoxGeometry(1.25 + (i % 3) * 0.08, h, 0.62), M.rock, x, floor + h / 2, z); b.rotation.y = yaw + ((i * 5) % 7 - 3) * 0.03; out.stone.push(b);
+    }
+    staged(out.wood); staged(out.bamboo); staged(out.stone);
+    return out;
+  })();
+  const bridge = [...bridgeStyles.wood, ...bridgeStyles.bamboo, ...bridgeStyles.stone];
+  const STYLED_PARTS: Partial<Record<ProjectKey, Record<Style, Object3D[]>>> = { fence: fenceStyles, bridge: bridgeStyles };
+
+  /* the cave: a dark mouth in the hillside behind a pile of rubble; she clears it and props it up with timbers */
+  const caveYaw = Math.atan2(CAVE_FACE.x, CAVE_FACE.z);
+  const caveRubble: Object3D[] = [];
+  (() => {
+    const g = new Group();
+    at(g, CAVE_P.x, CAVE_P.y, CAVE_P.z, caveYaw);
+    const mouth = mesh(new SphereGeometry(1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), caveDark, 0, -0.1, -0.15);
+    mouth.scale.set(0.95, 1.25, 0.6);
+    g.add(mouth);
+    // rocks framing the opening
+    for (let i = 0; i < 7; i++) {
+      const a = Math.PI * (i / 6), r = mesh(new DodecahedronGeometry(0.42 + (i % 3) * 0.1, 0), M.rock, Math.cos(a) * 1.1, Math.sin(a) * 1.25 - 0.05, 0.05);
+      r.rotation.set(i, i * 2, 0); g.add(r);
+    }
+    // rubble choking the entrance (cleared as she works)
+    for (let i = 0; i < 6; i++) {
+      const r = mesh(new DodecahedronGeometry(0.28 + (i % 2) * 0.12, 0), M.rock, (i % 3 - 1) * 0.45, 0.2 + Math.floor(i / 3) * 0.35, 0.35);
+      r.rotation.set(i * 1.3, i, 0); g.add(r); caveRubble.push(r);
+    }
+    scene.add(g);
+    pickable(g, S => S.projects.cave.done
+      ? { title: 'The cave', lines: [onDay(S.madeAt.cave, 'Opened'), 'Cool and dark, with flint in its walls', 'Fish keeps longer in here'] }
+      : { title: 'A cave in the hillside', lines: [S.projects.cave.started ? `She’s clearing the way in · ${Math.round(S.projects.cave.progress * 100)}%` : 'Choked with rubble'] });
+  })();
+  const cave = staged([
+    at(mesh(new CylinderGeometry(0.07, 0.08, 1.5, 5), M.log, 0, 0, 0), CAVE_P.x + Math.cos(caveYaw) * 0.75 + CAVE_FACE.x * 0.4, CAVE_P.y + 0.7, CAVE_P.z - Math.sin(caveYaw) * 0.75 + CAVE_FACE.z * 0.4),
+    at(mesh(new CylinderGeometry(0.07, 0.08, 1.5, 5), M.log, 0, 0, 0), CAVE_P.x - Math.cos(caveYaw) * 0.75 + CAVE_FACE.x * 0.4, CAVE_P.y + 0.7, CAVE_P.z + Math.sin(caveYaw) * 0.75 + CAVE_FACE.z * 0.4),
+    at(mesh(new BoxGeometry(1.8, 0.14, 0.16), M.log, 0, 0, 0), CAVE_P.x + CAVE_FACE.x * 0.4, CAVE_P.y + 1.45, CAVE_P.z + CAVE_FACE.z * 0.4, caveYaw),
+  ]);
+
+  /* a bamboo pipe from the pond into camp, on forked posts, pouring into a basin */
+  const pipeWater: Object3D[] = [];
+  const pipe = (() => {
+    const parts: Object3D[] = [];
+    const dx = SPOUT_P.x - PIPE_FROM.x, dz = SPOUT_P.z - PIPE_FROM.z, L = Math.hypot(dx, dz), yaw = Math.atan2(dx, dz);
+    const yAt = (k: number) => PIPE_FROM.y + 1.25 + (SPOUT_P.y + 0.95 - PIPE_FROM.y - 1.25) * k; // sloping gently down to camp
+    const n = Math.max(2, Math.ceil(L / 1.4));
+    for (let i = 0; i <= n; i++) {
+      const k = i / n, x = PIPE_FROM.x + dx * k, z = PIPE_FROM.z + dz * k, gy = height(x, z), h = yAt(k) - gy;
+      parts.push(mesh(new CylinderGeometry(0.04, 0.05, h, 5), M.log, x, gy + h / 2, z));
+    }
+    for (let i = 0; i < n; i++) {
+      const k0 = i / n, k1 = (i + 1) / n, x = PIPE_FROM.x + dx * (k0 + k1) / 2, z = PIPE_FROM.z + dz * (k0 + k1) / 2;
+      const seg = mesh(new CylinderGeometry(0.07, 0.07, L / n + 0.05, 7), bambooMat, x, (yAt(k0) + yAt(k1)) / 2 + 0.07, z);
+      seg.rotation.set(Math.PI / 2 + Math.atan2(yAt(k0) - yAt(k1), L / n), yaw, 0, 'YXZ');
+      parts.push(seg);
+    }
+    // the basin, and the water falling into it
+    parts.push(mesh(new CylinderGeometry(0.45, 0.38, 0.4, 10), M.rock, SPOUT_P.x, SPOUT_P.y + 0.2, SPOUT_P.z));
+    const pool = mesh(new CylinderGeometry(0.38, 0.38, 0.04, 10), wellWater, SPOUT_P.x, SPOUT_P.y + 0.36, SPOUT_P.z, false);
+    const fall = mesh(new CylinderGeometry(0.035, 0.05, 0.6, 6), rainwater, SPOUT_P.x, SPOUT_P.y + 0.68, SPOUT_P.z, false);
+    pipeWater.push(pool, fall);
+    for (const o of pipeWater) { o.visible = false; scene.add(o); }
+    return staged(parts);
+  })();
+
+  /* a stone well: a round wall, a little roof on two posts, and a bucket on a rope */
+  const well = (() => {
+    const parts: Object3D[] = [];
+    const g = (o: Object3D, x: number, y: number, z: number) => { o.position.set(WELL_P.x + x, WELL_P.y + y, WELL_P.z + z); return o; };
+    parts.push(g(mesh(new CylinderGeometry(0.6, 0.65, 0.7, 12, 1, true), M.rock), 0, 0.35, 0));
+    parts.push(g(mesh(new TorusGeometry(0.62, 0.08, 5, 12), M.rock), 0, 0.7, 0));
+    parts[1].rotation.x = Math.PI / 2;
+    for (const x of [-0.6, 0.6]) parts.push(g(mesh(new CylinderGeometry(0.05, 0.06, 1.7, 5), M.log), x, 0.85, 0));
+    parts.push(g(mesh(new CylinderGeometry(0.05, 0.05, 1.3, 5), M.log), 0, 1.5, 0));
+    parts[parts.length - 1].rotation.z = Math.PI / 2;
+    const roof = g(mesh(new ConeGeometry(1.0, 0.55, 4), M.thatch), 0, 1.95, 0); roof.rotation.y = Math.PI / 4; parts.push(roof);
+    parts.push(g(mesh(new CylinderGeometry(0.12, 0.1, 0.2, 8), M.wood), 0.15, 1.0, 0));
+    const water = g(mesh(new CylinderGeometry(0.55, 0.55, 0.02, 12), wellWater, 0, 0, 0, false), 0, 0.45, 0); parts.push(water);
+    return staged(parts);
+  })();
+
   const showParts = (parts: Object3D[], started: boolean, progress: number, damaged = false) => {
     // storm damage knocks some of the later parts off until she repairs it
     const n = started ? Math.max(1, Math.ceil(progress * (damaged ? 0.7 : 1) * parts.length)) : 0;
     parts.forEach((p, i) => { p.visible = i < n; });
   };
-  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop, trap: trap.parts, barrel: barrel.parts, treehouse, houseboat: houseboat.parts, shed, bandstand, kiln, oven, beehive, sundial, mosaic, bathhouse, orchard };
+  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop, trap: trap.parts, barrel: barrel.parts, treehouse, houseboat: houseboat.parts, shed, bandstand, kiln, oven, beehive, sundial, mosaic, bathhouse, orchard, bridge, cave, pipe, well };
   /* ---------- weathering: wood greys, stone gathers moss, fabric fades ---------- */
   // Each building gets its own copies of the shared materials (made on the
   // first update, after the island's colours are applied), which drift towards
@@ -616,9 +736,12 @@ export function createBuildings(scene: Scene) {
       const crops = [...new Set(S.plots.filter(p => p.state !== 'empty' && p.crop).map(p => p.crop!))];
       return `${S.plots.filter(p => p.state === 'growing').length} beds growing, ${S.plots.filter(p => p.state === 'ripe').length} ripe${crops.length ? ` · ${crops.join(', ')}` : ''}`;
     },
+    bridge: S => `Made of ${S.madeStyle.bridge ?? 'wood'} · across to the bamboo islet`,
+    fence: S => { const n = S.chickens.filter(c => c.penned).length + S.sheep.filter(c => c.penned).length + S.bredHens + S.bredSheep.length; return `${S.madeStyle.fence === 'stone' ? 'A dry-stone wall' : S.madeStyle.fence === 'bamboo' ? 'Bamboo, lashed with fibre' : 'Posts and rails'} · ${n ? `keeps ${n} animal${n > 1 ? 's' : ''} safe` : 'no animals inside yet'}`; },
+    pipe: () => 'Fresh water from the pond, right into camp',
+    well: () => 'Cold, clean water in the middle of camp',
     orchard: S => { const n = S.orchard.filter(t => t.kind).length; return n ? `${n} of ${S.orchard.length} trees planted` : 'Waiting for its first tree'; },
     coop: S => { const n = S.chickens.filter(c => c.penned).length + S.bredHens; return n ? `Home to ${n} hen${n > 1 ? 's' : ''}${S.young.some(y => y.kind === 'chick') ? ' and their chicks' : ''}` : 'Waiting for its first hens'; },
-    fence: S => { const n = S.chickens.filter(c => c.penned).length + S.sheep.filter(c => c.penned).length + S.bredHens + S.bredSheep.length; return n ? `Keeps ${n} animal${n > 1 ? 's' : ''} safe` : 'No animals inside yet'; },
     trap: S => S.trapFish >= 1 ? `${Math.floor(S.trapFish)} fish waiting` : 'Empty for now',
     barrel: S => S.barrel >= 1 ? `${Math.floor(S.barrel)} drinks of rainwater` : 'Waiting for rain',
     beehive: S => S.hive >= 1 ? 'Heavy with honey' : 'The bees are busy',
@@ -652,7 +775,16 @@ export function createBuildings(scene: Scene) {
    */
   return function updateBuildings(S: SimState, her: Object3D, t: number) {
     weather(S);
-    for (const k of Object.keys(PARTS) as ProjectKey[]) showParts(PARTS[k], S.projects[k].started, S.projects[k].progress, S.projects[k].damaged);
+    for (const k of Object.keys(PARTS) as ProjectKey[]) {
+      const styles = STYLED_PARTS[k];
+      if (!styles) { showParts(PARTS[k], S.projects[k].started, S.projects[k].progress, S.projects[k].damaged); continue; }
+      // styled projects: only the parts in the style she built it in
+      const st = S.madeStyle[k] ?? 'wood';
+      for (const s of ['wood', 'bamboo', 'stone'] as Style[]) showParts(styles[s], s === st && S.projects[k].started, S.projects[k].progress, S.projects[k].damaged);
+    }
+    caveRubble.forEach((r, i) => { r.visible = !S.projects.cave.done && i >= Math.floor(S.projects.cave.progress * caveRubble.length); });
+    for (const o of pipeWater) o.visible = S.projects.pipe.done;
+    pipeWater[1].scale.x = pipeWater[1].scale.z = 1 + 0.15 * Math.sin(t * 9);
     // the lodge replaces the shelter (and its stone walls) once it's finished
     if (S.projects.lodge.done) for (const p of hut) p.visible = false;
     if (S.projects.lodge.done && inLodge(her.position.x, her.position.z)) for (const r of lodge.roofs) r.visible = false;

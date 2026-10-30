@@ -40,6 +40,8 @@ export function updateResources(dm: number) {
     if (t.growth < 1) { t.growth = Math.min(1, t.growth + days / 12 * grow); if (t.growth >= 1) log(`Her ${t.kind} tree is grown. Soon there’ll be fruit.`); }
     else t.fruit = Math.min(4, t.fruit + days * bear);
   }
+  // bamboo shoots up fast: a new cane in each clump every half day or so (slower in winter), up to six
+  S.bamboo = S.bamboo.map(n => Math.min(6, n + days * (s === 'winter' ? 0.8 : 2)));
   // the tide takes her sandcastle within the day
   if (S.sandcastle && S.min - S.sandcastle.at > 18 * 60) S.sandcastle = null;
   for (const t of S.trees) {
@@ -47,7 +49,7 @@ export function updateResources(dm: number) {
     t.growth += days / SAPLING_DAYS;
     if (t.growth >= 1) { t.state = 'tree'; t.growth = 1; if (t.planted) log('A sapling she planted has grown into a tree.'); }
   }
-  const keeps = FISH_KEEPS_MIN * (S.items.pots ? 2.5 : 1); // sealed clay pots keep food much longer
+  const keeps = FISH_KEEPS_MIN * (S.items.pots ? 2.5 : 1) * (S.projects.cave?.done ? 1.5 : 1); // sealed clay pots (and the cool cave) keep food much longer
   // the beehive fills with honey, except in winter
   if (works('beehive')) S.hive = Math.min(4, S.hive + days * (season() === 'winter' ? 0 : 0.6));
   if (S.stock.raw > 0 && S.min - S.rawSince > keeps) {

@@ -2,13 +2,13 @@
 // surf rolls up the sand and slides back, and she leaves footprints in the wet
 // sand that the next tide washes away.
 import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, CircleGeometry, InstancedMesh, MeshBasicMaterial, Object3D, Points, PointsMaterial, type Scene } from 'three';
-import { height, islandR } from '../sim/island';
+import { height, islandR, ISLET_C, ISLET_R } from '../sim/island';
 import { seaLevel } from '../sim/tide';
 import { swell, swellDamp } from './water';
 import type { SimState } from '../sim/state';
 import { clamp } from '../sim/util';
 
-const ANGLES = 300, PER = 5, LEVELS = 12, LO = 0.0, HI = 0.26;
+const MAIN = 300, ISLET = 70, ANGLES = MAIN + ISLET, PER = 5, LEVELS = 12, LO = 0.0, HI = 0.26;
 
 function softDot() {
   const c = document.createElement('canvas'); c.width = c.height = 32;
@@ -19,14 +19,20 @@ function softDot() {
 }
 
 export function createShore(scene: Scene) {
-  /* where the waterline is, around the island, for a range of sea levels (worked out once) */
+  /* where the waterline is, around the island and around the bamboo islet, for a range of
+     sea levels (worked out once): each slot is a direction out from one of their middles */
+  const cx = new Float32Array(ANGLES), cz = new Float32Array(ANGLES), ang = new Float32Array(ANGLES);
+  for (let i = 0; i < ANGLES; i++) {
+    const islet = i >= MAIN, k = islet ? i - MAIN : i, n = islet ? ISLET : MAIN;
+    ang[i] = (k / n) * Math.PI * 2; cx[i] = islet ? ISLET_C.x : 0; cz[i] = islet ? ISLET_C.z : 0;
+  }
   const shoreR: Float32Array[] = [];
   for (let i = 0; i < ANGLES; i++) {
-    const a = (i / ANGLES) * Math.PI * 2, R = islandR(a), row = new Float32Array(LEVELS);
+    const a = ang[i], R = i >= MAIN ? ISLET_R : islandR(a), row = new Float32Array(LEVELS);
     for (let l = 0; l < LEVELS; l++) {
       const lvl = LO + (HI - LO) * (l / (LEVELS - 1));
       let t = 0.85;
-      while (t < 1.15 && height(Math.cos(a) * R * t, Math.sin(a) * R * t) > lvl) t += 0.002;
+      while (t < 1.15 && height(cx[i] + Math.cos(a) * R * t, cz[i] + Math.sin(a) * R * t) > lvl) t += 0.002;
       row[l] = R * t;
     }
     shoreR.push(row);
@@ -38,12 +44,12 @@ export function createShore(scene: Scene) {
 
   /* surf: soft white specks along the waterline that wash up the sand and slide back */
   const M = ANGLES * PER, pos = new Float32Array(M * 3), col = new Float32Array(M * 3), seed = new Float32Array(M), jit = new Float32Array(M);
-  for (let i = 0; i < M; i++) { seed[i] = Math.random(); jit[i] = (Math.random() - 0.5) * (Math.PI * 2 / ANGLES); }
+  for (let i = 0; i < M; i++) { seed[i] = Math.random(); jit[i] = (Math.random() - 0.5) * (Math.PI * 2 / (Math.floor(i / PER) >= MAIN ? ISLET : MAIN)); }
   // the swell where each stretch of shore meets the sea (worked out at mid-tide; it hardly changes over a metre or two)
   const edgeX = new Float32Array(ANGLES), edgeZ = new Float32Array(ANGLES), edgeDamp = new Float32Array(ANGLES);
   for (let i = 0; i < ANGLES; i++) {
-    const a = (i / ANGLES) * Math.PI * 2, r = shoreAt(i, 0.12);
-    edgeX[i] = Math.cos(a) * r; edgeZ[i] = Math.sin(a) * r; edgeDamp[i] = swellDamp(edgeX[i], edgeZ[i]);
+    const r = shoreAt(i, 0.12);
+    edgeX[i] = cx[i] + Math.cos(ang[i]) * r; edgeZ[i] = cz[i] + Math.sin(ang[i]) * r; edgeDamp[i] = swellDamp(edgeX[i], edgeZ[i]);
   }
   const foamGeo = new BufferGeometry();
   foamGeo.setAttribute('position', new BufferAttribute(pos, 3));
@@ -74,12 +80,12 @@ export function createShore(scene: Scene) {
     const level = new Float32Array(ANGLES);
     for (let i = 0; i < ANGLES; i++) level[i] = sea + swell(edgeX[i], edgeZ[i], t, edgeDamp[i]);
     for (let i = 0; i < M; i++) {
-      const ai = Math.floor(i / PER), a = (ai / ANGLES) * Math.PI * 2 + jit[i];
+      const ai = Math.floor(i / PER), a = ang[ai] + jit[i];
       // each wave: rushes up the sand, then slides back and fades
       const ph = (t * 0.22 + seed[i] * 0.35 + Math.sin(ai * 0.37) * 0.3) % 1;
       const up = ph < 0.4 ? ph / 0.4 : 1 - (ph - 0.4) / 0.6;
       const r = shoreAt(ai, level[ai]) + 0.12 - 0.5 * up;
-      pos[i * 3] = Math.cos(a) * r; pos[i * 3 + 2] = Math.sin(a) * r;
+      pos[i * 3] = cx[ai] + Math.cos(a) * r; pos[i * 3 + 2] = cz[ai] + Math.sin(a) * r;
       pos[i * 3 + 1] = Math.max(level[ai] + 0.03, height(pos[i * 3], pos[i * 3 + 2]) + 0.03);
       const b = (0.06 + 0.3 * (ph < 0.4 ? up : up * up)) * (0.15 + 0.85 * light); // (faint in the dark)
       col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = b;

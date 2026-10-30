@@ -8,7 +8,7 @@ const LABEL: Partial<Record<TaskId, string>> = {
   fish: 'fishing', explore: 'walking the beach', talk: 'talking to the seagulls', relax: 'sitting by the fire',
   drum: 'making music', write: 'carving stories', chop: 'chopping wood', mine: 'breaking stones', build: 'building things',
   craft: 'making things', cook: 'cooking', plant: 'gardening', water: 'gardening', harvest: 'gardening',
-  sail: 'paddling', stargaze: 'stargazing', watch: 'watching the sea', play: 'playing with her dog', swim: 'swimming', tidepools: 'exploring the tide pools', nightwalk: 'night walks by the glowing sea', beachstars: 'watching the stars', dance: 'dancing', cairn: 'stacking stones', sandcastle: 'building sandcastles', clouds: 'watching the clouds', bouquet: 'picking flowers', whittle: 'whittling', hunt: 'hunting', mushrooms: 'mushroom picking', bathe: 'hot baths', turtles: 'watching over the turtle nest', herd: 'looking after the animals', shear: 'looking after the animals',
+  sail: 'paddling', stargaze: 'stargazing', watch: 'watching the sea', play: 'playing with her dog', swim: 'swimming', bamboo: 'cutting bamboo on the islet', flint: 'digging flint', tidepools: 'exploring the tide pools', nightwalk: 'night walks by the glowing sea', beachstars: 'watching the stars', dance: 'dancing', cairn: 'stacking stones', sandcastle: 'building sandcastles', clouds: 'watching the clouds', bouquet: 'picking flowers', whittle: 'whittling', hunt: 'hunting', mushrooms: 'mushroom picking', bathe: 'hot baths', turtles: 'watching over the turtle nest', herd: 'looking after the animals', shear: 'looking after the animals',
 };
 
 export const liking = (id: TaskId) => S.likes[id] ?? 0;

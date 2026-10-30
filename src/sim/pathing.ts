@@ -4,7 +4,7 @@
 // gates). Most walks are a straight line; only when that's blocked does she
 // search a small grid around the obstacle (A*) and smooth the result.
 import {
-  ORCHARD, BANDSTAND_P, MARIMBA_P, POND_R, SHED_P, BARREL_P, BATH_P, BOULDERS, COOP_P, DRUM_P, FENCE_GATES, FENCE_R, FIRE, FOREST, GARDEN_P, HIVE_P, KILN_P, LODGE_SIZE,
+  BAR_A, BAR_B, onIslet, SPOUT_P, WELL_P, ORCHARD, BANDSTAND_P, MARIMBA_P, POND_R, SHED_P, BARREL_P, BATH_P, BOULDERS, COOP_P, DRUM_P, FENCE_GATES, FENCE_R, FIRE, FOREST, GARDEN_P, HIVE_P, KILN_P, LODGE_SIZE,
   lodgeLocal, LOOKOUT_P, OVEN_P, RACK_P, SH, SP, SUNDIAL_P, TABLE_P, V, WARREN_P, WOODPILE_P, yawTo, type Pt,
 } from './island';
 import { S } from './state';
@@ -46,6 +46,8 @@ function rebuild() {
   if (done('sundial')) c(SUNDIAL_P, 0.35);
   if (done('bathhouse')) c(BATH_P, 0.85);
   if (done('lookout')) c(LOOKOUT_P, 0.85);
+  if (done('well')) c(WELL_P, 0.6);
+  if (done('pipe')) c(SPOUT_P, 0.4);
   S.orchard.forEach((t, i) => { if (t.kind && t.growth > 0.3) c(ORCHARD[i].pos, 0.25); }); // fruit trees, once they're more than a twig
   if (done('garden')) { // the little fence around the beds (open on the side she works from)
     const g = GARDEN_P, r = 1.35;
@@ -189,6 +191,12 @@ function viaGates(a: Pt, b: Pt): Pt[] {
 
 /** Waypoints from a to b (b last) that go around whatever is in the way. */
 export function route(a: Pt, b: Pt): Pt[] {
+  // to or from the islet: always by way of the sandbar (or the bridge over it), not straight through the sea
+  const ia = onIslet(a), ib = onIslet(b);
+  if (ia !== ib) {
+    const [near, far] = ia ? [BAR_B, BAR_A] : [BAR_A, BAR_B];
+    return [...route(a, near), far, ...route(far, b)];
+  }
   refresh();
   const legs = viaGates(a, b), out: Pt[] = [];
   let from = a;
