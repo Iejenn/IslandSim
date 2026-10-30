@@ -1,8 +1,8 @@
 // The shoreline: the sea rises and falls with the tide (sim/tide.ts), white
 // surf rolls up the sand and slides back, and she leaves footprints in the wet
 // sand that the next tide washes away.
-import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, CircleGeometry, InstancedMesh, MeshBasicMaterial, Object3D, Points, PointsMaterial, type Scene } from 'three';
-import { height, islandR, ISLET_C, ISLET_R } from '../sim/island';
+import { BufferAttribute, BufferGeometry, CanvasTexture, CircleGeometry, InstancedMesh, MeshBasicMaterial, Object3D, Points, PointsMaterial, type Scene } from 'three';
+import { BAR_ENDS, BAR_TOP, barDist, height, islandR, ISLET_A, ISLET_C, ISLET_R } from '../sim/island';
 import { seaLevel } from '../sim/tide';
 import { swell, swellDamp } from './water';
 import type { SimState } from '../sim/state';
@@ -42,9 +42,34 @@ export function createShore(scene: Scene) {
     return shoreR[i][l] * (1 - k) + shoreR[i][l + 1] * k;
   };
 
+  /* the sandbar has its own surf along both edges (the islands' surf, worked out straight out
+     from their middles, would land in lumps on top of it): for each spot along it, how far out
+     to each side the water starts, per sea level (-1: it's under water there, -2: no edge, all land) */
+  const bA = BAR_ENDS.a, bB = BAR_ENDS.b, bL = Math.hypot(bB.x - bA.x, bB.z - bA.z);
+  const bdx = (bB.x - bA.x) / bL, bdz = (bB.z - bA.z) / bL, bpx = bdz, bpz = -bdx;
+  // (spaced like the island's surf: about one stretch per half metre, five specks each, so it looks the same)
+  const BAR_K = Math.max(4, Math.round(bL / ((Math.PI * 2 * islandR(ISLET_A)) / MAIN))), BAR_PER = PER;
+  const barEdge: Float32Array[] = [];
+  for (let k = 0; k < BAR_K; k++) for (const side of [-1, 1]) {
+    const f = (k + 0.5) / BAR_K, mx = bA.x + (bB.x - bA.x) * f, mz = bA.z + (bB.z - bA.z) * f, row = new Float32Array(LEVELS);
+    for (let l = 0; l < LEVELS; l++) {
+      const lvl = LO + (HI - LO) * (l / (LEVELS - 1));
+      if (height(mx, mz) <= lvl) { row[l] = -1; continue; }
+      let d = 0;
+      while (d < 3.2 && height(mx + bpx * side * d, mz + bpz * side * d) > lvl) d += 0.04;
+      row[l] = d >= 3.2 ? -2 : d;
+    }
+    barEdge.push(row);
+  }
+  const barEdgeAt = (j: number, lvl: number) => {
+    const fl = clamp((lvl - LO) / (HI - LO), 0, 1) * (LEVELS - 1), l = Math.min(LEVELS - 2, Math.floor(fl)), k = fl - l, a = barEdge[j][l], b = barEdge[j][l + 1];
+    return a < 0 || b < 0 ? (k < 0.5 ? a : b) : a * (1 - k) + b * k;
+  };
+
   /* surf: soft white specks along the waterline that wash up the sand and slide back */
-  const M = ANGLES * PER, pos = new Float32Array(M * 3), col = new Float32Array(M * 3), seed = new Float32Array(M), jit = new Float32Array(M);
-  for (let i = 0; i < M; i++) { seed[i] = Math.random(); jit[i] = (Math.random() - 0.5) * (Math.PI * 2 / (Math.floor(i / PER) >= MAIN ? ISLET : MAIN)); }
+  const RING = ANGLES * PER, M = RING + BAR_K * 2 * BAR_PER;
+  const pos = new Float32Array(M * 3), col = new Float32Array(M * 4).fill(1), seed = new Float32Array(M), jit = new Float32Array(M);
+  for (let i = 0; i < M; i++) { seed[i] = Math.random(); jit[i] = i >= RING ? Math.random() - 0.5 : (Math.random() - 0.5) * (Math.PI * 2 / (Math.floor(i / PER) >= MAIN ? ISLET : MAIN)); }
   // the swell where each stretch of shore meets the sea (worked out at mid-tide; it hardly changes over a metre or two)
   const edgeX = new Float32Array(ANGLES), edgeZ = new Float32Array(ANGLES), edgeDamp = new Float32Array(ANGLES);
   for (let i = 0; i < ANGLES; i++) {
@@ -53,8 +78,8 @@ export function createShore(scene: Scene) {
   }
   const foamGeo = new BufferGeometry();
   foamGeo.setAttribute('position', new BufferAttribute(pos, 3));
-  foamGeo.setAttribute('color', new BufferAttribute(col, 3));
-  const foam = new Points(foamGeo, new PointsMaterial({ size: 0.85, map: softDot(), vertexColors: true, transparent: true, blending: AdditiveBlending, depthWrite: false }));
+  foamGeo.setAttribute('color', new BufferAttribute(col, 4)); // (white, with the brightness as its alpha)
+  const foam = new Points(foamGeo, new PointsMaterial({ size: 0.85, map: softDot(), vertexColors: true, transparent: true, depthWrite: false }));
   foam.renderOrder = 2; // (after the see-through water)
   foam.frustumCulled = false;
   scene.add(foam);
@@ -79,7 +104,7 @@ export function createShore(scene: Scene) {
     // surf: anchored where the water really meets the sand right now (tide + swell)
     const level = new Float32Array(ANGLES);
     for (let i = 0; i < ANGLES; i++) level[i] = sea + swell(edgeX[i], edgeZ[i], t, edgeDamp[i]);
-    for (let i = 0; i < M; i++) {
+    for (let i = 0; i < RING; i++) {
       const ai = Math.floor(i / PER), a = ang[ai] + jit[i];
       // each wave: rushes up the sand, then slides back and fades
       const ph = (t * 0.22 + seed[i] * 0.35 + Math.sin(ai * 0.37) * 0.3) % 1;
@@ -87,8 +112,25 @@ export function createShore(scene: Scene) {
       const r = shoreAt(ai, level[ai]) + 0.12 - 0.5 * up;
       pos[i * 3] = cx[ai] + Math.cos(a) * r; pos[i * 3 + 2] = cz[ai] + Math.sin(a) * r;
       pos[i * 3 + 1] = Math.max(level[ai] + 0.03, height(pos[i * 3], pos[i * 3 + 2]) + 0.03);
-      const b = (0.06 + 0.3 * (ph < 0.4 ? up : up * up)) * (0.15 + 0.85 * light); // (faint in the dark)
-      col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = b;
+      // (none on the sandbar: it has its own, below)
+      const b = barDist(pos[i * 3], pos[i * 3 + 2]) < 2.8 ? 0 : (0.06 + 0.3 * (ph < 0.4 ? up : up * up)) * (0.15 + 0.85 * light); // (faint in the dark)
+      col[i * 4 + 3] = Math.min(0.95, b * 3);
+    }
+    // the sandbar: surf washing up both its sides; when it's only just under water, waves break over its top
+    for (let i = RING; i < M; i++) {
+      const j = Math.floor((i - RING) / BAR_PER), k = Math.floor(j / 2), side = j % 2 ? 1 : -1;
+      const f = (k + 0.5 + jit[i] * 0.9) / BAR_K, mx = bA.x + (bB.x - bA.x) * f, mz = bA.z + (bB.z - bA.z) * f;
+      const lvl = sea + swell(mx, mz, t);
+      const ph = (t * 0.22 + seed[i] * 0.35 + Math.sin((k + (side > 0 ? 40 : 0)) * 0.37) * 0.3) % 1; // (the same rhythm as the island's surf)
+      const up = ph < 0.4 ? ph / 0.4 : 1 - (ph - 0.4) / 0.6;
+      const edge = barEdgeAt(j, lvl);
+      let b = 0, off = 0;
+      if (edge >= 0) { off = Math.max(0, edge + 0.12 - 0.5 * up); b = 0.06 + 0.3 * (ph < 0.4 ? up : up * up); }
+      else if (edge === -1 && lvl - BAR_TOP < 0.07) { off = (seed[i] - 0.5) * 1.2; b = (0.05 + 0.25 * up * up) * (1 - (lvl - BAR_TOP) / 0.07); }
+      const x = mx + bpx * side * off, z = mz + bpz * side * off;
+      pos[i * 3] = x; pos[i * 3 + 2] = z;
+      pos[i * 3 + 1] = Math.max(lvl + 0.03, height(x, z) + 0.03);
+      col[i * 4 + 3] = Math.min(0.95, b * 3) * (0.15 + 0.85 * light);
     }
     foamGeo.attributes.position.needsUpdate = true;
     foamGeo.attributes.color.needsUpdate = true;
