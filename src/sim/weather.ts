@@ -57,6 +57,8 @@ function startRain() {
     highlight('got caught in the rain');
   }
   if (S.task && RAIN_STOPS.has(S.task.id)) interrupt();
+  // asleep in the open hammock? the rain wakes her, and she heads for a roof
+  if (S.task?.id === 'sleep' && S.task.label === 'Sleeping in the hammock') { interrupt(); say('Rain! Not in the hammock, no thank you.'); }
 }
 
 function startStorm() {

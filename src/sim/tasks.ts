@@ -526,7 +526,9 @@ export const T: Record<string, () => Task | null> = {
     // on cold nights the open-air beds lose their charm (less so with a blanket)
     const chilly = fx().cold * (S.quirk === 'hardy' ? 0.3 : 1) * (has('blanket') ? 0.5 : 1);
     const exposed = (w: string) => w === 'hammock' || w === 'treehouse' || w === 'houseboat' || (w === 'shelter' && !works('hut'));
-    const score = (b: { rate: number; pref?: number; where: string }) => b.rate + (b.pref ?? 0) - (exposed(b.where) ? 10 * chilly : 0);
+    // the hammock has no roof at all: not while it rains (or rain clouds are close)
+    const wet = S.weather.raining || (!!S.weather.coming && S.weather.coming - S.min < 60);
+    const score = (b: { rate: number; pref?: number; where: string }) => b.rate + (b.pref ?? 0) - (exposed(b.where) ? 10 * chilly : 0) - (wet && b.where === 'hammock' ? 40 : 0);
     const bed = beds.reduce((a, b) => score(b) > score(a) ? b : a);
     let mins = 120;
     if (night) { const hr = hour(); mins = Math.max(60, ((7 + sleepShift() - hr + 24) % 24) * 60); } // sleep until 07:00 (or her own body clock)
