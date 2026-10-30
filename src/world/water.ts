@@ -2,13 +2,14 @@
 // near the island, so the water's edge only creeps up and down the beach a
 // little instead of sliding metres back and forth.
 import { Mesh, MeshStandardMaterial, PlaneGeometry, type Scene } from 'three';
-import { islandR } from '../sim/island';
+import { barDist, islandR, ISLET_C, ISLET_R } from '../sim/island';
 import { seaLevel } from '../sim/tide';
 import { clamp } from '../sim/util';
 
 /** How much of the open-sea swell is left at (x, z): 0.35 on the beach, the full swell ~12 units out. */
 export function swellDamp(x: number, z: number) {
-  const out = Math.hypot(x, z) - islandR(Math.atan2(z, x));
+  // (the bamboo islet and its sandbar calm the water around them too)
+  const out = Math.min(Math.hypot(x, z) - islandR(Math.atan2(z, x)), Math.hypot(x - ISLET_C.x, z - ISLET_C.z) - ISLET_R, barDist(x, z) - 1);
   const k = clamp(out / 12, 0, 1);
   return 0.35 + 0.65 * k * k * (3 - 2 * k);
 }
