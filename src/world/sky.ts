@@ -18,7 +18,7 @@ export function createSky(scene: Scene) {
   sun.castShadow = true;
   // shadows have to cover the whole island; a bigger map keeps them crisp at this size
   sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 120 });
+  Object.assign(sun.shadow.camera, { left: -55, right: 55, top: 55, bottom: -55, near: 1, far: 150 });
   sun.shadow.bias = -0.0006;
   scene.add(sun, sun.target);
   const moon = new DirectionalLight('#9DB8FF', 0);

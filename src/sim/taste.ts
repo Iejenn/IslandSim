@@ -25,9 +25,9 @@ const DREAMS: Record<Leaning, PlanKey[]> = {
   practical: ['lodge', 'hearth', 'dock'],
   animals: ['coop', 'blanket'],
   green: ['garden', 'barrel'],
-  sea: ['canoe', 'dock', 'trap'],
+  sea: ['canoe', 'dock', 'trap', 'houseboat'],
   creative: ['shelf', 'drum', 'treehouse'],
-  adventure: ['treehouse', 'lookout', 'canoe'],
+  adventure: ['treehouse', 'lookout', 'canoe', 'houseboat'],
 };
 export function rollDream(t: Taste): PlanKey {
   return pick(DREAMS[strongest(t)]);
@@ -52,13 +52,15 @@ const TASK_LEANING: Partial<Record<TaskId, Leaning>> = {
   herd: 'animals', collect: 'animals', shear: 'animals', befriend: 'animals', play: 'animals',
   plant: 'green', water: 'green', harvest: 'green', replant: 'green',
   drum: 'creative', write: 'creative',
-  explore: 'adventure', watch: 'adventure', stargaze: 'adventure',
+  explore: 'adventure', hunt: 'adventure', checksnares: 'practical', watch: 'adventure', stargaze: 'adventure',
   relax: 'comfort',
 };
 /** −0.05 … +0.1 extra score for activities that match her taste. */
 export function activityBias(id: TaskId) {
   const l = TASK_LEANING[id];
-  return l ? 0.15 * (S.taste[l] - 0.35) : 0;
+  // hunting doesn't sit well with an animal lover
+  const hunting = id === 'hunt' || id === 'checksnares' ? -0.3 * S.taste.animals : 0;
+  return (l ? 0.15 * (S.taste[l] - 0.35) : 0) + hunting;
 }
 
 /* ---------- letting the player discover her taste through the diary ---------- */
@@ -86,6 +88,7 @@ const DREAM_SAY: Partial<Record<PlanKey, string>> = {
   shelf: 'I want a place to show off everything I find.',
   drum: 'I miss music so much. One day I’ll make an instrument.',
   treehouse: 'A house up in the trees… like when I was little.',
+  houseboat: 'One day I’ll live on the water. A little houseboat.',
   lookout: 'I want to see the whole island from up high one day.',
 };
 

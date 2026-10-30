@@ -2,7 +2,7 @@
 import { Mesh, MeshStandardMaterial, PlaneGeometry, type Scene } from 'three';
 
 export function createWater(scene: Scene) {
-  const wg = new PlaneGeometry(240, 240, 64, 64);
+  const wg = new PlaneGeometry(320, 320, 72, 72);
   wg.rotateX(-Math.PI / 2);
   const wBase = wg.attributes.position.array.slice();
   const water = new Mesh(wg, new MeshStandardMaterial({ color: '#2FA3B5', transparent: true, opacity: 0.8, roughness: 0.3, metalness: 0.1, flatShading: true }));

@@ -16,7 +16,7 @@ const rows: string[] = [];
 // variety between islands: what each made first, its first three things, and everything it made
 const firsts: Record<string, number> = {}, openings = new Set<string>(), camps: Set<string>[] = [];
 let dreams = 0, dreamsMet = 0;
-const totals = { lodge: 0, fence: 0, coop: 0, penned: 0, eggs: 0, wool: 0, lodgeFurniture: 0, died: 0, built: 0, crafted: 0, furniture: 0, felled: 0, standing: 0, meals: 0, stews: 0, fireOutHours: 0, dogFriend: 0, storms: 0, repairs: 0, broken: 0, comfort: 0 };
+const totals = { spear: 0, snare: 0, hunted: 0, freed: 0, rabbitsLeft: 0, houseboat: 0, lodge: 0, fence: 0, coop: 0, penned: 0, eggs: 0, wool: 0, lodgeFurniture: 0, died: 0, built: 0, crafted: 0, furniture: 0, felled: 0, standing: 0, meals: 0, stews: 0, fireOutHours: 0, dogFriend: 0, storms: 0, repairs: 0, broken: 0, comfort: 0 };
 const FURNITURE = ['chair', 'table', 'bed', 'shelf', 'rocker'], LODGE_FURNITURE = ['realbed', 'sofa', 'kitchen'], WOOL_ITEMS = ['blanket', 'sweater'];
 for (let r = 0; r < runs; r++) {
   const S = initState();
@@ -48,13 +48,16 @@ for (let r = 0; r < runs; r++) {
   totals.standing += standing;
   totals.meals += S.stats.meals;
   totals.furniture += FURNITURE.filter(k => S.items[k as keyof typeof S.items]).length;
-  totals.stews += S.feelingsNoted.includes('dish:fish stew') ? 1 : 0;
+  totals.stews += S.feelingsNoted.includes('dish:a stew') ? 1 : 0;
   totals.dogFriend += S.dog.state === 'friend' ? 1 : 0;
   totals.storms += S.stats.storms;
   totals.repairs += S.stats.repairs;
   totals.broken += Object.values(S.projects).filter(p => p.damaged).length;
   totals.comfort += comfort();
   totals.lodge += S.projects.lodge.done ? 1 : 0;
+  totals.houseboat += S.projects.houseboat.done ? 1 : 0;
+  totals.spear += S.items.spear ? 1 : 0; totals.snare += S.items.snare ? 1 : 0;
+  totals.hunted += S.stats.hunted; totals.freed += S.stats.freed; totals.rabbitsLeft += S.rabbits;
   totals.fence += S.projects.fence.done ? 1 : 0;
   totals.coop += S.projects.coop.done ? 1 : 0;
   totals.penned += S.chickens.filter(c => c.penned).length + S.sheep.filter(c => c.penned).length;
@@ -65,10 +68,11 @@ for (let r = 0; r < runs; r++) {
 }
 const avg = (v: number) => (v / runs).toFixed(1);
 console.log(rows.join('\n'));
-console.log(`\n${runs} islands × ${days} days: ${totals.died} died · avg ${avg(totals.built)}/13 built · ${avg(totals.crafted - totals.furniture)}/9 tools & things · ${avg(totals.furniture)}/5 furniture · ` +
+console.log(`\n${runs} islands × ${days} days: ${totals.died} died · avg ${avg(totals.built)}/14 built · ${avg(totals.crafted - totals.furniture)}/10 tools & things · ${avg(totals.furniture)}/5 furniture · ` +
   `${avg(totals.felled)} trees felled, ${avg(totals.standing)} trees standing · ${avg(totals.meals)} cooked meals (${totals.stews} islands had stew) · fire out ${avg(totals.fireOutHours)}h\n` +
   `dog befriended on ${totals.dogFriend}/${runs} · ${avg(totals.storms)} storms, ${avg(totals.repairs)} repairs, ${avg(totals.broken)} still broken at the end · home comfort ${avg(totals.comfort)}/16\n` +
-  `fence on ${totals.fence}/${runs}, coop on ${totals.coop}/${runs}, lodge on ${totals.lodge}/${runs} · ${avg(totals.penned)}/7 animals home · ${avg(totals.eggs)} eggs, sheared ${avg(totals.wool)}× · ${avg(totals.lodgeFurniture)}/3 lodge furniture`);
+  `fence on ${totals.fence}/${runs}, coop on ${totals.coop}/${runs}, lodge on ${totals.lodge}/${runs} · ${avg(totals.penned)}/7 animals home · ${avg(totals.eggs)} eggs, sheared ${avg(totals.wool)}× · ${avg(totals.lodgeFurniture)}/3 lodge furniture\n` +
+  `rabbits: hunted ${avg(totals.hunted)}, let go ${avg(totals.freed)}, ${avg(totals.rabbitsLeft)} left in the warren · houseboat on ${totals.houseboat}/${runs} · spear on ${totals.spear}/${runs}, snares on ${totals.snare}/${runs}`);
 // how different two finished camps are: 0 = made exactly the same things, 1 = nothing in common
 let diff = 0, pairs = 0;
 for (let i = 0; i < camps.length; i++) for (let j = i + 1; j < camps.length; j++) {

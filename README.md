@@ -26,7 +26,9 @@ adventure) and one dream she's set on. Taste only tilts the odds: an animal
 lover will probably fence in the chickens early, but may still build a lodge
 later. There's usually more than one way to get what she needs: fishing with
 a rod or wading in with a spear, a fish trap, a rain barrel instead of the
-walk to the pond, a treehouse. Even the colours differ per island (the tarp
+walk to the pond, a treehouse, rabbits to hunt with a spear or catch in
+snares at the warren deep in the forest, and for a skilled builder a houseboat
+moored at the dock. Even the colours differ per island (the tarp
 on her shelter, her bedding, the hammock, roofs, the wood). The diary hints
 at who she is, so you find out by watching.
 
@@ -94,7 +96,8 @@ src/
   world/           three.js scene: stage (renderer/camera), terrain, water,
                    sky (lights, day/night, lightning), rain, props, forest &
                    boulders, buildings (incl. the lodge, fence and coop),
-                   crafted items & furniture, the dog, livestock, wildlife
+                   crafted items & furniture, the dog, livestock, rabbits,
+                   wildlife
   character/       loading the model, playing animations, moving the body,
                    tools in her hand
   save.ts          localStorage save/load and the island's layout seed

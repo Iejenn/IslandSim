@@ -21,6 +21,7 @@ import { createDog } from './world/dog';
 import { createForest } from './world/forest';
 import { createLivestock } from './world/livestock';
 import { createProps } from './world/props';
+import { createRabbits } from './world/rabbits';
 import { createRain } from './world/rain';
 import { createSky } from './world/sky';
 import { createStage } from './world/stage';
@@ -48,6 +49,7 @@ const updateRain = createRain(scene);
 const updateDog = createDog(scene);
 const updateAnimals = createAnimals(scene);
 const updateLivestock = createLivestock(scene);
+const updateRabbits = createRabbits(scene);
 
 /* ---------- sim + her ---------- */
 const S = initState(save?.state);
@@ -150,7 +152,7 @@ function frame(now: number) {
   if (ready) { settleHeight(); body.update(dt); }
   // she carries the right tool for the whole task (rod for fishing, axe for chopping, pick for mining)
   const id = S.task?.id;
-  const held: HeldTool | null = !ready ? null : id === 'fish' && S.items.rod ? 'rod' : id === 'fish' && S.items.spear ? 'spear' : id === 'chop' && S.items.axe ? 'axe' : id === 'mine' && S.items.pick ? 'pick' : null;
+  const held: HeldTool | null = !ready ? null : id === 'fish' && S.items.rod ? 'rod' : (id === 'fish' || id === 'hunt') && S.items.spear ? 'spear' : id === 'chop' && S.items.axe ? 'axe' : id === 'mine' && S.items.pick ? 'pick' : null;
   heldTools.update(held, body.her, clockT);
   updateCrafted(S, held);
   updateForest(S);
@@ -158,6 +160,7 @@ function frame(now: number) {
   updateBuildings(S, body.her, clockT);
   if (ready) updateDog(S, body.her, dt, clockT);
   updateLivestock(S, body.her, dt, clockT);
+  updateRabbits(S, dt);
   props.shelter.visible = !S.projects.lodge.done; // the lodge replaces the old shelter
   updateAnimals(dt, clockT, isNight());
   const storm = S.weather.storm;

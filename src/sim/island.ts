@@ -22,7 +22,7 @@ export function dirXZ(a: Pt, b: Pt): Pt {
 export const ISLAND_SCALE = 1.45;
 // Broad lobes stick out of the main island: the forest to the west, the rocky
 // area to the east and the pond meadow to the north, so each has room of its own.
-export const FOREST_A = 2.4, ROCKS_A = -0.875, POND_A = -2.3; // directions (radians) of the lobes
+export const FOREST_A = 2.6, ROCKS_A = -0.875, POND_A = -2.3; // directions (radians) of the lobes
 // How much faster she moves than on the original island, so the longer walks
 // out to the lobes don't eat her whole day.
 export const PACE = ISLAND_SCALE * 1.15;
@@ -31,10 +31,17 @@ const lobe = (a: number, centre: number, width: number, size: number) => {
   return size * Math.exp(-(d * d) / (2 * width * width));
 };
 export function islandR(a: number) {
-  const lobes = lobe(a, FOREST_A, 0.4, 14) + lobe(a, ROCKS_A, 0.36, 11) + lobe(a, POND_A, 0.42, 11);
+  // the forest is a big, wide headland of its own (with a rabbit warren deep inside)
+  const lobes = lobe(a, FOREST_A, 0.45, 27) + lobe(a, ROCKS_A, 0.36, 11) + lobe(a, POND_A, 0.42, 11);
   // a big smooth bump makes a squarish headland; ragged it up so the coast looks natural
-  const ragged = (lobes / 12) * (1.6 * Math.sin(7 * a + 1.3) + 1.0 * Math.sin(11 * a + 0.4) + 0.7 * Math.sin(17 * a + 2.2));
+  // (capped, or the much bigger forest headland would get a wildly jagged coast)
+  const ragged = (Math.min(lobes, 14) / 12) * (1.6 * Math.sin(7 * a + 1.3) + 1.0 * Math.sin(11 * a + 0.4) + 0.7 * Math.sin(17 * a + 2.2));
   return ISLAND_SCALE * (13.5 + 1.1 * Math.sin(3 * a + 0.5) + 0.6 * Math.sin(5 * a + 2.1) + 0.4 * Math.sin(7 * a)) + lobes + ragged;
+}
+/** 0…1: how much this direction lies in the forest headland (its grass reaches further out). */
+export function forestness(a: number) {
+  const d = Math.atan2(Math.sin(a - FOREST_A), Math.cos(a - FOREST_A));
+  return Math.exp(-(d * d) / (2 * 0.45 * 0.45));
 }
 export function tAt(x: number, z: number) {
   return Math.hypot(x, z) / islandR(Math.atan2(z, x));
@@ -188,7 +195,12 @@ export const TRAP_P = ground(pointAt(TRAP_A, 1.04));
 export const TRAP_STAND = ground(pointAt(TRAP_A, 0.93));
 reserve(TRAP_STAND);
 // she wades out to spear fish just beside the fishing spot
-export const SPEAR_SPOT: Spot = { spot: ground(pointAt(FISH_A - 0.18, 1.01)), face: pointAt(FISH_A - 0.18, 1.5) };
+export const SPEAR_SPOT: Spot = { spot: ground(pointAt(FISH_A - 0.3, 1.01)), face: pointAt(FISH_A - 0.3, 1.5) };
+// a houseboat moored on the other side of the dock from the canoe
+export const HOUSEBOAT_P = { ...addScaled(V(0, 0), dockDir, fishR * 1.06), y: 0 };
+HOUSEBOAT_P.x -= dockPerp.x * 2.3; HOUSEBOAT_P.z -= dockPerp.z * 2.3;
+export const HOUSEBOAT_YAW = Math.atan2(dockDir.x, dockDir.z);
+export const HOUSEBOAT_BED = { ...addScaled(HOUSEBOAT_P, dockDir, -0.9) }; // on the deck, under the cabin roof
 
 // lookout tower on the south beach; she climbs up to watch the sea and the stars
 export const LOOKOUT_P = ground(pointAt(-1.2, 0.78));
@@ -217,7 +229,12 @@ function scatter(seed: number, n: number, a0: number, a1: number, t0: number, t1
   }
   return out;
 }
-export const FOREST = scatter(7, 22, FOREST_A - 0.5, FOREST_A + 0.5, 0.34, 0.66, 2.7, 1.9).map(pos => ({ pos, stand: standNear(pos, 0.95) }));
+// the rabbit warren: a clearing deep in the forest (reserved before the trees are scattered)
+export const WARREN_P = ground(pointAt(FOREST_A + 0.08, 0.7));
+export const BURROWS = [0, 2.1, 4.2].map(a => ground(V(WARREN_P.x + Math.cos(a) * 1.6, WARREN_P.z + Math.sin(a) * 1.6)));
+export const WARREN_STAND = standNear(WARREN_P, 4.2); // where she waits, on the camp side of the clearing
+reserve(WARREN_P, ...BURROWS, ...[0.7, 2.8, 4.9].map(a => V(WARREN_P.x + Math.cos(a) * 2.6, WARREN_P.z + Math.sin(a) * 2.6)));
+export const FOREST = scatter(7, 46, FOREST_A - 0.62, FOREST_A + 0.62, 0.32, 0.86, 2.6, 1.9).map(pos => ({ pos, stand: standNear(pos, 0.95) }));
 reserve(...FOREST.map(t => t.pos));
 // the forest tree closest to camp: the one she'd build a treehouse in (so she never fells it)
 export const TREEHOUSE_TREE = FOREST.reduce((b, t, i) => Math.hypot(t.pos.x, t.pos.z) < Math.hypot(FOREST[b].pos.x, FOREST[b].pos.z) ? i : b, 0);
