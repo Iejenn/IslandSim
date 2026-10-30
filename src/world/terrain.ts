@@ -13,9 +13,12 @@ export function createTerrain(scene: Scene) {
   const forestFloor = new Color('#3E7343'), stony = new Color('#9C9B8C');
   const near = (x: number, z: number, pts: { pos: { x: number; z: number } }[], r: number) =>
     pts.reduce((m, p) => Math.max(m, 1 - Math.hypot(p.pos.x - x, p.pos.z - z) / r), 0);
+  // heights first, so the slope at each vertex is known when colouring it
+  for (let i = 0; i < pa.count; i++) pa.setY(i, height(pa.getX(i), pa.getZ(i)));
+  g.computeVertexNormals();
+  const nrm = g.attributes.normal, cliff = new Color('#8C8676');
   for (let i = 0; i < pa.count; i++) {
     const x = pa.getX(i), z = pa.getZ(i), t0 = tAt(x, z);
-    pa.setY(i, height(x, z));
     // colour by a "t" pulled inwards on the forest headland, so the forest stands on grass, not sand
     const t = t0 < 0.97 ? t0 * (1 - 0.2 * forestness(Math.atan2(z, x))) : t0;
     // grass → sand → wet sand → deep water, by distance from the centre
@@ -27,10 +30,11 @@ export function createTerrain(scene: Scene) {
     else if (t < 1.1) c.copy(sand).lerp(wet, smooth((t - 0.97) / 0.13));
     else c.copy(wet).lerp(deep, smooth((t - 1.1) / 0.45));
     if (t < 0.97) c.lerp(stony, 0.8 * smooth(near(x, z, BOULDERS, 2.4)));
+    // steep ground (the hill's bank by the waterfall, the ridge) shows bare rock
+    if (t0 < 0.97) c.lerp(cliff, 0.85 * smooth((0.9 - nrm.getY(i)) / 0.18));
     cols.push(c.r, c.g, c.b);
   }
   g.setAttribute('color', new Float32BufferAttribute(cols, 3));
-  g.computeVertexNormals();
   const terrain = new Mesh(g, new MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 }));
   terrain.receiveShadow = true;
   scene.add(terrain);

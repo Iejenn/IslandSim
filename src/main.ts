@@ -26,6 +26,7 @@ import { createLivestock } from './world/livestock';
 import { createProps } from './world/props';
 import { createFlowers } from './world/flowers';
 import { createJoys } from './world/joys';
+import { createWaterfall } from './world/waterfall';
 import { createPaths } from './world/paths';
 import { createRabbits } from './world/rabbits';
 import { createRain } from './world/rain';
@@ -67,6 +68,7 @@ const updateSeasons = createSeasons(scene, terrain.material);
 const updateEvents = createEvents(scene);
 const updateAtmosphere = createAtmosphere(scene);
 const updateJoys = createJoys(scene);
+const updateWaterfall = createWaterfall(scene);
 
 /* ---------- sim + her ---------- */
 const S = initState(save?.state);
@@ -204,8 +206,9 @@ function frame(now: number) {
   updateFlowers(S);
   updateEvents(S, body.her, clockT);
   updateJoys(S);
-  const dry = drought() ? 0.55 : 1; // the pond shrinks in a drought
+  const dry = drought() ? 0.75 : 1; // the pond shrinks in a drought (and the waterfall dwindles)
   props.pond.scale.set(dry, 1, dry);
+  updateWaterfall(clockT, drought() ? 1 : 0);
   props.shelter.visible = !S.projects.lodge.done; // the lodge replaces the old shelter
   updateAnimals(dt, clockT, isNight());
   const storm = S.weather.storm;

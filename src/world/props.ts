@@ -5,7 +5,7 @@ import {
   BoxGeometry, CatmullRomCurve3, ConeGeometry, CylinderGeometry, DodecahedronGeometry, Group, IcosahedronGeometry,
   PointLight, SphereGeometry, TubeGeometry, Vector3, type Mesh, type Scene,
 } from 'three';
-import { BUSHES, FIRE, FISH_A, SEATS, SH, SP, V, clearOf, ground, pointAt, yawTo, type Pt } from '../sim/island';
+import { BUSHES, FIRE, FISH_A, POND_R, SEATS, SH, SP, V, clearOf, ground, pointAt, yawTo, type Pt } from '../sim/island';
 import { rand } from '../sim/util';
 import { pickable } from './inspect';
 import { flameMat, flameMat2, M, mesh } from './materials';
@@ -104,13 +104,13 @@ export function createProps(scene: Scene) {
   })();
 
   /* spring (the pond shrinks in a drought, see main.ts) */
-  const pond = mesh(new CylinderGeometry(1.15, 1.2, 0.06, 10), M.spring, SP.x, SP.y + 0.04, SP.z, false);
+  const pond = mesh(new CylinderGeometry(POND_R, POND_R + 0.05, 0.06, 18), M.spring, SP.x, SP.y + 0.07, SP.z, false);
   {
     scene.add(pond);
     pickable(pond, () => ({ title: 'The pond', lines: ['Her fresh water', 'Fed by a little spring'] }));
-    for (let i = 0; i < 7; i++) {
-      const a = i / 7 * Math.PI * 2 + 0.3;
-      rock(V(SP.x + Math.cos(a) * 1.35, SP.z + Math.sin(a) * 1.35), rand(0.18, 0.32));
+    for (let i = 0; i < 13; i++) {
+      const a = i / 13 * Math.PI * 2 + 0.3;
+      rock(V(SP.x + Math.cos(a) * (POND_R + 0.25), SP.z + Math.sin(a) * (POND_R + 0.25)), rand(0.16, 0.3));
     }
   }
 

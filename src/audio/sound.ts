@@ -3,8 +3,8 @@
 // night, her footsteps, chopping and hammering, and her drum. Sounds near her
 // get quieter as the camera zooms out. Off until the player turns it on
 // (browsers only allow audio after a click anyway).
-import type { Object3D, PerspectiveCamera } from 'three';
-import { FIRE } from '../sim/island';
+import type { Object3D, PerspectiveCamera, Vector3 } from 'three';
+import { FIRE, WATERFALL } from '../sim/island';
 import { season } from '../sim/seasons';
 import { hour, type SimState } from '../sim/state';
 
@@ -12,7 +12,7 @@ const PREF = 'islandsim.sound';
 
 export function createSound() {
   let ctx: AudioContext | null = null, master: GainNode, noise: AudioBuffer;
-  let waves: GainNode, wind: GainNode, rain: GainNode, fireBed: GainNode, windFilter: BiquadFilterNode;
+  let waves: GainNode, wind: GainNode, rain: GainNode, fireBed: GainNode, fall: GainNode, windFilter: BiquadFilterNode;
   let on = false, nextStep = 0, nextCrackle = 0, nextBird = 0, nextHit = 0, nextCricket = 0;
 
   /** A looping noise source through a filter into its own (initially silent) gain. */
@@ -41,6 +41,7 @@ export function createSound() {
     const w = bed('bandpass', 500, 0.6); wind = w.g; windFilter = w.f;
     rain = bed('highpass', 1800).g;
     fireBed = bed('lowpass', 180).g;
+    fall = bed('bandpass', 1100, 0.5).g; // the waterfall's rush
   }
 
   /** A short burst of filtered noise (footstep, crackle, thunk). */
@@ -103,6 +104,8 @@ export function createSound() {
       ease(rain, 0.11 * rainLevel);
       const fire = Math.min(1, S.fire / 40) * Math.max(0.15, Math.min(1, 1 - (fireDist - 6) / 50));
       ease(fireBed, 0.05 * fire);
+      const wf = WATERFALL.bottom, fallDist = camera.position.distanceTo({ x: wf.x, y: wf.y, z: wf.z } as Vector3);
+      ease(fall, 0.07 * Math.max(0, Math.min(1, 1 - (fallDist - 5) / 35)));
       if (speed === 0) return;
 
       // fire crackles
