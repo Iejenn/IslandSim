@@ -215,3 +215,16 @@ export function route(a: Pt, b: Pt): Pt[] {
   }
   return out;
 }
+
+/** The nearest spot to p that isn't inside an obstacle (the fire, a building…), with a little room to spare. */
+export function outsideObstacles(p: { x: number; z: number }, margin = 0.25) {
+  refresh();
+  let x = p.x, z = p.z;
+  for (const c of circles) {
+    const dx = x - c.x, dz = z - c.z, d = Math.hypot(dx, dz), r = c.r + margin;
+    if (d >= r) continue;
+    const k = d > 1e-4 ? r / d : 0;
+    if (k) { x = c.x + dx * k; z = c.z + dz * k; } else x = c.x + r; // (dead centre: step out to one side)
+  }
+  return { x, z };
+}
