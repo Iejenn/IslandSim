@@ -1,5 +1,6 @@
 // Animated sea plane (vertex waves).
 import { Mesh, MeshStandardMaterial, PlaneGeometry, type Scene } from 'three';
+import { seaLevel } from '../sim/tide';
 
 export function createWater(scene: Scene) {
   const wg = new PlaneGeometry(320, 320, 72, 72);
@@ -12,6 +13,7 @@ export function createWater(scene: Scene) {
 
   /** @param t real seconds since start */
   return function animateWater(t: number) {
+    water.position.y = seaLevel(); // (the tide)
     const a = wg.attributes.position.array;
     for (let i = 0; i < a.length; i += 3) {
       const x = wBase[i], z = wBase[i + 2];

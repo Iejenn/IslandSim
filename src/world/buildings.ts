@@ -7,6 +7,7 @@ import {
 } from 'three';
 import { ORCHARD, ORCHARD_P, BANDSTAND_FLOOR, BANDSTAND_P, SHED_P, BATH_P, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SP, SUNDIAL_P, HOUSEBOAT_P, HOUSEBOAT_YAW, BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
 import { PLANS } from '../sim/plans';
+import { tideOffset } from '../sim/tide';
 import type { Crop, FruitKind, ProjectKey, SimState } from '../sim/state';
 import { cap, onDay, pickable } from './inspect';
 import { M, mat, mesh } from './materials';
@@ -667,8 +668,8 @@ export function createBuildings(scene: Scene) {
       canoe.g.position.set(BOAT_DOCK.x, WATER_Y, BOAT_DOCK.z);
       canoe.g.rotation.y = Math.atan2(DOCK.dir.x, DOCK.dir.z);
     }
-    canoe.g.position.y += 0.04 * Math.sin(t * 1.6);
-    houseboat.g.position.y = WATER_Y + 0.03 * Math.sin(t * 1.2 + 1);
+    canoe.g.position.y += 0.04 * Math.sin(t * 1.6) + tideOffset(); // (floats up and down with the tide)
+    houseboat.g.position.y = WATER_Y + tideOffset() + 0.03 * Math.sin(t * 1.2 + 1);
     houseboat.g.rotation.z = 0.015 * Math.sin(t * 0.9);
     rack.fish.forEach((f, i) => { f.visible = S.projects.rack.done && i < S.stock.fish; });
     woodpile.forEach((l, i) => { l.visible = i < S.stock.wood; });

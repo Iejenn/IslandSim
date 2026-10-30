@@ -106,8 +106,21 @@ pond fish, frogs (croaking in the evening) and the odd curious crab keep her
 company, and the "Her story" tab tells her life so far in chapters, one per
 season.
 
-A stray dog may wash ashore and, if she earns its trust, follows her
-everywhere. Storms strip the berry bushes and can damage her buildings until
+A stray dog may wash ashore and, if she earns its trust, becomes her friend.
+It has a life of its own: it trots after her, but also wanders off to sniff
+around, dig, chase a crab, roll in the sand, drink at the pond, nap in the
+shade on hot afternoons and bark at the waves; it lies down beside her when she
+sits and curls up by the fire at night.
+
+You can see the weather coming: clouds gather and darken for an hour or two
+before a shower, the sky turns red before a storm and grey curtains of rain
+hang under the clouds out at sea. Hot days are hazy, clear winter days crisp.
+The low sun at dawn and dusk throws long, golden shadows. The tide goes in and
+out twice a day: surf washes up the sand, her footprints in the wet sand are
+washed away by the next tide, and at low tide she pokes around the tide pools.
+Smoke curls up from the fire. You'll hear a dawn chorus, cicadas on hot
+afternoons, waves breaking (louder at night), the wind rising before rain, the
+dog barking and her humming while she works. Storms strip the berry bushes and can damage her buildings until
 she repairs them; on hot days she cools off in the sea. Crabs, gulls and
 jumping fish keep her company too. What she'll want to make next is never
 listed: it depends on how her life goes.
@@ -166,6 +179,7 @@ src/
     resources.ts   forest regrowth, fallen branches, loose stones, fish going off
     garden.ts      garden beds and crops: growing, drying out, ripening, rotting
     night.ts       moon phases and which nights the sea glows
+    tide.ts        the tide: sea level through the day
     weather.ts     rain showers, storms (with damage) and hot days
     taste.ts       her leanings and dream: what kind of life she tends towards
     seasons.ts     the four seasons and what each changes

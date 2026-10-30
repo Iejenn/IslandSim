@@ -670,6 +670,23 @@ export const T: Record<string, () => Task | null> = {
       },
     })]);
   },
+  tidepools() {
+    // low tide: wander the wet sand, crouching over the pools the sea left behind
+    const a0 = pick([0.3, -0.3, -1.5, -2.9, 1.0]) + rand(-0.1, 0.1), pts = [0, 0.18, 0.36].map(o => ground(pointAt(a0 + o, 0.96)));
+    const look = (i: number) => act({ pose: 'gather', face: pointAt(a0 + i * 0.18, 1.2), min: 12, tick: dm => feed('fun', dm * 16 / 60) });
+    return mk('tidepools', 'Poking around the tide pools', pick(['Look at all these little creatures!', 'A starfish!', 'The sea left presents.']), [
+      go(pts[0]), look(0), go(pts[1]), look(1), go(pts[2]), act({
+        pose: 'gather', face: pointAt(a0 + 0.36, 1.2), min: 12, tick: dm => feed('fun', dm * 16 / 60), done() {
+          if (Math.random() < 0.6) { S.stock.shells = Math.min(20, S.stock.shells + 1); highlight('found a shell in a tide pool'); }
+          else highlight('explored the tide pools');
+          const find = pick(['a starfish', 'a tiny octopus', 'a hermit crab swapping shells', 'a sea urchin']);
+          if (!S.feelingsNoted.includes('tidepool')) { S.feelingsNoted.push('tidepool'); log(`At low tide she explored the rock pools and found ${find}.`, 'big'); }
+          else say(`I found ${find}!`);
+          remember('tidepools', 0.06);
+        },
+      }),
+    ]);
+  },
   sandcastle() {
     const a = pick([0.35, -0.25, -1.5, -2.8, 1.05]) + rand(-0.1, 0.1), p = ground(pointAt(a, 0.9));
     return mk('sandcastle', 'Building a sandcastle', pick(['Every castle needs a moat.', 'The tide will win. It always does.', 'Tower number three!']), [go(standNear(p, 0.7)), act({
@@ -986,9 +1003,9 @@ export const T: Record<string, () => Task | null> = {
 };
 
 // Tasks that urgent needs (or something new to try) are allowed to cut short.
-export const INTERRUPTIBLE = new Set<TaskId>(['plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'honey', 'bathe', 'salvage', 'turtles', 'tendgull', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
+export const INTERRUPTIBLE = new Set<TaskId>(['tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'honey', 'bathe', 'salvage', 'turtles', 'tendgull', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
 // Outdoor tasks a sudden shower sends her away from.
-export const RAIN_STOPS = new Set<TaskId>(['plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'salvage', 'turtles', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
+export const RAIN_STOPS = new Set<TaskId>(['tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'salvage', 'turtles', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
 // Which task "tries out" each newly made thing.
 export const CURIOUS_TASK: Partial<Record<CraftKey, TaskId>> = { rod: 'fish', spear: 'fish', drum: 'drum', flute: 'drum', ukulele: 'drum', marimba: 'drum', journal: 'write', axe: 'chop', pick: 'mine', chair: 'relax', rocker: 'watch' };
 

@@ -1,17 +1,22 @@
 // Island sounds, all made on the fly with the Web Audio API (no sound files):
 // waves and wind, rain, the crackling fire, birds by day and crickets by
-// night, her footsteps, chopping and hammering, and her drum. Sounds near her
+// night, her footsteps, chopping and hammering, and her drum. A dawn chorus,
+// cicadas on hot afternoons, surf breaking (louder at night), wind that picks
+// up as rain clouds gather, her humming while she works, and the dog's bark. Sounds near her
 // get quieter as the camera zooms out. Off until the player turns it on
 // (browsers only allow audio after a click anyway).
 import type { Object3D, PerspectiveCamera, Vector3 } from 'three';
 import { FIRE, WATERFALL } from '../sim/island';
 import { season } from '../sim/seasons';
 import { hour, type SimState } from '../sim/state';
+import { happiness } from '../sim/needs';
+import { dogBarks } from '../world/dog';
 
 const PREF = 'islandsim.sound';
 
 export function createSound() {
   let ctx: AudioContext | null = null, master: GainNode, noise: AudioBuffer;
+  let cicada: GainNode, nextSurf = 0, nextHum = 0, barks = 0;
   let waves: GainNode, wind: GainNode, rain: GainNode, fireBed: GainNode, fall: GainNode, windFilter: BiquadFilterNode;
   let nextFrog = 0;
   let on = false, nextStep = 0, nextCrackle = 0, nextBird = 0, nextHit = 0, nextCricket = 0;
@@ -43,6 +48,7 @@ export function createSound() {
     rain = bed('highpass', 1800).g;
     fireBed = bed('lowpass', 180).g;
     fall = bed('bandpass', 1100, 0.5).g; // the waterfall's rush
+    cicada = bed('bandpass', 5200, 9).g; // (pulsed below)
   }
 
   /** A short burst of filtered noise (footstep, crackle, thunk). */
@@ -148,8 +154,14 @@ export function createSound() {
       const fireDist = Math.hypot(camera.position.x - FIRE.x, camera.position.z - FIRE.z);
 
       // ambient beds
-      ease(waves, 0.05 + 0.03 * Math.sin(now * 0.8) + (S.weather.storm ? 0.05 : 0));
-      ease(wind, (S.weather.storm ? 0.12 : 0.015) + (season() === 'winter' ? 0.02 : 0));
+      // (the surf carries further at night, when everything else is quiet)
+      ease(waves, 0.05 + 0.03 * Math.sin(now * 0.8) + (S.weather.storm ? 0.05 : 0) + (night ? 0.025 : 0));
+      // the wind picks up as rain clouds gather, and howls in a storm
+      const w = S.weather, gather = !w.raining && w.coming ? Math.max(0, Math.min(1, 1 - (w.coming - S.min) / 100)) : 0;
+      ease(wind, (w.storm ? 0.12 : 0.015) + (season() === 'winter' ? 0.02 : 0) + gather * (w.comingStorm ? 0.08 : 0.035) + (w.raining && !w.storm ? 0.02 : 0));
+      // cicadas buzzing in the heat of the afternoon
+      const buzz = (w.hot || season() === 'summer') && h > 10.5 && h < 18 && rainLevel < 0.2 ? (w.hot ? 0.035 : 0.018) : 0;
+      cicada.gain.setTargetAtTime(buzz * (0.55 + 0.45 * Math.sin(now * 7) * Math.sin(now * 0.4)), now, 0.05);
       windFilter.frequency.setTargetAtTime(400 + 250 * Math.sin(now * 0.3), now, 1);
       ease(rain, 0.11 * rainLevel);
       const fire = Math.min(1, S.fire / 40) * Math.max(0.15, Math.min(1, 1 - (fireDist - 6) / 50));
@@ -163,11 +175,25 @@ export function createSound() {
         burst(0.12 * fire, 2500 + Math.random() * 2500, 0.03 + Math.random() * 0.04, 'highpass');
         nextCrackle = now + 0.05 + Math.random() * 0.5;
       }
-      // birds by day (more in spring), crickets on warm nights
+      // birds by day (more in spring), and a whole chorus at dawn; crickets on warm nights
+      const dawn = h > 5.2 && h < 7.6 && season() !== 'winter';
       if (!night && rainLevel < 0.3 && now > nextBird) {
-        const f = 2200 + Math.random() * 1600, n = 2 + Math.floor(Math.random() * 3);
-        for (let i = 0; i < n; i++) tone(0.025, f, f * (1.2 + Math.random() * 0.3), 0.08 + Math.random() * 0.05, 'sine', i * 0.12);
-        nextBird = now + (season() === 'spring' ? 1.5 : 3.5) + Math.random() * 5;
+        const f = 2200 + Math.random() * 1600, n = 2 + Math.floor(Math.random() * 3), kind = Math.random();
+        if (dawn && kind < 0.3) for (let i = 0; i < 8; i++) tone(0.018, f * 1.1, f * 1.25, 0.04, 'sine', i * 0.05); // a trill
+        else if (dawn && kind < 0.55) { tone(0.03, f * 0.7, f * 0.72, 0.22); tone(0.03, f * 0.9, f * 0.88, 0.25, 'sine', 0.28); } // a two-note whistle
+        else for (let i = 0; i < n; i++) tone(0.025, f, f * (1.2 + Math.random() * 0.3), 0.08 + Math.random() * 0.05, 'sine', i * 0.12);
+        nextBird = now + (dawn ? 0.25 + Math.random() * 0.6 : (season() === 'spring' ? 1.5 : 3.5) + Math.random() * 5);
+      }
+      // a wave breaking on the sand now and then
+      if (now > nextSurf) {
+        burst((night ? 0.07 : 0.045) + (w.storm ? 0.05 : 0), 500 + Math.random() * 300, 1.4 + Math.random() * 0.8, 'lowpass');
+        nextSurf = now + 3.5 + Math.random() * 5;
+      }
+      // the dog
+      if (dogBarks.n !== barks) {
+        barks = dogBarks.n;
+        const dd = Math.hypot(camera.position.x - dogBarks.x, camera.position.z - dogBarks.z), v = Math.max(0.1, Math.min(1, 1 - (dd - 10) / 60));
+        tone(0.08 * v, 560, 380, 0.09, 'sawtooth'); burst(0.04 * v, 800, 0.07);
       }
       // frogs croak at the pond in the evening (if the camera's anywhere near)
       const pondDist = Math.hypot(camera.position.x - WATERFALL.bottom.x, camera.position.z - WATERFALL.bottom.z);
@@ -192,7 +218,16 @@ export function createSound() {
         else if (st.pose === 'hammer') { tone(0.08 * near, 320, 200, 0.06, 'triangle'); nextHit = now + 0.55; }
         else if (S.task?.id === 'drum' && S.task.instrument) nextHit = now + music(S.task.instrument, S.skills.music.lvl, near);
         else if (S.task?.id === 'dance') nextHit = now + music('drum', 4, near * 0.6); // she dances to a beat
-        else nextHit = now + 0.3;
+        else {
+          // humming to herself while she works, when life is good
+          if (now > nextHum && happiness() > 55 && !S.task?.instrument) {
+            const n = 3 + Math.floor(Math.random() * 3);
+            let at = 0;
+            for (let i = 0; i < n; i++) { const d = 0.3 + Math.random() * 0.3; note = Math.max(0, Math.min(SCALE.length - 1, note + Math.floor(Math.random() * 5) - 2)); fluteNote(SCALE[note] / 4, d, 0.016 * near, at); at += d * 0.9; }
+            nextHum = now + 7 + Math.random() * 14;
+          }
+          nextHit = now + 0.3;
+        }
       }
     },
   };

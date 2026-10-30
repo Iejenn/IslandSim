@@ -37,7 +37,7 @@ export type TaskId =
   | 'befriend' | 'play' | 'repair' | 'swim' | 'herd' | 'shear' | 'collect' | 'checktrap' | 'hunt' | 'checksnares' | 'mushrooms'
   | 'clay' | 'salvage' | 'turtles' | 'tendgull' | 'dig' | 'honey' | 'bathe'
   | 'cairn' | 'sandcastle' | 'clouds' | 'bouquet' | 'whittle' | 'dance'
-  | 'plantfruit' | 'pickfruit' | 'nightwalk' | 'beachstars'
+  | 'plantfruit' | 'pickfruit' | 'nightwalk' | 'beachstars' | 'tidepools'
   | 'celebrate' | 'stand';
 
 /* ---------- task steps ---------- */
@@ -197,7 +197,8 @@ function createState() {
     stats: { hunted: 0, freed: 0, herded: 0, eggs: 0, shorn: 0, forages: 0, fishTrips: 0, fishCaught: 0, nightsInShelter: 0, waterings: 0, harvests: 0, rainsSeen: 0, writeMin: 0, treesFelled: 0, stonesMined: 0, crafted: 0, meals: 0, storms: 0, repairs: 0 },
     // highlights of the current day, summarised in the diary at dawn
     today: [] as string[],
-    weather: { raining: false, until: 0, storm: false, hot: false, clearedAt: -9999 },
+    // coming: when the clouds that have been gathering will start to rain (0 = none on the way)
+    weather: { raining: false, until: 0, storm: false, hot: false, clearedAt: -9999, coming: 0, comingStorm: false },
     // chickens and sheep roam wild until she fences her home and herds them in
     // not every island has the same flock: some homes stay empty ("away")
     chickens: CHICKEN_HOMES.map((_, i) => ({ penned: false, away: i >= 2 && Math.random() < 0.4 })),
