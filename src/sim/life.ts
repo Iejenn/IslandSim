@@ -117,6 +117,7 @@ export const MASTERY: Partial<Record<SkillKey, { lvl: number; title: string; lin
   music: { lvl: 10, title: 'Island troubadour', line: 'Her music fills the evenings now. She’s even writing her own songs.' },
   writing: { lvl: 9, title: 'Island storyteller', line: 'Her island stories have grown into a whole book.' },
   foraging: { lvl: 7, title: 'Forager', line: 'She knows every bush and every hidden patch of the island.' },
+  animals: { lvl: 5, title: 'Friend of all creatures', line: 'Every animal on the island seems to know her now, and trust her.' },
   survival: { lvl: 10, title: 'Born survivor', line: 'Nothing this island throws at her worries her any more.' },
 };
 const SONGS = ['The Tide Comes Home', 'Salt and Starlight', 'Driftwood Waltz', 'The Lonely Gull', 'Coconut Moon', 'Fire on the Sand', 'Rain on the Roof'];

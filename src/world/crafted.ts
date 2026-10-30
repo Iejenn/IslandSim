@@ -2,7 +2,7 @@
 // woodpile, the rod against the shelter, the drum by the fire and so on.
 // Everything is built up front (hidden) and shown once the sim says she has it.
 import { BoxGeometry, ConeGeometry, CylinderGeometry, Group, SphereGeometry, TorusGeometry, type Object3D, type Scene } from 'three';
-import { addScaled, BAND_SPOTS, BANDSTAND_FLOOR, BANDSTAND_YAW, dirXZ, MARIMBA_P, SHED_P, V, KILN_P, BURROWS, WARREN_P, CHAIR_P, FIRE, LODGE_YAW, lodgeLocal, GARDEN_P, ground, HAMMOCK_P, JOURNAL_P, DRUM_P, LOOKOUT_DECK, LOOKOUT_P, SH, SHELF_P, TABLE_P, WOODPILE_P, yawTo } from '../sim/island';
+import { SHEEP_PEN_P, addScaled, BAND_SPOTS, BANDSTAND_FLOOR, BANDSTAND_YAW, dirXZ, MARIMBA_P, SHED_P, V, KILN_P, BURROWS, WARREN_P, CHAIR_P, FIRE, LODGE_YAW, lodgeLocal, GARDEN_P, ground, HAMMOCK_P, JOURNAL_P, DRUM_P, LOOKOUT_DECK, LOOKOUT_P, SH, SHELF_P, TABLE_P, WOODPILE_P, yawTo } from '../sim/island';
 import { PLANS } from '../sim/plans';
 import type { CraftKey, SimState, Style } from '../sim/state';
 import { cap, onDay, pickable } from './inspect';
@@ -308,6 +308,17 @@ export function createCrafted(scene: Scene) {
     flinttools: () => new Group(), // (not a thing of its own: her axe and pick get flint heads)
     rework: () => new Group(), // (remakes another piece; see the styled holders)
     irontools: () => new Group(), // (her axe and pick get iron heads)
+    press() {
+      // a cheese press by the sheep pen: a frame with a screw, and a round cheese in it
+      const g = new Group();
+      g.add(mesh(new BoxGeometry(0.6, 0.08, 0.5), M.wood, 0, 0.4, 0));
+      for (const x of [-0.25, 0.25]) for (const z of [-0.2, 0.2]) g.add(mesh(new CylinderGeometry(0.03, 0.03, 0.4, 5), M.log, x, 0.2, z));
+      for (const x of [-0.25, 0.25]) g.add(mesh(new CylinderGeometry(0.035, 0.035, 0.6, 5), M.log, x, 0.72, 0));
+      g.add(mesh(new BoxGeometry(0.6, 0.06, 0.08), M.log, 0, 1.0, 0));
+      g.add(mesh(new CylinderGeometry(0.02, 0.02, 0.5, 5), stone, 0, 0.75, 0));
+      g.add(mesh(new CylinderGeometry(0.14, 0.14, 0.1, 10), mat('#F0D98A'), 0, 0.5, 0)); // the cheese
+      return place(g, SHEEP_PEN_P.x + 1.6, SHEEP_PEN_P.z - 1.2, yawTo(SHEEP_PEN_P, FIRE));
+    },
     chimes() {
       // bamboo tubes and a shell on strings, hung from a little post by the shelter
       const g = new Group();

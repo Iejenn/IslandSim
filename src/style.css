@@ -192,3 +192,12 @@ body.menu-open .hud,body.menu-open .settings,body.menu-open .panel,body.menu-ope
 /* her titles (mastery) stand out among her traits; today's mood under what she's doing */
 .traits li.title{background:color-mix(in srgb,var(--sun) 22%,transparent);color:var(--ink)}
 .doing .today{display:block;font-size:13px;font-weight:500;color:var(--soft);margin-top:2px}
+
+/* ---------- photo mode: only the island (and a small bar to take the picture) ---------- */
+body.photo-mode .hud,body.photo-mode .settings,body.photo-mode .panel,body.photo-mode #bubble,body.photo-mode #info{display:none}
+.photo-bar{position:fixed;z-index:8;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:999px;padding:6px;box-shadow:0 6px 24px rgba(5,20,30,.25)}
+.photo-bar[hidden]{display:none}
+.photo-bar button{border:0;border-radius:999px;padding:10px 18px;font-weight:600;font-size:15px;background:var(--lagoon);color:var(--paper)}
+.photo-bar button.quiet{background:transparent;color:var(--ink)}
+.photo-flash{position:fixed;inset:0;z-index:9;background:#fff;opacity:0;pointer-events:none;transition:opacity .35s}
+.photo-flash.on{opacity:.8;transition:none}

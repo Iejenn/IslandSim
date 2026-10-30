@@ -11,11 +11,14 @@ const WOOL_DAYS = 2; // a shorn sheep's fleece grows back in this many days
 /** @param dm game minutes elapsed */
 export function updateAnimals(dm: number) {
   const days = dm / 1440;
+  const care = S.mastery?.animals ? 1.3 : 1; // a friend of all creatures: happier hens, thicker fleeces
   if (S.projects.coop.done) {
     const hens = S.chickens.filter(c => c.penned).length + S.bredHens;
-    S.coopEggs = Math.min(12, S.coopEggs + hens * EGGS_PER_HEN_PER_DAY * fx().eggs * days);
+    S.coopEggs = Math.min(12, S.coopEggs + hens * EGGS_PER_HEN_PER_DAY * fx().eggs * days * care);
   }
-  for (const sh of [...S.sheep.filter(s => s.penned), ...S.bredSheep]) sh.wool = Math.min(1, sh.wool + days / WOOL_DAYS);
+  // (a cold winter slows the fleece, unless they have a barn to keep warm in)
+  const cold = season() === 'winter' && !S.projects.barn?.done ? 0.5 : 1;
+  for (const sh of [...S.sheep.filter(s => s.penned), ...S.bredSheep]) sh.wool = Math.min(1, sh.wool + days / WOOL_DAYS * cold * care);
   breed(days);
 }
 
@@ -31,8 +34,9 @@ function breed(days: number) {
     say('A chick! Look at you, little fluffball.');
     highlight('saw a chick hatch');
   }
-  if (S.projects.fence.done && flock >= 2 && S.bredSheep.length + lambs < MAX_BRED_SHEEP && Math.random() < days * 0.18 * (s === 'spring' ? 1 : 0)) {
+  if (S.projects.fence.done && flock >= 2 && S.bredSheep.length + lambs < MAX_BRED_SHEEP && Math.random() < days * 0.18 * (s === 'spring' ? 1 : 0) * (S.projects.barn?.done ? 1.5 : 1)) {
     S.young.push({ kind: 'lamb', born: S.min });
+    S.milkUntil = S.min + 10 * 1440; // (and her ewes give milk for a while)
     log('A lamb was born in the pen, wobbly legs and all.', 'big');
     say('A lamb! Oh, I’m going to cry.');
     highlight('saw a lamb being born');

@@ -5,7 +5,7 @@ import {
   BoxGeometry, Color, CylinderGeometry, ExtrudeGeometry, TorusGeometry, type MeshStandardMaterial, Group, IcosahedronGeometry, Shape, SphereGeometry,
   type Material, type Mesh, type Object3D, type Scene, ConeGeometry, DodecahedronGeometry,
 } from 'three';
-import { SALT_P, FIRECOVER_POSTS, SMOKE_P, WORKSHOP_P, FURNACE_P, ORE_P, BAR_A, BAR_B, BRIDGE_Y, CAVE_FACE, CAVE_P, height, PIPE_FROM, SPOUT_P, WELL_P, ORCHARD, ORCHARD_P, BANDSTAND_FLOOR, BANDSTAND_P, SHED_P, BATH_P, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SP, SUNDIAL_P, HOUSEBOAT_P, HOUSEBOAT_YAW, BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
+import { BARN_P, DOVECOTE_P, DUCKHOUSE_P, SALT_P, FIRECOVER_POSTS, SMOKE_P, WORKSHOP_P, FURNACE_P, ORE_P, BAR_A, BAR_B, BRIDGE_Y, CAVE_FACE, CAVE_P, height, PIPE_FROM, SPOUT_P, WELL_P, ORCHARD, ORCHARD_P, BANDSTAND_FLOOR, BANDSTAND_P, SHED_P, BATH_P, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SP, SUNDIAL_P, HOUSEBOAT_P, HOUSEBOAT_YAW, BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
 import { PLANS } from '../sim/plans';
 import { tideOffset } from '../sim/tide';
 import type { Crop, FruitKind, ProjectKey, SimState, Style } from '../sim/state';
@@ -20,6 +20,7 @@ const herbLeaf = mat('#8DB38A');
 const PETALS = ['#E85C8A', '#F2D14B', '#FFFFFF', '#B07CE0', '#F08A3C'].map(c => mat(c, { roughness: 0.6 }));
 const FRUIT_MAT: Record<FruitKind, ReturnType<typeof mat>> = { mango: mat('#F0A030', { roughness: 0.5 }), banana: mat('#F2DB4A', { roughness: 0.5 }), lemon: mat('#F5E65A', { roughness: 0.4 }) };
 const bambooMat = mat('#C9B26B'), bambooNode = mat('#9C8A45'), rope = mat('#B9A26A'), caveDark = mat('#141210', { roughness: 1 }), wellWater = mat('#3F8FA0', { roughness: 0.2 });
+const barnRed = mat('#9C3B2E'), hay = mat('#D9B85C'), dove = mat('#F4F2EC');
 const stoneGrey = mat('#8E979B'), saltMat = mat('#F4F1EA', { roughness: 0.9 }), brine = mat('#8FC9CF', { roughness: 0.2 }), oreMat = mat('#9A4A33'), furnaceGlow = mat('#FF8A2A', { emissive: '#FF6A10', emissiveIntensity: 1.2 });
 const trapFishMat = mat('#8FB6C4', { roughness: 0.4, metalness: 0.2 }), rainwater = mat('#5FB8C9', { roughness: 0.2 });
 
@@ -773,12 +774,51 @@ export function createBuildings(scene: Scene) {
     pickable(g, S => ({ title: 'Red rock', lines: [S.projects.furnace.done ? 'Iron ore, for her furnace' : 'Streaked with rusty red. Iron?'] }));
   })();
 
+  /* ---------- v1.8: for an animal lover ---------- */
+  /* the barn: red plank walls, a tall roof, big doors and hay in the loft */
+  const barn = (() => {
+    const yaw = yawTo(BARN_P, FIRE), c = Math.cos(yaw), s = Math.sin(yaw), parts: Object3D[] = [];
+    const L = (x: number, y: number, z: number, o: Object3D) => { o.position.set(BARN_P.x + x * c + z * s, BARN_P.y + y, BARN_P.z - x * s + z * c); o.rotation.y = yaw + o.rotation.y; return o; };
+    parts.push(L(0, 0.05, 0, mesh(new BoxGeometry(3.0, 0.1, 2.4), M.rock)));
+    parts.push(L(0, 0.95, 0, mesh(new BoxGeometry(2.8, 1.8, 2.2), barnRed)));
+    // (turned to face the fire first, then tilted: YXZ order, so the two halves meet at the ridge)
+    for (const side of [-1, 1]) { const r = mesh(new BoxGeometry(3.1, 0.08, 1.45), M.thatch); r.rotation.order = 'YXZ'; r.rotation.x = side * 0.62; parts.push(L(0, 2.25, side * 0.55, r)); }
+    parts.push(L(0, 2.0, 1.12, mesh(new BoxGeometry(2.2, 0.5, 0.05), barnRed))); // gable
+    parts.push(L(0, 0.7, 1.12, mesh(new BoxGeometry(1.1, 1.3, 0.05), M.wood))); // big doors
+    parts.push(L(0, 1.72, 1.14, mesh(new BoxGeometry(0.6, 0.35, 0.04), hay))); // hay in the loft
+    return staged(parts);
+  })();
+  /* the duck house: a little hut on a raft, floating on the pond */
+  const duckhouse = (() => {
+    const p = DUCKHOUSE_P, y = p.y + 0.13;
+    const roof = mesh(new ConeGeometry(0.42, 0.3, 4), M.thatch, p.x, y + 0.55, p.z); roof.rotation.y = Math.PI / 4;
+    return staged([
+      mesh(new BoxGeometry(0.9, 0.08, 0.9), M.log, p.x, y, p.z),
+      mesh(new BoxGeometry(0.55, 0.38, 0.55), M.wood, p.x, y + 0.23, p.z),
+      mesh(new BoxGeometry(0.2, 0.2, 0.02), caveDark, p.x - 0.28, y + 0.18, p.z),
+      roof,
+    ]);
+  })();
+  /* the dovecote: a little house on a tall pole, and doves wheeling round it */
+  const doves: Mesh[] = [];
+  const dovecote = (() => {
+    const p = DOVECOTE_P;
+    const roof = mesh(new ConeGeometry(0.55, 0.45, 6), M.thatch, p.x, p.y + 3.0, p.z);
+    const parts = staged([
+      mesh(new CylinderGeometry(0.07, 0.09, 2.5, 6), M.log, p.x, p.y + 1.25, p.z),
+      mesh(new CylinderGeometry(0.45, 0.45, 0.5, 6), M.wood, p.x, p.y + 2.55, p.z),
+      roof,
+    ]);
+    for (let i = 0; i < 4; i++) { const d = mesh(new BoxGeometry(0.22, 0.04, 0.1), dove, 0, 0, 0, false); d.visible = false; scene.add(d); doves.push(d); }
+    return parts;
+  })();
+
   const showParts = (parts: Object3D[], started: boolean, progress: number, damaged = false) => {
     // storm damage knocks some of the later parts off until she repairs it
     const n = started ? Math.max(1, Math.ceil(progress * (damaged ? 0.7 : 1) * parts.length)) : 0;
     parts.forEach((p, i) => { p.visible = i < n; });
   };
-  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop, trap: trap.parts, barrel: barrel.parts, treehouse, houseboat: houseboat.parts, shed, bandstand, kiln, oven, beehive, sundial, mosaic, bathhouse, orchard, bridge, cave, pipe, well, saltpans, firecover, smokehouse, workshop, furnace };
+  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop, trap: trap.parts, barrel: barrel.parts, treehouse, houseboat: houseboat.parts, shed, bandstand, kiln, oven, beehive, sundial, mosaic, bathhouse, orchard, bridge, cave, pipe, well, saltpans, firecover, smokehouse, workshop, furnace, barn, duckhouse, dovecote };
   /* ---------- weathering: wood greys, stone gathers moss, fabric fades ---------- */
   // Each building gets its own copies of the shared materials (made on the
   // first update, after the island's colours are applied), which drift towards
@@ -837,6 +877,9 @@ export function createBuildings(scene: Scene) {
     firecover: S => `Made of ${S.madeStyle.firecover ?? 'wood'} · keeps the rain off the fire`,
     smokehouse: S => S.stock.fish ? `${S.stock.fish} smoked fish hanging inside` : 'Waiting for a good catch',
     workshop: () => 'Her workbench: crafting goes quicker here',
+    barn: () => 'Warm and dry: the sheep keep growing wool all winter',
+    duckhouse: S => `Home to ${S.ducks} ducks`,
+    dovecote: () => 'Doves coo here all day long',
     furnace: S => S.stock.iron ? `${S.stock.iron} lumps of iron made` : 'Hot enough to melt rock',
     well: () => 'Cold, clean water in the middle of camp',
     orchard: S => { const n = S.orchard.filter(t => t.kind).length; return n ? `${n} of ${S.orchard.length} trees planted` : 'Waiting for its first tree'; },
@@ -885,6 +928,14 @@ export function createBuildings(scene: Scene) {
     for (const o of pipeWater) o.visible = S.projects.pipe.done;
     saltCrust.forEach(c => { c.visible = S.projects.saltpans.done && S.saltPans >= 0.5; c.scale.y = 0.3 + S.saltPans / 6; });
     furnaceMouth.visible = S.projects.furnace.done;
+    // doves wheeling round the dovecote (resting on it at night)
+    doves.forEach((d, i) => {
+      d.visible = S.projects.dovecote.done;
+      if (!d.visible) return;
+      const night = (S.min / 60) % 24 >= 20 || (S.min / 60) % 24 < 6, a = t * (0.6 + i * 0.07) + i * 1.6, r = night ? 0.4 : 2.2 + i * 0.4;
+      d.position.set(DOVECOTE_P.x + Math.cos(a) * r, DOVECOTE_P.y + (night ? 2.85 : 3.6 + Math.sin(t * 1.3 + i) * 0.5), DOVECOTE_P.z + Math.sin(a) * r);
+      d.rotation.set(0, -a, night ? 0 : Math.sin(t * 12 + i) * 0.5);
+    });
     (furnaceGlow as MeshStandardMaterial).emissiveIntensity = 0.9 + 0.4 * Math.sin(t * 7) * Math.sin(t * 3.1);
     pipeWater[1].scale.x = pipeWater[1].scale.z = 1 + 0.15 * Math.sin(t * 9);
     // the lodge replaces the shelter (and its stone walls) once it's finished

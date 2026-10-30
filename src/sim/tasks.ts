@@ -3,7 +3,7 @@
 import { ONE_SHOT_SECONDS } from '../config/animations';
 import { chooseCrop, CROP_YIELD, freePlots, growingPlots, ripePlots } from './garden';
 import {
-  POND_R, DECOR_SPOTS, TOTEM_SPOTS, SALT_P, SALT_STAND, SMOKE_P, SMOKE_STAND, WORKSHOP_P, WORKSHOP_STAND, FURNACE_P, FURNACE_STAND, ORE_P, ORE_STAND, FIRECOVER_POSTS, BAMBOO, BAR_A, BAR_B, CAVE_P, CAVE_STAND, PIPE_FROM, SPOUT_P, SPOUT_STAND, WELL_P, WELL_STAND, ORCHARD, ORCHARD_P, BANDSTAND_FLOOR, BANDSTAND_P, BAND_SPOTS, bandLocal, MARIMBA_P, type Instrument, SHED_P, TABLE_P, addScaled, dirXZ, SP, BATH_P, CLAY_P, CLAY_STAND, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SUNDIAL_P, BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
+  BARN_P, BARN_STAND, DOVECOTE_P, DUCKHOUSE_P, DUCKHOUSE_STAND, POND_R, DECOR_SPOTS, TOTEM_SPOTS, SALT_P, SALT_STAND, SMOKE_P, SMOKE_STAND, WORKSHOP_P, WORKSHOP_STAND, FURNACE_P, FURNACE_STAND, ORE_P, ORE_STAND, FIRECOVER_POSTS, BAMBOO, BAR_A, BAR_B, CAVE_P, CAVE_STAND, PIPE_FROM, SPOUT_P, SPOUT_STAND, WELL_P, WELL_STAND, ORCHARD, ORCHARD_P, BANDSTAND_FLOOR, BANDSTAND_P, BAND_SPOTS, bandLocal, MARIMBA_P, type Instrument, SHED_P, TABLE_P, addScaled, dirXZ, SP, BATH_P, CLAY_P, CLAY_STAND, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SUNDIAL_P, BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
   HAMMOCK_BED, SHELTER_BED, LOOKOUT_DECK, LOOKOUT_P, pointAt, RACK_P, SAIL_ROUTE, SCREE_P, SCREE_STAND, SEATS, SH, SHELTER, SPRING, standNear,
   V, WOODPILE_P, type Pt,
 } from './island';
@@ -144,6 +144,9 @@ const SITE: Record<string, { stand: Pt; face: Pt }> = {
   smokehouse: { stand: SMOKE_STAND, face: SMOKE_P },
   workshop: { stand: WORKSHOP_STAND, face: WORKSHOP_P },
   furnace: { stand: FURNACE_STAND, face: FURNACE_P },
+  barn: { stand: BARN_STAND, face: BARN_P },
+  duckhouse: { stand: DUCKHOUSE_STAND, face: DUCKHOUSE_P },
+  dovecote: { stand: standNear(DOVECOTE_P, 1.0), face: DOVECOTE_P },
   // remaking the fence or the bridge happens where it stands
   get rework() { return SITE[S.reworkOf === 'bridge' ? 'bridge' : 'fence']; },
   bandstand: { stand: bandLocal(0, 2.2), face: BANDSTAND_P },
@@ -294,6 +297,11 @@ export const T: Record<string, () => Task | null> = {
       const smoked = works('smokehouse');
       return mk('eat', smoked ? 'Eating smoked fish' : 'Eating dried fish', pick(TH.eat), [go(smoked ? SMOKE_STAND : RACK_STAND, false, urgent(S.needs.food)), act({
         pose: 'gather', face: smoked ? SMOKE_P : RACK_P, min: 8, done() { if (S.stock.fish > 0) { S.stock.fish--; feed('food', smoked ? 40 : 32); } },
+      })]);
+    }
+    if (S.stock.cheese > 0 && Math.random() < 0.6) {
+      return mk('eat', 'Eating her own cheese', pick(['Mmm, sharp and creamy.', 'Cheese! On a desert island!', 'Best thing I ever made.']), [act({
+        pose: 'gather', min: 8, done() { if (S.stock.cheese > 0) { S.stock.cheese--; feed('food', 26); feed('fun', 8); } },
       })]);
     }
     if (S.stock.fruit > 0) {
@@ -672,6 +680,7 @@ export const T: Record<string, () => Task | null> = {
           S.stats.herded++;
           addXp('survival', 4);
           remember('herd', 0.06);
+          addXp('animals', 8);
           log(chicken ? 'She brought a chicken home to the coop.' : 'She led a sheep home inside the fence.');
           highlight(chicken ? 'brought a chicken home' : 'brought a sheep home');
         },
@@ -688,6 +697,7 @@ export const T: Record<string, () => Task | null> = {
         S.coopEggs -= n;
         S.stock.eggs = Math.min(12, S.stock.eggs + n);
         S.stats.eggs += n;
+        addXp('animals', 3);
       },
     })]);
   },
@@ -698,6 +708,7 @@ export const T: Record<string, () => Task | null> = {
       pose: 'gather', face: SHEEP_PEN_P, min: 15 * ready, done() {
         for (const sh of [...S.sheep.filter(s => s.penned), ...S.bredSheep]) if (sh.wool >= 1) { sh.wool = 0; S.stock.wool = Math.min(15, S.stock.wool + 2); }
         S.stats.shorn++;
+        addXp('animals', 6);
         addXp('crafting', 4);
         log(`She sheared ${ready > 1 ? 'her sheep' : 'a sheep'}.`);
         highlight('sheared the sheep');
@@ -820,13 +831,45 @@ export const T: Record<string, () => Task | null> = {
       },
     }), go(p), act({ pose: 'idle', face: FIRE, min: 20, done() { S.mood = Math.min(40, S.mood + 8); } })]); // (a birthday dance: see main.ts)
   },
+  milk() {
+    // in spring (and after lambing) her ewes give milk; with something to keep it in she saves some,
+    // otherwise she just drinks it there and then
+    const keep = has('bucket') || has('pots') || has('jug') || has('press') || S.washedUp === 'pot';
+    if (S.min >= S.milkUntil || (keep && S.stock.milk >= 6)) return null;
+    return mk('milk', 'Milking the ewes', pick(['Easy, girl. Easy.', 'Warm milk!', 'Thank you, mama sheep.']), [go(standNear(SHEEP_PEN_P, 1.2)), act({
+      pose: 'gather', face: SHEEP_PEN_P, min: 20, done() {
+        if (keep) S.stock.milk = Math.min(6, S.stock.milk + 2);
+        feed('food', keep ? 6 : 14); feed('water', keep ? 8 : 16); // (a cup straight away, or all of it)
+        S.stats.milked++;
+        addXp('animals', 4);
+        if (S.stats.milked === 1) log('She milked her ewes for the first time, and drank a warm cup on the spot.', 'big');
+        highlight('milked the ewes');
+      },
+    })]);
+  },
+  cheese() {
+    // milk into the press: a little round cheese, later
+    if (!has('press') || S.stock.milk < 2 || S.stock.cheese >= 6) return null;
+    const at = works('barn') ? BARN_STAND : standNear(FIRE, 1.6, SEATS[0].p);
+    return mk('cheese', 'Making cheese', pick(['Curds and whey…', 'Now we press it.', 'Patience makes cheese.']), [go(at), act({
+      pose: 'gather', face: works('barn') ? BARN_P : FIRE, min: 40, done() {
+        S.stock.milk -= 2; S.stock.cheese = Math.min(6, S.stock.cheese + 1);
+        addXp('animals', 3); addXp('crafting', 2);
+        if (!S.feelingsNoted.includes('cheese')) { S.feelingsNoted.push('cheese'); log('She made her very first cheese. It was lumpy, and it was delicious.', 'big'); }
+        highlight('made cheese');
+      },
+    })]);
+  },
   ducks() {
     // feed the ducks at the pond's edge (a handful of seeds or berries)
     if (S.ducks < 2) return null;
     const a = Math.atan2(S.pos.z - SP.z, S.pos.x - SP.x), p = ground(V(SP.x + Math.cos(a) * (POND_R + 0.5), SP.z + Math.sin(a) * (POND_R + 0.5)));
     return mk('ducks', 'Feeding the ducks', pick(['Here, ducky ducky!', 'Don’t squabble, there’s enough.', S.ducks > 2 ? 'Look at the little ones go!' : 'Quack to you too.']), [go(p), act({
       pose: 'gather', face: SP, min: 20, tick: dm => { feed('fun', dm * 15 / 60); feed('company', dm * 15 / 60); },
-      done() { if (S.stock.seeds > 3) S.stock.seeds--; remember('ducks', 0.06); highlight('fed the ducks'); },
+      done() {
+        if (S.stock.seeds > 3) S.stock.seeds--; remember('ducks', 0.06); highlight('fed the ducks'); addXp('animals', 4);
+        if (S.projects.duckhouse.done && Math.random() < 0.5) S.stock.eggs = Math.min(12, S.stock.eggs + 1); // a duck egg from the duck house
+      },
     })]);
   },
   parrot() {
@@ -837,7 +880,7 @@ export const T: Record<string, () => Task | null> = {
     return mk('parrot', S.stock.fruit > 0 ? 'Leaving fruit for the parrot' : 'Leaving berries for the parrot', pick(['Here you go, pretty bird.', 'Come on down, I won’t bite.', 'Hello? Hello!']), [go(t.stand), act({
       pose: 'gather', face: t.pos, min: 20, done() {
         if (S.stock.fruit > 0) S.stock.fruit--; else if (S.stock.veg > 0) S.stock.veg--;
-        offerParrot(); feed('fun', 6);
+        offerParrot(); feed('fun', 6); addXp('animals', 4);
         highlight('left fruit for the parrot');
       },
     })]);
@@ -1163,7 +1206,7 @@ export const T: Record<string, () => Task | null> = {
     const p = ground(pointAt(rand(0, 6.3), Math.random() < 0.5 ? 0.92 : 0.8));
     return mk('play', `Playing fetch with ${S.dog.name}`, pick([`Go get it, ${S.dog.name}!`, 'Good dog! Again?', `${S.dog.name}, you’re the best.`]), [go(p), act({
       pose: 'idle', face: pointAt(Math.atan2(p.z, p.x), 1.4), min: 30, tick: dm => { feed('fun', dm * 20 / 60); feed('company', dm * 30 / 60); },
-      done() { remember('play', 0.08); highlight(`played fetch with ${S.dog.name}`); },
+      done() { remember('play', 0.08); highlight(`played fetch with ${S.dog.name}`); addXp('animals', 3); },
     })]);
   },
 
@@ -1197,7 +1240,7 @@ export const T: Record<string, () => Task | null> = {
 };
 
 // Tasks that urgent needs (or something new to try) are allowed to cut short.
-export const INTERRUPTIBLE = new Set<TaskId>(['ducks', 'parrot', 'decorate', 'tea', 'totem', 'salt', 'smoke', 'ore', 'bamboo', 'flint', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'honey', 'bathe', 'salvage', 'turtles', 'tendgull', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
+export const INTERRUPTIBLE = new Set<TaskId>(['milk', 'cheese', 'ducks', 'parrot', 'decorate', 'tea', 'totem', 'salt', 'smoke', 'ore', 'bamboo', 'flint', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'honey', 'bathe', 'salvage', 'turtles', 'tendgull', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
 // Outdoor tasks a sudden shower sends her away from.
 export const RAIN_STOPS = new Set<TaskId>(['salt', 'ore', 'bamboo', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'salvage', 'turtles', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
 // Which task "tries out" each newly made thing.

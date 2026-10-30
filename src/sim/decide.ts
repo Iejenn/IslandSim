@@ -75,7 +75,7 @@ export function decide() {
   if (S.items.snare && S.snareCatch >= 1) add('checksnares', 0.8 + 0.6 * u(n.food) + craving * 0.5 - dark0(night) - wet); // a routine round, like collecting eggs
   // a full trap: fish she doesn't have to wait for
   if (S.trapFish >= 1 && works('trap')) add('checktrap', 0.45 + 0.12 * S.trapFish + 0.8 * u(n.food) + craving * 0.5 - dark0(night) - wet);
-  if (S.stock.fish > 0 || S.stock.veg > 0 || S.stock.honey > 0 || S.stock.fruit > 0) add('eat', 1.9 * u(n.food) * (S.stock.fish > 0 ? 1 : 0.8) + 0.05);
+  if (S.stock.fish > 0 || S.stock.veg > 0 || S.stock.honey > 0 || S.stock.fruit > 0 || S.stock.cheese > 0) add('eat', 1.9 * u(n.food) * (S.stock.fish > 0 ? 1 : 0.8) + 0.05);
   else if (S.stock.raw > 0 && n.food < 15 && !canCook) add('eat', 1.5 * u(n.food));
   add('drink', 2.2 * u(n.water));
   // keeping the fire alive is a priority: it's how she cooks, and it's home
@@ -120,6 +120,9 @@ export function decide() {
   // her life: tea when she's ill, a party on her birthday, totem poles once she's a master carver
   if (ill() && S.stock.herbs >= 1 && S.fire > 0) add('tea', 0.9);
   if (partyTime()) add('party', 1.1);
+  // milking the ewes after lambing, and turning the milk into cheese
+  if (S.min < S.milkUntil && S.stock.milk < 6) add('milk', 0.68 + 0.3 * S.taste.animals - dark - wet);
+  if (S.items.press && S.stock.milk >= 2 && S.stock.cheese < 6) add('cheese', 0.5 + 0.2 * S.taste.animals - dark);
   // her animal friends: feeding the ducks, winning over the parrot (friends.ts)
   if (S.ducks >= 2 && !night) add('ducks', 0.25 + 0.3 * S.taste.animals + 0.4 * u(n.company) - wet);
   if (S.parrot.state === 'wild' && !night && n.food > 30) add('parrot', 0.45 + 0.35 * S.taste.animals + 0.2 * S.taste.adventure - wet);
