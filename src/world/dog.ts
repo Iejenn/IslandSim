@@ -6,9 +6,9 @@
 // hot afternoons and bark at the waves. It lies down beside her when she sits,
 // bounds around her when they play, and curls up by the fire at night.
 import { BoxGeometry, ConeGeometry, Group, SphereGeometry, type Object3D, type Scene } from 'three';
-import { DOCK_START, FIRE, FOREST, height, islandR, POND_R, SP, V } from '../sim/island';
-import { route } from '../sim/pathing';
-import { surfaceY } from '../sim/plans';
+import { DOCK, DOCK_START, FIRE, FOREST, height, islandR, POND_R, SP, V } from '../sim/island';
+import { outsideObstacles, route } from '../sim/pathing';
+import { onDock, surfaceY } from '../sim/plans';
 import type { SimState } from '../sim/state';
 import { seaLevel } from '../sim/tide';
 import { pickable } from './inspect';
@@ -25,7 +25,7 @@ const DOING: Record<Act, string> = {
 /** Barks for the sound to pick up (n goes up by one per woof). */
 export const dogBarks = { n: 0, x: 0, z: 0 };
 /** What the dog's up to (for the dev console and tests). */
-export const dogNow = { doing: '' };
+export const dogNow = { doing: '', pos: null as null | { x: number; y: number; z: number } };
 
 export function createDog(scene: Scene) {
   const dog = new Group(), body = new Group();
@@ -54,6 +54,7 @@ export function createDog(scene: Scene) {
   dog.add(body);
   dog.visible = false;
   scene.add(dog);
+  dogNow.pos = dog.position; // (for tests and the dev console)
 
   // the crab it plays with (its own, scuttling about on the beach)
   const crab = new Group();
@@ -196,6 +197,18 @@ export function createDog(scene: Scene) {
         if (act === 'sniff') { nudge -= gdt; if (nudge <= 0) { nudge = 2.5; const p = near(spot.x, spot.z, 1.2); if (p) { spot.x = p.x; spot.z = p.z; } } }
       }
     }
+    if (d.state === 'friend' && !S.sailing && S.task?.id !== 'play') {
+      if (onDock(her.position)) {
+        // on the dock: lie down on the planks just behind her (beside her would be over the water)
+        target.x = her.position.x - DOCK.dir.x * 0.9; target.z = her.position.z - DOCK.dir.z * 0.9;
+        // (and get there along the dock, not by swimming: to its start first)
+        if (!onDock(dog.position) && Math.hypot(DOCK_START.x - dog.position.x, DOCK_START.z - dog.position.z) > 0.6) { target.x = DOCK_START.x; target.z = DOCK_START.z; }
+      } else {
+        // never stop inside the fire ring, a building or a post: just beside it instead
+        const t2 = outsideObstacles(target);
+        target.x = t2.x; target.z = t2.z;
+      }
+    }
     const dist = Math.hypot(target.x - dog.position.x, target.z - dog.position.z);
     repath -= dt;
     if (repath <= 0) {
@@ -212,7 +225,7 @@ export function createDog(scene: Scene) {
       if (dist > 0.3 || playing) dog.rotation.y = Math.atan2(dx, dz);
     }
     const arrived = dist < 0.3;
-    if (arrived && act === 'beside') dog.rotation.y = her.rotation.y; // settled beside her, facing the same way
+    if (arrived && (act === 'beside' || onDock(her.position))) dog.rotation.y = her.rotation.y; // settled beside (or behind) her, facing the same way
     if (arrived && act === 'fire') dog.rotation.y = Math.atan2(FIRE.x - dog.position.x, FIRE.z - dog.position.z) + 1.4;
     // (in the sea it swims, head and back above the water)
     dog.position.y = Math.max(surfaceY(dog.position.x, dog.position.z), seaLevel() - 0.28);

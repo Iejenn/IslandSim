@@ -2,6 +2,7 @@
 // Every update that ships adds an entry at the top with the next version
 // (minor bump for content, patch bump for small fixes); VERSION follows it.
 export const UPDATES: { version: string; title: string; text: string }[] = [
+  { version: '1.8.1', title: 'Dog fixes', text: 'The dog no longer stands in the fire, and when she fishes from the dock it lies down on the planks behind her instead of in the water.' },
   { version: '1.8', title: 'Animal lovers', text: 'A barn, a duck house and a dovecote, milking her ewes and making cheese, a new Animal care skill (master it to become a friend of all creatures), a photo mode under the gear, and pausing now freezes the animals too.' },
   { version: '1.7', title: 'Animal friends', text: 'She names her hens and sheep (one hen becomes her shadow), ducks raise ducklings on the pond, a wild parrot can be won over and learns her words, her dog fetches sticks from the sea and brings her little gifts, and the sea gives up new kinds of fish.' },
   { version: '1.6', title: 'Life & mastery', text: 'She wakes up in a mood that colours her day, catches the odd cold (herbal tea from the garden helps), celebrates her birthday and her years on the island, becomes known for what she does best (a master carver, an island angler, a green thumb…), and decorates her camp with things that suit her.' },
