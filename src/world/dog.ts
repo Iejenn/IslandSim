@@ -6,6 +6,7 @@ import { BoxGeometry, ConeGeometry, Group, type Object3D, type Scene } from 'thr
 import { DOCK_START } from '../sim/island';
 import { surfaceY } from '../sim/plans';
 import type { SimState } from '../sim/state';
+import { pickable } from './inspect';
 import { mat, mesh } from './materials';
 
 const fur = mat('#C99A5B'), dark = mat('#5A3E28');
@@ -37,6 +38,9 @@ export function createDog(scene: Scene) {
   dog.add(body);
   dog.visible = false;
   scene.add(dog);
+  pickable(dog, S => S.dog.state === 'friend'
+    ? { title: S.dog.name, lines: [S.dog.since ? `Her friend since day ${S.dog.since}` : 'Her best friend', 'Follows her everywhere'] }
+    : { title: 'A stray dog', lines: [S.dog.trust > 0.5 ? 'Warming up to her' : 'Still wary of her'] });
 
   let wanderAngle = 0, wanderT = 0;
   const target = { x: 0, z: 0 };

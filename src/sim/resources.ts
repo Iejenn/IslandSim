@@ -32,10 +32,13 @@ export function updateResources(dm: number) {
     S.snareCatch += caught;
     S.rabbits -= caught;
   }
+  seedForest(days);
+  // the tide takes her sandcastle within the day
+  if (S.sandcastle && S.min - S.sandcastle.at > 18 * 60) S.sandcastle = null;
   for (const t of S.trees) {
     if (t.state !== 'sapling') continue;
     t.growth += days / SAPLING_DAYS;
-    if (t.growth >= 1) { t.state = 'tree'; t.growth = 1; log('A sapling she planted has grown into a tree.'); }
+    if (t.growth >= 1) { t.state = 'tree'; t.growth = 1; if (t.planted) log('A sapling she planted has grown into a tree.'); }
   }
   const keeps = FISH_KEEPS_MIN * (S.items.pots ? 2.5 : 1); // sealed clay pots keep food much longer
   // the beehive fills with honey, except in winter
@@ -66,6 +69,22 @@ export function updateResources(dm: number) {
 export function addMeat(n: number) {
   if (S.stock.meat === 0) S.meatSince = S.min;
   S.stock.meat += n;
+}
+
+/**
+ * The forest lives on its own: old stumps sometimes sprout again, and open
+ * ground next to standing trees seeds itself, so where she doesn't chop, the
+ * forest slowly creeps out towards her camp (never in winter).
+ */
+function seedForest(days: number) {
+  if (season() === 'winter') return;
+  const rate = season() === 'spring' ? 2 : 1;
+  S.trees.forEach((t, i) => {
+    if (t.state === 'stump' && Math.random() < days * 0.02 * rate) { S.trees[i] = { state: 'sapling', growth: 0, planted: 0 }; return; }
+    if (t.state !== 'empty') return;
+    const nearTrees = S.trees.filter((o, j) => o.state === 'tree' && dist(FOREST[j].pos, FOREST[i].pos) < 4.5).length;
+    if (nearTrees && Math.random() < days * 0.012 * rate * Math.min(3, nearTrees)) S.trees[i] = { state: 'sapling', growth: 0, planted: 0 };
+  });
 }
 
 /** Index of the nearest forest tree in a given state (or -1). */

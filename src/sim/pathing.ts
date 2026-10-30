@@ -29,7 +29,7 @@ function rebuild() {
   const c = (p: { x: number; z: number }, r: number) => circles.push({ x: p.x, z: p.z, r });
   const done = (k: keyof typeof S.projects) => S.projects[k].done;
   c(FIRE, done('hearth') ? 1.2 : 0.8);
-  S.trees.forEach((t, i) => { if (t.state !== 'sapling') c(FOREST[i].pos, t.state === 'tree' ? 0.3 : 0.22); });
+  S.trees.forEach((t, i) => { if (t.state === 'tree' || t.state === 'stump') c(FOREST[i].pos, t.state === 'tree' ? 0.3 : 0.22); });
   S.boulders.forEach((left, i) => { if (left > 0) c(BOULDERS[i].pos, 0.75 * (0.45 + 0.55 * left / 8) + 0.05); });
   c(WOODPILE_P, 0.55); c(SP, 1.35); c(WARREN_P, 1.2);
   if (S.items.drum) c(DRUM_P, 0.3);

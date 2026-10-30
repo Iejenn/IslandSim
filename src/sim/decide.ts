@@ -7,14 +7,14 @@ import { wouldBeCutShort } from './needs';
 import { nextToHerd, sheepToShear } from './animals';
 import { canWork, damaged, FIREWOOD_RESERVE, missing, PLANS, REPAIRABLE, works } from './plans';
 import { standingTrees } from './resources';
-import { hour, isNight, S, tr, type TaskId } from './state';
+import { dayNum, hour, isNight, S, tr, type TaskId } from './state';
 import { activityBias } from './taste';
 import { injured } from './events';
 import { fx, season } from './seasons';
 import { catchChance as gearCatch, CURIOUS_TASK, sleepShift, startTask, T } from './tasks';
 
 // Hobbies her memories can make more (or less) appealing.
-const HOBBIES = new Set<TaskId>(['bathe', 'turtles', 'mushrooms', 'hunt', 'checktrap', 'fish', 'explore', 'talk', 'relax', 'drum', 'write', 'chop', 'mine', 'build', 'craft', 'cook', 'sail', 'stargaze', 'watch', 'plant', 'harvest', 'play', 'swim']);
+const HOBBIES = new Set<TaskId>(['cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'bathe', 'turtles', 'mushrooms', 'hunt', 'checktrap', 'fish', 'explore', 'talk', 'relax', 'drum', 'write', 'chop', 'mine', 'build', 'craft', 'cook', 'sail', 'stargaze', 'watch', 'plant', 'harvest', 'play', 'swim']);
 // What a sprained ankle keeps her from (mostly).
 const STRENUOUS = new Set<TaskId>(['chop', 'mine', 'build', 'hunt', 'swim', 'play', 'explore', 'sail', 'dig', 'salvage', 'herd', 'stones', 'repair', 'clay']);
 // Chores she doesn't mind doing twice in a row.
@@ -123,8 +123,8 @@ export function decide() {
 
   /* making things: crafts happen by the fire (fine after dark if it's lit), building needs daylight */
   if (canWork() && S.goal) {
-    if (PLANS[S.goal].kind === 'craft') add('craft', 0.7 + busy - (night && !fireLit ? 0.6 : 0) - wet);
-    else add('build', 0.68 + busy - (night ? 0.7 : 0) - wet);
+    if (PLANS[S.goal].kind === 'craft') add('craft', 0.76 + busy - (night && !fireLit ? 0.6 : 0) - wet);
+    else add('build', 0.74 + busy - (night ? 0.7 : 0) - wet);
   }
 
   /* garden */
@@ -143,6 +143,14 @@ export function decide() {
   if (S.projects.canoe.done && works('dock') && !night && !rain && S.quirk !== 'seasick') add('sail', 0.9 * u(n.fun) + 0.2 + (tr('curious') ? 0.15 : 0));
   if (!night && !rain && season() !== 'winter') add('swim', S.weather.hot ? 0.55 + 0.7 * u(n.fun) : 0.5 * u(n.fun) - 0.1 - fx().cold * 0.3);
   /* the dog: win its trust, then play */
+  /* little joys */
+  const bloom = season() === 'spring' || season() === 'summer';
+  // (a steady little pull like drumming or storytelling has, so they get their turn)
+  if (!night) add('cairn', 0.7 * u(n.fun) + 0.3 - wet);
+  if (!night && !S.sandcastle) add('sandcastle', 0.75 * u(n.fun) + 0.3 + (season() === 'summer' ? 0.1 : 0) - 0.3 * fx().cold - wet);
+  if (!night && !rain) add('clouds', 0.75 * u(n.fun) + 0.3 * u(n.energy) + 0.3 - 0.3 * fx().cold);
+  if (bloom && dayNum() >= 3 && S.min - S.bouquetAt > 2 * 1440 && !night) add('bouquet', 0.55 * u(n.fun) + 0.45 - wet);
+  if (S.items.axe || S.washedUp === 'knife') add('whittle', 0.85 * u(n.fun) + 0.2 - (night && !fireLit ? 0.6 : 0) - wet * 0.5);
   if (S.dog.state === 'wild') add('befriend', 0.45 + 0.7 * u(n.company) + (tr('social') ? 0.2 : 0) - dark - wet);
   if (S.dog.state === 'friend') add('play', 0.9 * u(n.fun) + 0.6 * u(n.company) + 0.2 - dark - wet);
   if (works('lookout') && !rain) {

@@ -2,7 +2,8 @@
 // tree has a full tree, a stump and a sapling model; the sim's state picks
 // which one shows. Boulders shrink as she breaks stones off them.
 import { CylinderGeometry, DodecahedronGeometry, Group, IcosahedronGeometry, type Mesh, type Scene } from 'three';
-import { BOULDERS, FOREST, SCREE_P, TREEHOUSE_TREE } from '../sim/island';
+import { BOULDERS, FOREST, FOREST_START, SCREE_P, TREEHOUSE_TREE } from '../sim/island';
+import { pickable } from './inspect';
 import type { SimState } from '../sim/state';
 import { M, mat, mesh } from './materials';
 import { v3 } from './stage';
@@ -30,6 +31,15 @@ export function createForest(scene: Scene) {
       g.rotation.y = yaw;
       scene.add(g);
     }
+    // tap to look: whose tree is it?
+    const story = (S: SimState) => {
+      const t = S.trees[i];
+      if (i === TREEHOUSE_TREE && S.projects.treehouse.started) return null; // (the treehouse has its own card)
+      if (t.state === 'stump') return { title: 'A stump', lines: ['She felled this tree', 'It may sprout again, or she could plant a sapling here'] };
+      const planted = t.planted ? `She planted it on day ${t.planted}` : i >= FOREST_START ? 'It seeded itself from the forest nearby' : 'One of the island’s old trees';
+      return { title: t.state === 'sapling' ? 'A young tree' : 'A tree', lines: [planted, ...(t.state === 'sapling' ? [`About ${Math.round(t.growth * 100)}% grown`] : [])] };
+    };
+    for (const g of [full, stump, sapling]) pickable(g, story);
     return { full, stump, sapling, s };
   });
 
@@ -38,6 +48,7 @@ export function createForest(scene: Scene) {
     b.position.copy(v3(pos));
     b.rotation.set(i * 0.7, i * 1.3, i * 0.4);
     scene.add(b);
+    pickable(b, S => ({ title: 'A boulder', lines: [S.boulders[i] >= 8 ? 'Untouched' : `About ${S.boulders[i]} stones left in it`] }));
     return b;
   });
 

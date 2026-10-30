@@ -2,7 +2,7 @@
 // inspect and could later be saved/loaded. No Three.js or DOM in here: the
 // sim talks to the outside world only through `hooks`, which main.ts wires up.
 import type { AnimKey } from '../config/animations';
-import { BOULDERS, BUSHES, CHICKEN_HOMES, copy, FOREST, PLOTS, SHEEP_HOMES, START, type Pt } from './island';
+import { BOULDERS, BUSHES, CHICKEN_HOMES, copy, FOREST, FOREST_START, PLOTS, SHEEP_HOMES, START, type Pt } from './island';
 import { rollEvents } from './events';
 import { rollDream, rollTaste } from './taste';
 import { clamp, mergeInto, pick, rand } from './util';
@@ -20,7 +20,8 @@ export type CraftKey = 'axe' | 'pick' | 'rod' | 'spear' | 'snare' | 'basket' | '
   | 'chair' | 'table' | 'bed' | 'shelf' | 'rocker' // furniture, once her crafting is good enough
   | 'realbed' | 'sofa' | 'kitchen' // for the lodge's rooms
   | 'blanket' | 'sweater' // from her sheep's wool
-  | 'pots' | 'jug' | 'tiles'; // fired in the kiln
+  | 'pots' | 'jug' | 'tiles' // fired in the kiln
+  | 'lanterns'; // along her paths
 /** Things she builds over several sessions on site. */
 export type ProjectKey = 'garden' | 'rack' | 'dock' | 'hut' | 'hearth' | 'lookout' | 'canoe' | 'lodge' | 'fence' | 'coop'
   | 'trap' | 'barrel' | 'treehouse' // other ways to get food, water and a home
@@ -35,6 +36,7 @@ export type TaskId =
   | 'plant' | 'water' | 'harvest' | 'drum' | 'write' | 'sail' | 'stargaze' | 'watch'
   | 'befriend' | 'play' | 'repair' | 'swim' | 'herd' | 'shear' | 'collect' | 'checktrap' | 'hunt' | 'checksnares' | 'mushrooms'
   | 'clay' | 'salvage' | 'turtles' | 'tendgull' | 'dig' | 'honey' | 'bathe'
+  | 'cairn' | 'sandcastle' | 'clouds' | 'bouquet' | 'whittle'
   | 'celebrate' | 'stand';
 
 /* ---------- task steps ---------- */
@@ -148,7 +150,8 @@ function createState() {
     rawSince: 0, // game minute the oldest uncooked fish was caught
     meatSince: 0, // …and the oldest uncooked rabbit
     lastMeal: 0, // game minute of her last cooked meal
-    trees: FOREST.map(() => ({ state: 'tree' as 'tree' | 'stump' | 'sapling', growth: 1 })),
+    // (empty: open ground at the forest's edge where a tree may seed itself; planted: day she planted it)
+    trees: FOREST.map((_, i) => ({ state: (i < FOREST_START ? 'tree' : 'empty') as 'tree' | 'stump' | 'sapling' | 'empty', growth: i < FOREST_START ? 1 : 0, planted: 0 })),
     boulders: BOULDERS.map(() => 8), // stones left in each boulder
     deadwood: 6, // fallen branches lying around the forest
     loose: 8, // loose stones lying around the rocky area
@@ -186,12 +189,16 @@ function createState() {
     stats: { hunted: 0, freed: 0, herded: 0, eggs: 0, shorn: 0, forages: 0, fishTrips: 0, fishCaught: 0, nightsInShelter: 0, waterings: 0, harvests: 0, rainsSeen: 0, writeMin: 0, treesFelled: 0, stonesMined: 0, crafted: 0, meals: 0, storms: 0, repairs: 0 },
     // highlights of the current day, summarised in the diary at dawn
     today: [] as string[],
-    weather: { raining: false, until: 0, storm: false, hot: false },
+    weather: { raining: false, until: 0, storm: false, hot: false, clearedAt: -9999 },
     // chickens and sheep roam wild until she fences her home and herds them in
     // not every island has the same flock: some homes stay empty ("away")
     chickens: CHICKEN_HOMES.map((_, i) => ({ penned: false, away: i >= 2 && Math.random() < 0.4 })),
     sheep: SHEEP_HOMES.map((_, i) => ({ penned: false, wool: 0, away: i >= 1 && Math.random() < 0.4 })), // wool: 0…1, ready to shear at 1
     coopEggs: 0, // eggs waiting in the coop
+    // animals born on the island: young ones (chicks, lambs) grow up into extra hens and sheep
+    young: [] as { kind: 'chick' | 'lamb'; born: number }[],
+    bredHens: 0,
+    bredSheep: [] as { wool: number }[],
     trapFish: 0, // fish waiting in her fish trap
     barrel: 0, // drinks of rainwater in the barrel
     rabbits: Math.round(rand(4, 12)), // wild rabbits around the warren deep in the forest (they breed back)
@@ -206,12 +213,18 @@ function createState() {
     turtle: { state: 'none' as 'none' | 'nest' | 'hatched', a: 0, hatchAt: 0, visits: 0 },
     gull: { state: 'none' as 'none' | 'hurt' | 'pet' | 'gone', care: 0 },
     droughtUntil: 0, // game minute a drought ends
+    // little things she makes for the joy of it (and leaves lying around)
+    cairns: [] as number[], // beach angles of the stone stacks she's built
+    sandcastle: null as { a: number; at: number } | null, // until the tide takes it
+    bouquetAt: 0, // game minute she last put fresh flowers on the table (0 = none)
+    carvings: 0, // little wooden animals she's whittled
+    madeAt: {} as Partial<Record<PlanKey, number>>, // day each thing was first made or built (for the info cards)
     wear: {} as Record<string, number>, // trodden paths: how worn each grid cell is, 0…1 (see paths.ts)
     wearVersion: 0, // bumped whenever wear changes, so the world knows to redraw
     injuredUntil: 0, // game minute her sprained ankle has healed
     treasure: { found: 0, spots: [] as number[] }, // spots: beach angles still to dig (0 = none)
     // a stray dog that may wash ashore; she has to win its trust
-    dog: { state: 'none' as 'none' | 'wild' | 'friend', trust: 0, name: '', home: copy(START) },
+    dog: { state: 'none' as 'none' | 'wild' | 'friend', trust: 0, name: '', home: copy(START), since: 0 },
     sailing: false, // in the boat
 
     // her body, as far as the sim is concerned

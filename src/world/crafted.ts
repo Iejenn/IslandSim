@@ -3,7 +3,9 @@
 // Everything is built up front (hidden) and shown once the sim says she has it.
 import { BoxGeometry, ConeGeometry, CylinderGeometry, Group, SphereGeometry, TorusGeometry, type Object3D, type Scene } from 'three';
 import { KILN_P, BURROWS, WARREN_P, CHAIR_P, FIRE, LODGE_YAW, lodgeLocal, GARDEN_P, ground, HAMMOCK_P, JOURNAL_P, DRUM_P, LOOKOUT_DECK, LOOKOUT_P, SH, SHELF_P, TABLE_P, WOODPILE_P, yawTo } from '../sim/island';
+import { PLANS } from '../sim/plans';
 import type { CraftKey, SimState } from '../sim/state';
+import { cap, onDay, pickable } from './inspect';
 import { M, mat, mesh } from './materials';
 import { v3 } from './stage';
 
@@ -221,6 +223,9 @@ export function createCrafted(scene: Scene) {
       g.add(mesh(new BoxGeometry(1.2, 0.051, 0.12), M.blanketStripe, 0, 0, 0.3)); // stripe
       return place(g, SH.x, SH.z, yawTo(SH, FIRE));
     },
+    lanterns() {
+      return place(new Group(), 0, 0); // (they stand along her paths: see world/joys.ts)
+    },
     sweater() {
       return place(new Group(), 0, 0); // she wears it; nothing to show around camp
     },
@@ -251,6 +256,11 @@ export function createCrafted(scene: Scene) {
   const models = {} as Record<CraftKey, Object3D>;
   for (const k of Object.keys(BUILD) as CraftKey[]) models[k] = BUILD[k]();
   shells.forEach(sh => models.shelf.add(sh));
+  // tap to look: what it is, when she made it, and what she said
+  for (const k of Object.keys(models) as CraftKey[]) pickable(models[k], S => ({
+    title: cap(PLANS[k].name),
+    lines: [onDay(S.madeAt[k], 'Made'), ...(k === 'shelf' && S.stock.shells ? [`${S.stock.shells} shells on display`] : []), `“${PLANS[k].done}”`],
+  }));
 
   /**
    * Show what she owns. Tools in her hands (see character/heldTools.ts) are

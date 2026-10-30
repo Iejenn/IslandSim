@@ -7,6 +7,7 @@ import {
 } from 'three';
 import { BUSHES, FIRE, FISH_A, SEATS, SH, SP, V, clearOf, ground, pointAt, yawTo, type Pt } from '../sim/island';
 import { rand } from '../sim/util';
+import { pickable } from './inspect';
 import { flameMat, flameMat2, M, mesh } from './materials';
 import { FIRE_LIGHT_SCALE, type Campfire } from './sky';
 import { v3 } from './stage';
@@ -106,6 +107,7 @@ export function createProps(scene: Scene) {
   const pond = mesh(new CylinderGeometry(1.15, 1.2, 0.06, 10), M.spring, SP.x, SP.y + 0.04, SP.z, false);
   {
     scene.add(pond);
+    pickable(pond, () => ({ title: 'The pond', lines: ['Her fresh water', 'Fed by a little spring'] }));
     for (let i = 0; i < 7; i++) {
       const a = i / 7 * Math.PI * 2 + 0.3;
       rock(V(SP.x + Math.cos(a) * 1.35, SP.z + Math.sin(a) * 1.35), rand(0.18, 0.32));
@@ -127,6 +129,7 @@ export function createProps(scene: Scene) {
     }
     g.position.copy(v3(pos));
     scene.add(g);
+    pickable(g, S => ({ title: 'A berry bush', lines: [S.berries[BUSHES.findIndex(b => b.pos === pos)] ? `${S.berries[BUSHES.findIndex(b => b.pos === pos)]} handfuls of berries` : 'Picked clean for now'] }));
     return meshes;
   });
 

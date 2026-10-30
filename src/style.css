@@ -116,3 +116,10 @@ h2:first-child{margin-top:2px}
   .who h1{font-size:24px}
 }
 @media (prefers-reduced-motion:reduce){.bubble,.m-track i{transition:none}}
+
+/* tap-to-look card: appears next to whatever was tapped */
+.info-card{position:fixed;z-index:6;max-width:240px;background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:var(--ink);border-radius:14px;padding:10px 14px;box-shadow:0 8px 28px rgba(5,20,30,.22);pointer-events:none;animation:info-in .18s ease-out}
+.info-card b{display:block;font-size:15px;margin-bottom:4px}
+.info-card ul{list-style:none;margin:0;padding:0;font-size:13px;line-height:1.45;color:var(--soft)}
+.info-card li:last-child:not(:first-child){font-style:italic}
+@keyframes info-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}

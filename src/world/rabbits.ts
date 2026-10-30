@@ -4,6 +4,7 @@
 import { BoxGeometry, CylinderGeometry, Group, SphereGeometry, type Scene } from 'three';
 import { BURROWS, ground, V, WARREN_P } from '../sim/island';
 import type { SimState } from '../sim/state';
+import { pickable } from './inspect';
 import { mat, mesh } from './materials';
 
 const furs = [mat('#A88B6C'), mat('#8C7258'), mat('#C9B8A0')], tail = mat('#F2EEE6'), hole = mat('#2E2219'), mound = mat('#7C6A4A');
@@ -24,6 +25,7 @@ export function createRabbits(scene: Scene) {
   // the warren: a low earth mound with dark burrow openings
   const m = mesh(new CylinderGeometry(1.0, 1.5, 0.3, 9), mound, WARREN_P.x, WARREN_P.y + 0.05, WARREN_P.z);
   scene.add(m);
+  pickable(m, S => ({ title: 'The rabbit warren', lines: [S.rabbits >= 10 ? 'Lots of rabbits live here' : S.rabbits >= 4 ? 'A few rabbits live here' : 'Hardly any rabbits left'] }));
   for (const b of BURROWS) {
     const h = mesh(new CylinderGeometry(0.22, 0.22, 0.04, 8), hole, b.x, b.y + 0.03, b.z, false);
     scene.add(h);

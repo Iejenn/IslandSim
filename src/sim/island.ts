@@ -253,10 +253,16 @@ export const WARREN_P = ground(pointAt(FOREST_A + 0.08, 0.7));
 export const BURROWS = [0, 2.1, 4.2].map(a => ground(V(WARREN_P.x + Math.cos(a) * 1.6, WARREN_P.z + Math.sin(a) * 1.6)));
 export const WARREN_STAND = standNear(WARREN_P, 4.2); // where she waits, on the camp side of the clearing
 reserve(WARREN_P, ...BURROWS, ...[0.7, 2.8, 4.9].map(a => V(WARREN_P.x + Math.cos(a) * 2.6, WARREN_P.z + Math.sin(a) * 2.6)));
-export const FOREST = scatter(7, 46, FOREST_A - 0.62, FOREST_A + 0.62, 0.32, 0.86, 2.6, 1.9).map(pos => ({ pos, stand: standNear(pos, 0.95) }));
-reserve(...FOREST.map(t => t.pos));
+// The first FOREST_START spots start as trees; the rest are open ground at the
+// forest's edge (towards camp) where trees can seed themselves over time.
+export const FOREST_START = 46;
+const deep = scatter(7, FOREST_START, FOREST_A - 0.62, FOREST_A + 0.62, 0.32, 0.86, 2.6, 1.9);
+reserve(...deep);
+const edge = scatter(23, 24, FOREST_A - 0.75, FOREST_A + 0.75, 0.2, 0.36, 2.6, 2.2);
+export const FOREST = [...deep, ...edge].map(pos => ({ pos, stand: standNear(pos, 0.95) }));
+reserve(...edge);
 // the forest tree closest to camp: the one she'd build a treehouse in (so she never fells it)
-export const TREEHOUSE_TREE = FOREST.reduce((b, t, i) => Math.hypot(t.pos.x, t.pos.z) < Math.hypot(FOREST[b].pos.x, FOREST[b].pos.z) ? i : b, 0);
+export const TREEHOUSE_TREE = FOREST.slice(0, FOREST_START).reduce((b, t, i) => Math.hypot(t.pos.x, t.pos.z) < Math.hypot(FOREST[b].pos.x, FOREST[b].pos.z) ? i : b, 0);
 export const TREEHOUSE_P = FOREST[TREEHOUSE_TREE].pos;
 export const TREEHOUSE_DECK = 2.3; // platform height
 // lying across the deck beside the trunk (not into it)
