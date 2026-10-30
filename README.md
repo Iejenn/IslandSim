@@ -42,6 +42,15 @@ whether a dog ever turns up, what washed ashore with her, her favourite dish
 and a quirk or two (an early riser, a night owl, a collector, seasick…). And
 she's only human: a goal that never gets started may be dropped for a while.
 
+Every island also has its own handful of events on random days: a shipwreck
+to salvage, a turtle nest to guard until the hatchlings run for the sea, a
+hurt seagull to nurse (it may stay), a drought, a landslide in the rocks, a
+treasure map in a bottle, a sprained ankle. There's clay at the pond's edge:
+with a kiln she fires pots (food keeps longer), a water jug, roof tiles that
+storms can't tear off, and a bread oven for pies. And each island allows only
+a couple of rare projects: a beehive, a sundial, a shell mosaic or a
+bathhouse by the pond.
+
 A stray dog may wash ashore and, if she earns its trust, follows her
 everywhere. Storms strip the berry bushes and can damage her buildings until
 she repairs them; on hot days she cools off in the sea. Crabs, gulls and
@@ -99,6 +108,7 @@ src/
     weather.ts     rain showers, storms (with damage) and hot days
     taste.ts       her leanings and dream: what kind of life she tends towards
     seasons.ts     the four seasons and what each changes
+    events.ts      the island's own events (shipwreck, turtles, drought…)
     companion.ts   the stray dog and its trust
     animals.ts     chickens and sheep: laying eggs, growing wool, who to herd next
     memory.ts      what she likes/dislikes and the daily diary recap
@@ -108,7 +118,7 @@ src/
                    sky (lights, day/night, lightning), rain, props, forest &
                    boulders, buildings (incl. the lodge, fence and coop),
                    crafted items & furniture, the dog, livestock, rabbits,
-                   wildlife, seasonal colours
+                   wildlife, seasonal colours, event objects
   character/       loading the model, playing animations, moving the body,
                    tools in her hand
   save.ts          localStorage save/load and the island's layout seed

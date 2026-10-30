@@ -5,12 +5,13 @@ import {
   BoxGeometry, CylinderGeometry, ExtrudeGeometry, TorusGeometry, Group, IcosahedronGeometry, Shape, SphereGeometry,
   type Material, type Mesh, type Object3D, type Scene, ConeGeometry, DodecahedronGeometry,
 } from 'three';
-import { HOUSEBOAT_P, HOUSEBOAT_YAW, BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
+import { BATH_P, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SP, SUNDIAL_P, HOUSEBOAT_P, HOUSEBOAT_YAW, BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
 import type { ProjectKey, SimState } from '../sim/state';
 import { M, mat, mesh } from './materials';
 
 const soil = mat('#6B4A33'), withered = mat('#8A7A4E'), fruitRed = mat('#D9452B', { roughness: 0.5 }), hull = mat('#8A5A34');
 const WATER_Y = 0.12;
+const terracotta = mat('#B8643E'), clayMat = mat('#C47A4E'), honeyMat = mat('#E3A63A', { roughness: 0.5 }), hiveWood = mat('#D9B77A');
 const trapFishMat = mat('#8FB6C4', { roughness: 0.4, metalness: 0.2 }), rainwater = mat('#5FB8C9', { roughness: 0.2 });
 
 export function createBuildings(scene: Scene) {
@@ -334,6 +335,79 @@ export function createBuildings(scene: Scene) {
     return { g, parts };
   })();
 
+  /** A group at a spot, facing the fire, whose parts appear as it's built. */
+  function site(p: { x: number; y: number; z: number }, build: (parts: Object3D[]) => void) {
+    const g = new Group(), parts: Object3D[] = [];
+    at(g, p.x, p.y, p.z, yawTo(p, FIRE));
+    scene.add(g);
+    build(parts);
+    for (const o of parts) { o.visible = false; g.add(o); }
+    return parts;
+  }
+
+  /* kiln: a clay dome on a stone base, with a chimney and a dark mouth */
+  const kiln = site(KILN_P, parts => {
+    parts.push(mesh(new CylinderGeometry(0.8, 0.9, 0.3, 9), M.rock, 0, 0.15, 0));
+    const dome = mesh(new SphereGeometry(0.75, 9, 6, 0, Math.PI * 2, 0, Math.PI / 2), clayMat, 0, 0.3, 0);
+    parts.push(dome);
+    parts.push(mesh(new CylinderGeometry(0.12, 0.15, 0.6, 7), clayMat, 0.2, 1.1, -0.2));
+    parts.push(mesh(new BoxGeometry(0.4, 0.35, 0.1), M.ebony, 0, 0.5, 0.7));
+  });
+  /* bread oven: a smaller dome on a stone table */
+  const oven = site(OVEN_P, parts => {
+    parts.push(mesh(new BoxGeometry(1.1, 0.6, 1.0), M.rock, 0, 0.3, 0));
+    parts.push(mesh(new SphereGeometry(0.5, 9, 6, 0, Math.PI * 2, 0, Math.PI / 2), clayMat, 0, 0.6, 0));
+    parts.push(mesh(new BoxGeometry(0.3, 0.25, 0.1), M.ebony, 0, 0.72, 0.47));
+  });
+  /* beehive: a box on legs with a sloped lid; honey shows at the entrance when it's full */
+  const hiveHoney = mesh(new BoxGeometry(0.3, 0.05, 0.05), honeyMat, 0, 0.62, 0.27);
+  const beehive = site(HIVE_P, parts => {
+    for (const [x, z] of [[-0.25, -0.2], [0.25, -0.2], [-0.25, 0.2], [0.25, 0.2]]) parts.push(mesh(new CylinderGeometry(0.03, 0.03, 0.5, 5), M.log, x, 0.25, z));
+    for (let i = 0; i < 3; i++) parts.push(mesh(new BoxGeometry(0.62, 0.22, 0.5), hiveWood, 0, 0.6 + i * 0.23, 0));
+    const lid = mesh(new BoxGeometry(0.72, 0.06, 0.6), M.wood, 0, 1.33, 0);
+    lid.rotation.x = 0.12;
+    parts.push(lid);
+  });
+  beehive[0].parent!.add(hiveHoney);
+  hiveHoney.visible = false;
+  /* sundial: a round stone face on a plinth, with a slanted gnomon */
+  const sundial = site(SUNDIAL_P, parts => {
+    parts.push(mesh(new CylinderGeometry(0.22, 0.3, 0.7, 7), M.rock, 0, 0.35, 0));
+    parts.push(mesh(new CylinderGeometry(0.5, 0.5, 0.06, 14), M.rock, 0, 0.73, 0));
+    const gnomon = mesh(new BoxGeometry(0.03, 0.35, 0.4), M.log, 0, 0.88, 0);
+    gnomon.rotation.x = -0.6;
+    parts.push(gnomon);
+  });
+  /* shell mosaic: a low stone slab set with rings of coloured shells */
+  const mosaic = site(MOSAIC_P, parts => {
+    parts.push(mesh(new BoxGeometry(1.6, 0.12, 1.6), M.rock, 0, 0.06, 0));
+    const cols = [mat('#F2D8C9'), mat('#E9B8A0'), mat('#3F79A8'), mat('#F5EFE0'), mat('#D2304A')];
+    for (let ring = 0; ring < 3; ring++) {
+      const n = 6 + ring * 6, r = 0.15 + ring * 0.22;
+      const g = new Group();
+      for (let i = 0; i < n; i++) {
+        const a = i / n * Math.PI * 2;
+        g.add(mesh(new SphereGeometry(0.06, 5, 3), cols[(ring * 2 + i) % cols.length], Math.cos(a) * r, 0.13, Math.sin(a) * r, false));
+      }
+      parts.push(g);
+    }
+  });
+  /* bathhouse: a round stone tub of steaming water by the pond, behind a wooden screen */
+  const bathWater = mesh(new CylinderGeometry(0.62, 0.62, 0.04, 12), M.spring, 0, 0.42, 0, false);
+  const bathhouse = (() => {
+    const parts: Object3D[] = [], g = new Group();
+    at(g, BATH_P.x, BATH_P.y, BATH_P.z, yawTo(BATH_P, SP));
+    scene.add(g);
+    parts.push(mesh(new CylinderGeometry(0.8, 0.85, 0.45, 12, 1, true), M.rock, 0, 0.22, 0));
+    parts.push(mesh(new CylinderGeometry(0.8, 0.8, 0.05, 12), M.rock, 0, 0.02, 0));
+    parts.push(bathWater);
+    for (const x of [-0.9, 0, 0.9]) parts.push(mesh(new CylinderGeometry(0.05, 0.05, 1.5, 5), M.log, x, 0.75, -1.0));
+    parts.push(mesh(new BoxGeometry(1.9, 1.1, 0.06), M.wood, 0, 0.85, -1.0)); // screen
+    parts.push(mesh(new CylinderGeometry(0.25, 0.3, 0.25, 7), clayMat, 1.05, 0.12, 0.2)); // little stove under the tub
+    for (const o of parts) { o.visible = false; g.add(o); }
+    return parts;
+  })();
+
   /* woodpile: logs stacked in a little pyramid, one per log in stock */
   const woodpile = (() => {
     const g = new Group();
@@ -375,7 +449,7 @@ export function createBuildings(scene: Scene) {
     const n = started ? Math.max(1, Math.ceil(progress * (damaged ? 0.7 : 1) * parts.length)) : 0;
     parts.forEach((p, i) => { p.visible = i < n; });
   };
-  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop, trap: trap.parts, barrel: barrel.parts, treehouse, houseboat: houseboat.parts };
+  const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop, trap: trap.parts, barrel: barrel.parts, treehouse, houseboat: houseboat.parts, kiln, oven, beehive, sundial, mosaic, bathhouse };
   /** Is this world point inside the lodge's walls? */
   const inLodge = (x: number, z: number) => {
     const dx = x - LODGE_P.x, dz = z - LODGE_P.z, c = Math.cos(LODGE_YAW), s = Math.sin(LODGE_YAW);
@@ -393,6 +467,10 @@ export function createBuildings(scene: Scene) {
     if (S.projects.lodge.done) for (const p of hut) p.visible = false;
     if (S.projects.lodge.done && inLodge(her.position.x, her.position.z)) for (const r of lodge.roofs) r.visible = false;
     if (S.items.realbed) lodge.bedroll.visible = false;
+    // fired roof tiles on the lodge
+    for (const r of lodge.roofs.slice(0, 2)) (r as Mesh).material = S.items.tiles ? terracotta : M.thatch;
+    hiveHoney.visible = S.projects.beehive.done && S.hive >= 1;
+    bathWater.position.y = 0.42 + 0.01 * Math.sin(t * 2);
     if (S.sailing) {
       canoe.g.position.set(her.position.x, WATER_Y, her.position.z);
       canoe.g.rotation.y = her.rotation.y;

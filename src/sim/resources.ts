@@ -37,7 +37,10 @@ export function updateResources(dm: number) {
     t.growth += days / SAPLING_DAYS;
     if (t.growth >= 1) { t.state = 'tree'; t.growth = 1; log('A sapling she planted has grown into a tree.'); }
   }
-  if (S.stock.raw > 0 && S.min - S.rawSince > FISH_KEEPS_MIN) {
+  const keeps = FISH_KEEPS_MIN * (S.items.pots ? 2.5 : 1); // sealed clay pots keep food much longer
+  // the beehive fills with honey, except in winter
+  if (works('beehive')) S.hive = Math.min(4, S.hive + days * (season() === 'winter' ? 0 : 0.6));
+  if (S.stock.raw > 0 && S.min - S.rawSince > keeps) {
     if (S.projects.rack.done && !S.projects.rack.damaged) {
       S.stock.fish = Math.min(8, S.stock.fish + S.stock.raw);
       log('She hung the fish she couldn’t cook on the rack to dry.');
@@ -47,7 +50,7 @@ export function updateResources(dm: number) {
     }
     S.stock.raw = 0;
   }
-  if (S.stock.meat > 0 && S.min - S.meatSince > FISH_KEEPS_MIN) {
+  if (S.stock.meat > 0 && S.min - S.meatSince > keeps) {
     if (S.projects.rack.done && !S.projects.rack.damaged) {
       S.stock.fish = Math.min(8, S.stock.fish + S.stock.meat);
       log('She hung the rabbit meat she couldn’t cook on the rack to dry.');

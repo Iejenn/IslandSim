@@ -9,11 +9,14 @@ import { canWork, damaged, FIREWOOD_RESERVE, missing, PLANS, REPAIRABLE, works }
 import { standingTrees } from './resources';
 import { hour, isNight, S, tr, type TaskId } from './state';
 import { activityBias } from './taste';
+import { injured } from './events';
 import { fx, season } from './seasons';
 import { catchChance as gearCatch, CURIOUS_TASK, sleepShift, startTask, T } from './tasks';
 
 // Hobbies her memories can make more (or less) appealing.
-const HOBBIES = new Set<TaskId>(['mushrooms', 'hunt', 'checktrap', 'fish', 'explore', 'talk', 'relax', 'drum', 'write', 'chop', 'mine', 'build', 'craft', 'cook', 'sail', 'stargaze', 'watch', 'plant', 'harvest', 'play', 'swim']);
+const HOBBIES = new Set<TaskId>(['bathe', 'turtles', 'mushrooms', 'hunt', 'checktrap', 'fish', 'explore', 'talk', 'relax', 'drum', 'write', 'chop', 'mine', 'build', 'craft', 'cook', 'sail', 'stargaze', 'watch', 'plant', 'harvest', 'play', 'swim']);
+// What a sprained ankle keeps her from (mostly).
+const STRENUOUS = new Set<TaskId>(['chop', 'mine', 'build', 'hunt', 'swim', 'play', 'explore', 'sail', 'dig', 'salvage', 'herd', 'stones', 'repair', 'clay']);
 // Chores she doesn't mind doing twice in a row.
 const REPEATABLE = new Set<TaskId>(['drink', 'forage', 'sleep', 'fish', 'build', 'craft', 'chop', 'sticks', 'fibre', 'stones', 'mine', 'eat', 'cook', 'wood', 'repair', 'befriend']);
 
@@ -33,6 +36,7 @@ export function decide() {
       + (S.curious.some(k => CURIOUS_TASK[k] === id) ? 0.8 : 0) // new things get tried first
       + (HOBBIES.has(id) ? 0.12 * liking(id) : 0) // things she's come to love (or dread)
       + activityBias(id) // what kind of life she leans towards (taste.ts)
+      - (injured() && STRENUOUS.has(id) ? 0.6 : 0) // resting a sprained ankle
       // Never start something a critical need would cancel at once. (Before this,
       // a starving castaway at night could loop: pick a hobby → interrupted → pick it again…)
       - (wouldBeCutShort(id) ? 5 : 0),
@@ -55,8 +59,9 @@ export function decide() {
   add('fish', 1.4 * u(n.food) * catchChance * (fishUseful ? 1 : 0.3) * haveCatch + (S.items.rod || S.items.spear ? 0.05 : 0) + 0.2 * u(n.fun)
     + craving * haveCatch + (S.projects.dock.done ? 0.1 : 0) - (night ? 0.6 : 0) + (tr('hardworking') ? 0.05 : 0) - wet * 0.7);
   const canCook = fireLit || (S.items.kitchen && S.projects.lodge.done && S.stock.wood > 0);
-  const hasMeal = uncooked > 0 || S.stock.veg >= 2 || S.stock.eggs >= 2;
-  if (hasMeal && canCook) add('cook', 1.8 * u(n.food) + (uncooked > 0 ? 0.45 : 0.25));
+  const pie = works('oven') && S.stock.veg > 0 && (S.stock.eggs > 0 || uncooked > 0) && S.stock.wood > 0;
+  const hasMeal = uncooked > 0 || S.stock.veg >= 2 || S.stock.eggs >= 2 || pie;
+  if (hasMeal && (canCook || pie)) add('cook', 1.8 * u(n.food) + (uncooked > 0 ? 0.45 : 0.25));
   // autumn: mushrooms under the forest trees
   if (season() === 'autumn' && S.mushrooms >= 1 && !night) add('mushrooms', 1.2 * u(n.food) + 0.25 - wet);
   // rabbits: a long walk into the deep forest with her spear, or snares she checks now and then
@@ -64,7 +69,7 @@ export function decide() {
   if (S.items.snare && S.snareCatch >= 1) add('checksnares', 0.8 + 0.6 * u(n.food) + craving * 0.5 - dark0(night) - wet); // a routine round, like collecting eggs
   // a full trap: fish she doesn't have to wait for
   if (S.trapFish >= 1 && works('trap')) add('checktrap', 0.45 + 0.12 * S.trapFish + 0.8 * u(n.food) + craving * 0.5 - dark0(night) - wet);
-  if (S.stock.fish > 0 || S.stock.veg > 0) add('eat', 1.9 * u(n.food) * (S.stock.fish > 0 ? 1 : 0.8) + 0.05);
+  if (S.stock.fish > 0 || S.stock.veg > 0 || S.stock.honey > 0) add('eat', 1.9 * u(n.food) * (S.stock.fish > 0 ? 1 : 0.8) + 0.05);
   else if (S.stock.raw > 0 && n.food < 15 && !canCook) add('eat', 1.5 * u(n.food));
   add('drink', 2.2 * u(n.water));
   // keeping the fire alive is a priority: it's how she cooks, and it's home
@@ -99,6 +104,15 @@ export function decide() {
     if (S.deadwood >= 1) add('sticks', base - 0.06 - (canChop ? 0.15 : 0));
   }
   if (need.fibre > 0) add('fibre', 0.6 + busy - dark - wet);
+  if (need.clay > 0) add('clay', 0.6 + busy - dark - wet);
+  if (need.shells > 0) add('explore', 0.55 + busy - dark - wet); // beachcombing for the mosaic
+  /* island events: things that turned up and want her attention */
+  if (S.wreck.state === 'ashore') add('salvage', 0.95 + (tr('curious') ? 0.15 : 0) - dark - wet);
+  if (S.turtle.state === 'nest' && S.turtle.visits < 4 && !night) add('turtles', 0.45 + 0.4 * u(n.company) + 0.25 * S.taste.animals - wet);
+  if (S.gull.state === 'hurt') add('tendgull', 0.7 + 0.3 * S.taste.animals - dark * 0.5);
+  if (S.treasure.spots.length && S.treasure.found < S.treasure.spots.length) add('dig', 0.6 + 0.3 * S.taste.adventure - dark - wet);
+  if (S.hive >= 1 && works('beehive')) add('honey', 0.5 + 0.1 * S.hive - dark - wet);
+  if (works('bathhouse')) add('bathe', 0.8 * u(n.fun) + 0.25 * u(n.energy) + 0.15 + 0.3 * fx().cold - dark * 0.5);
   if (need.stone > 0) {
     if (S.items.pick && S.boulders.some(b => b > 0)) add('mine', 0.6 + busy - dark - wet);
     if (S.loose >= 1) add('stones', 0.56 + busy - (S.items.pick ? 0.15 : 0) - dark - wet);

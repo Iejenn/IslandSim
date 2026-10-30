@@ -26,7 +26,7 @@ const DREAMS: Record<Leaning, PlanKey[]> = {
   animals: ['coop', 'blanket'],
   green: ['garden', 'barrel'],
   sea: ['canoe', 'dock', 'trap', 'houseboat'],
-  creative: ['shelf', 'drum', 'treehouse'],
+  creative: ['shelf', 'drum', 'treehouse', 'kiln'],
   adventure: ['treehouse', 'lookout', 'canoe', 'houseboat'],
 };
 export function rollDream(t: Taste): PlanKey {
@@ -52,7 +52,7 @@ const TASK_LEANING: Partial<Record<TaskId, Leaning>> = {
   herd: 'animals', collect: 'animals', shear: 'animals', befriend: 'animals', play: 'animals',
   plant: 'green', water: 'green', harvest: 'green', replant: 'green',
   drum: 'creative', write: 'creative',
-  mushrooms: 'green', explore: 'adventure', hunt: 'adventure', checksnares: 'practical', watch: 'adventure', stargaze: 'adventure',
+  mushrooms: 'green', turtles: 'animals', tendgull: 'animals', honey: 'green', bathe: 'comfort', dig: 'adventure', salvage: 'adventure', explore: 'adventure', hunt: 'adventure', checksnares: 'practical', watch: 'adventure', stargaze: 'adventure',
   relax: 'comfort',
 };
 /** −0.05 … +0.1 extra score for activities that match her taste. */
@@ -90,6 +90,7 @@ const DREAM_SAY: Partial<Record<PlanKey, string>> = {
   treehouse: 'A house up in the trees… like when I was little.',
   houseboat: 'One day I’ll live on the water. A little houseboat.',
   lookout: 'I want to see the whole island from up high one day.',
+  kiln: 'One day I’ll fire my own pottery. There must be clay somewhere.',
 };
 
 // what washed ashore with her, and the little quirks the player can spot

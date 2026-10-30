@@ -115,6 +115,12 @@ export const BUSHES = [0.6, 1.5, 2.6, 3.7, 4.6, 5.5].map(k => {
   return { pos, stand: standNear(pos, 1.0) };
 });
 
+// clay at the pond's edge, between two bushes; a bathhouse could stand on the far side
+export const CLAY_P = ground(V(SP.x + Math.cos(POND_A + 2.05) * 1.9, SP.z + Math.sin(POND_A + 2.05) * 1.9));
+export const CLAY_STAND = standNear(CLAY_P, 0.8);
+export const BATH_P = ground(V(SP.x + Math.cos(POND_A) * 2.3, SP.z + Math.sin(POND_A) * 2.3));
+reserve(CLAY_P, BATH_P);
+
 /* fishing spot on the north beach */
 export const FISH_A = Math.PI / 2;
 export const FISH: Spot = { spot: ground(pointAt(FISH_A, 0.9)), face: pointAt(FISH_A, 1.4) };
@@ -161,6 +167,13 @@ reserve(COOP_P, SHEEP_PEN_P);
 export const WOODPILE_P = ground(V(-2.0, 0.6));
 export const BARREL_P = ground(V(-3.0, 1.7)); // rain barrel, by the woodpile
 reserve(BARREL_P);
+// working with clay, and the rare projects only some islands get
+export const KILN_P = ground(V(4.6, -3.4));
+export const OVEN_P = ground(V(2.6, -4.6));
+export const HIVE_P = ground(V(5.2, 6.4));
+export const SUNDIAL_P = ground(V(-1.4, 4.6));
+export const MOSAIC_P = ground(V(6.6, -0.8));
+reserve(KILN_P, OVEN_P, HIVE_P, SUNDIAL_P, MOSAIC_P);
 export const RACK_P = ground(V(4.0, 0.0));
 export const GARDEN_P = ground(V(2.6, 5.0));
 // 2×2 beds around the garden centre

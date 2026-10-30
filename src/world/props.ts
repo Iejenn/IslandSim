@@ -102,9 +102,10 @@ export function createProps(scene: Scene) {
     return g;
   })();
 
-  /* spring */
+  /* spring (the pond shrinks in a drought, see main.ts) */
+  const pond = mesh(new CylinderGeometry(1.15, 1.2, 0.06, 10), M.spring, SP.x, SP.y + 0.04, SP.z, false);
   {
-    scene.add(mesh(new CylinderGeometry(1.15, 1.2, 0.06, 10), M.spring, SP.x, SP.y + 0.04, SP.z, false));
+    scene.add(pond);
     for (let i = 0; i < 7; i++) {
       const a = i / 7 * Math.PI * 2 + 0.3;
       rock(V(SP.x + Math.cos(a) * 1.35, SP.z + Math.sin(a) * 1.35), rand(0.18, 0.32));
@@ -144,6 +145,7 @@ export function createProps(scene: Scene) {
   return {
     campfire,
     shelter,
+    pond,
     /** Palms lean and sway with the wind (0 calm … 1 storm). @param t real seconds */
     sway(wind: number, t: number) {
       palms.forEach((g, i) => {

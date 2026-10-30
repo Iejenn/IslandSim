@@ -3,6 +3,7 @@
 // sim talks to the outside world only through `hooks`, which main.ts wires up.
 import type { AnimKey } from '../config/animations';
 import { BOULDERS, BUSHES, CHICKEN_HOMES, copy, FOREST, PLOTS, SHEEP_HOMES, START, type Pt } from './island';
+import { rollEvents } from './events';
 import { rollDream, rollTaste } from './taste';
 import { clamp, mergeInto, pick, rand } from './util';
 
@@ -18,18 +19,22 @@ export type NeedKey = keyof typeof NEEDS;
 export type CraftKey = 'axe' | 'pick' | 'rod' | 'spear' | 'snare' | 'basket' | 'hammock' | 'bucket' | 'drum' | 'journal'
   | 'chair' | 'table' | 'bed' | 'shelf' | 'rocker' // furniture, once her crafting is good enough
   | 'realbed' | 'sofa' | 'kitchen' // for the lodge's rooms
-  | 'blanket' | 'sweater'; // from her sheep's wool
+  | 'blanket' | 'sweater' // from her sheep's wool
+  | 'pots' | 'jug' | 'tiles'; // fired in the kiln
 /** Things she builds over several sessions on site. */
 export type ProjectKey = 'garden' | 'rack' | 'dock' | 'hut' | 'hearth' | 'lookout' | 'canoe' | 'lodge' | 'fence' | 'coop'
   | 'trap' | 'barrel' | 'treehouse' // other ways to get food, water and a home
-  | 'houseboat';
+  | 'houseboat'
+  | 'kiln' | 'oven' // working with clay
+  | 'beehive' | 'sundial' | 'mosaic' | 'bathhouse'; // rare: only some islands (see S.rare)
 export type PlanKey = CraftKey | ProjectKey;
-export type Resource = 'wood' | 'stone' | 'fibre' | 'wool';
+export type Resource = 'wood' | 'stone' | 'fibre' | 'wool' | 'clay' | 'shells';
 export type TaskId =
   | 'forage' | 'fish' | 'cook' | 'eat' | 'drink' | 'wood' | 'sleep' | 'shelter' | 'relax' | 'explore' | 'talk'
   | 'sticks' | 'chop' | 'fibre' | 'stones' | 'mine' | 'replant' | 'craft' | 'build'
   | 'plant' | 'water' | 'harvest' | 'drum' | 'write' | 'sail' | 'stargaze' | 'watch'
   | 'befriend' | 'play' | 'repair' | 'swim' | 'herd' | 'shear' | 'collect' | 'checktrap' | 'hunt' | 'checksnares' | 'mushrooms'
+  | 'clay' | 'salvage' | 'turtles' | 'tendgull' | 'dig' | 'honey' | 'bathe'
   | 'celebrate' | 'stand';
 
 /* ---------- task steps ---------- */
@@ -137,7 +142,7 @@ function createState() {
 
     /* ---------- island life ---------- */
     // logs on the woodpile, stones, plant fibre, saplings to replant, fresh fish to cook, dried fish, garden seeds
-    stock: { wood: 2, stone: 0, fibre: 0, saplings: 0, raw: 0, fish: 0, seeds: 0, veg: 0, shells: 0, eggs: 0, wool: 0, meat: 0 }, // veg: stored garden vegetables; shells: her collection
+    stock: { wood: 2, stone: 0, fibre: 0, saplings: 0, raw: 0, fish: 0, seeds: 0, veg: 0, shells: 0, eggs: 0, wool: 0, meat: 0, clay: 0, honey: 0 }, // veg: stored garden vegetables; shells: her collection
     rawSince: 0, // game minute the oldest uncooked fish was caught
     meatSince: 0, // …and the oldest uncooked rabbit
     lastMeal: 0, // game minute of her last cooked meal
@@ -160,6 +165,12 @@ function createState() {
       barrel: { started: false, progress: 0, done: false },
       treehouse: { started: false, progress: 0, done: false },
       houseboat: { started: false, progress: 0, done: false },
+      kiln: { started: false, progress: 0, done: false },
+      oven: { started: false, progress: 0, done: false },
+      beehive: { started: false, progress: 0, done: false },
+      sundial: { started: false, progress: 0, done: false },
+      mosaic: { started: false, progress: 0, done: false },
+      bathhouse: { started: false, progress: 0, done: false },
     } as Record<ProjectKey, Project>,
     goal: null as PlanKey | null, // what she's working towards (something to craft or build)
     goalSince: 0, // game minute the goal was set
@@ -184,6 +195,17 @@ function createState() {
     rabbits: Math.round(rand(4, 12)), // wild rabbits around the warren deep in the forest (they breed back)
     snareCatch: 0, // rabbits waiting in her snares
     mushrooms: 0, // patches of mushrooms in the forest (autumn only)
+    hive: 0, // honey waiting in the beehive
+    // which rare projects this island allows (most islands get two of the four)
+    rare: pickSome(['beehive', 'sundial', 'mosaic', 'bathhouse'] as ProjectKey[], Math.random() < 0.3 ? 3 : 2),
+    // things that happen on this island, and when (see events.ts)
+    events: rollEvents(),
+    wreck: { state: 'none' as 'none' | 'ashore' | 'salvaged', a: 0 }, // a: where on the beach (angle)
+    turtle: { state: 'none' as 'none' | 'nest' | 'hatched', a: 0, hatchAt: 0, visits: 0 },
+    gull: { state: 'none' as 'none' | 'hurt' | 'pet' | 'gone', care: 0 },
+    droughtUntil: 0, // game minute a drought ends
+    injuredUntil: 0, // game minute her sprained ankle has healed
+    treasure: { found: 0, spots: [] as number[] }, // spots: beach angles still to dig (0 = none)
     // a stray dog that may wash ashore; she has to win its trust
     dog: { state: 'none' as 'none' | 'wild' | 'friend', trust: 0, name: '', home: copy(START) },
     sailing: false, // in the boat
@@ -228,6 +250,8 @@ export const hooks = {
 };
 
 export const tr = (k: Trait) => S.traits.includes(k);
+/** n different items from a list, in random order. */
+function pickSome<T>(a: T[], n: number) { return [...a].sort(() => Math.random() - 0.5).slice(0, n); }
 export const hour = () => (S.min / 60) % 24;
 export const dayNum = () => Math.floor(S.min / 1440) + 1;
 export const isNight = () => {

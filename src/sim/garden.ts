@@ -1,5 +1,6 @@
 // Garden beds: planted seeds grow over ~2 game days if kept watered, then
 // need harvesting. Dry beds wither; ripe crops left too long rot.
+import { drought } from './events';
 import { fx } from './seasons';
 import { highlight, log, S } from './state';
 
@@ -16,7 +17,7 @@ export const driest = () => growingPlots().reduce((m, p) => Math.min(m, p.water)
 /** @param dm game minutes elapsed */
 export function updateGarden(dm: number) {
   if (!S.projects.garden.done) return;
-  const dryDays = S.items.bucket ? 2.4 : 1.4; // full bed → bone dry, in days (a bucket soaks them properly)
+  const dryDays = (S.items.bucket ? 2.4 : 1.4) * (drought() ? 0.6 : 1); // full bed → bone dry, in days (a bucket soaks them properly)
   let ripened = 0;
   for (const p of S.plots) {
     if (p.state !== 'growing' && p.state !== 'ripe') continue;

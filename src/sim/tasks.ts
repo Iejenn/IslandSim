@@ -3,7 +3,7 @@
 import { ONE_SHOT_SECONDS } from '../config/animations';
 import { freePlots, growingPlots, ripePlots } from './garden';
 import {
-  BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
+  SP, BATH_P, CLAY_P, CLAY_STAND, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SUNDIAL_P, BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
   HAMMOCK_P, LOOKOUT_DECK, LOOKOUT_P, pointAt, RACK_P, SAIL_ROUTE, SCREE_P, SCREE_STAND, SEATS, SH, SHELTER, SPRING, standNear,
   V, WOODPILE_P, type Pt,
 } from './island';
@@ -80,7 +80,18 @@ const SITE: Record<string, { stand: Pt; face: Pt }> = {
   barrel: { stand: BARREL_STAND, face: BARREL_P },
   treehouse: { stand: standNear(TREEHOUSE_P, 1.2, FIRE), face: TREEHOUSE_P },
   houseboat: { stand: DOCK_END, face: HOUSEBOAT_P },
+  kiln: { stand: standNear(KILN_P, 1.1, FIRE), face: KILN_P },
+  oven: { stand: standNear(OVEN_P, 1.0, FIRE), face: OVEN_P },
+  beehive: { stand: standNear(HIVE_P, 1.1, FIRE), face: HIVE_P },
+  sundial: { stand: standNear(SUNDIAL_P, 0.9, FIRE), face: SUNDIAL_P },
+  mosaic: { stand: standNear(MOSAIC_P, 1.0, FIRE), face: MOSAIC_P },
+  bathhouse: { stand: standNear(BATH_P, 1.3, SP), face: BATH_P },
 };
+/* where event things are: on the beach at the event's angle */
+export const wreckPos = () => ground(pointAt(S.wreck.a, 0.88));
+export const nestPos = () => ground(pointAt(S.turtle.a, 0.8));
+export const digPos = (a: number) => ground(pointAt(a, 0.78));
+export const GULL_P = ground(V(3.0, 2.6)); // the hurt gull hops about by the fire
 const has = (k: CraftKey) => !!S.items[k];
 /** Up on the lookout platform: standing, or rocking in her chair if she made one. */
 function onLookout(face: Pt, min: number, funPerHour: number, done: () => void): Step[] {
@@ -162,26 +173,31 @@ export const T: Record<string, () => Task | null> = {
     const st = S.stock;
     // everything she could make right now, best first; her favourite dish wins if it's possible
     const pot = has('bucket') || S.washedUp === 'pot';
+    const oven = works('oven') && S.stock.wood > 0;
     const options = ([
+      oven && st.veg > 0 && (st.eggs > 0 || st.meat > 0 || st.raw > 0) && 'pie',
       (st.raw > 0 || st.meat > 0) && st.veg > 0 && pot && 'stew',
       st.eggs >= 2 && st.veg > 0 && 'omelette',
       st.meat > 0 && 'rabbit',
       st.raw > 0 && 'fish',
       st.eggs >= 2 && 'eggs',
       st.veg >= 2 && 'veg',
-    ].filter(Boolean)) as ('stew' | 'omelette' | 'rabbit' | 'fish' | 'eggs' | 'veg')[];
-    const fav = options.find(o => o === S.favFood || (S.favFood === 'eggs' && o === 'omelette'));
+    ].filter(Boolean)) as ('pie' | 'stew' | 'omelette' | 'rabbit' | 'fish' | 'eggs' | 'veg')[];
+    const fav = options.find(o => o === S.favFood || (S.favFood === 'eggs' && o === 'omelette') || (S.favFood === 'veg' && o === 'pie'));
     const recipe = fav ?? options[0] ?? null;
     if (!recipe) return null;
     const n = recipe === 'fish' ? Math.min(2, st.raw) : 1;
-    const label = { rabbit: 'Roasting rabbit', stew: st.raw > 0 ? 'Cooking a fish stew' : 'Cooking a rabbit stew', omelette: 'Making an omelette', fish: 'Grilling fish', eggs: 'Frying eggs', veg: 'Roasting vegetables' }[recipe];
-    const steps = kitchen
+    const label = { pie: 'Baking a pie in the oven', rabbit: 'Roasting rabbit', stew: st.raw > 0 ? 'Cooking a fish stew' : 'Cooking a rabbit stew', omelette: 'Making an omelette', fish: 'Grilling fish', eggs: 'Frying eggs', veg: 'Roasting vegetables' }[recipe];
+    const steps = recipe === 'pie'
+      ? [go(SITE.oven.stand), act({ pose: 'gather', face: OVEN_P, min: 40, begin() { st.wood--; }, done: () => serve() })]
+      : kitchen
       ? [go(LODGE_KITCHEN.spot), act({ pose: 'gather', face: LODGE_KITCHEN.face, min: recipe === 'stew' ? 30 : 15 * n, begin() { st.wood--; }, done: () => serve() })]
       : sitAt(fireSeat(), FIRE, recipe === 'stew' ? 35 : 15 * n, undefined, () => serve());
     const serve = () => {
-      if (!kitchen && S.fire <= 0) { say('The fire went out before it was done…'); return; }
+      if (!kitchen && recipe !== 'pie' && S.fire <= 0) { say('The fire went out before it was done…'); return; }
       const lvl = S.skills.fishing.lvl;
-      if (recipe === 'stew') { if (st.raw > 0) st.raw--; else st.meat--; st.veg--; feed('food', 60 + 2 * lvl); feed('fun', 8); S.mood = Math.min(40, S.mood + 12); }
+      if (recipe === 'pie') { st.veg--; if (st.eggs > 0) st.eggs--; else if (st.meat > 0) st.meat--; else st.raw--; feed('food', 65); feed('fun', 10); S.mood = Math.min(40, S.mood + 14); }
+      else if (recipe === 'stew') { if (st.raw > 0) st.raw--; else st.meat--; st.veg--; feed('food', 60 + 2 * lvl); feed('fun', 8); S.mood = Math.min(40, S.mood + 12); }
       else if (recipe === 'omelette') { st.eggs -= 2; st.veg--; feed('food', 48); feed('fun', 7); S.mood = Math.min(40, S.mood + 10); }
       else if (recipe === 'rabbit') { st.meat--; feed('food', 52 + 2 * lvl); feed('fun', 6); S.mood = Math.min(40, S.mood + 8); }
       else if (recipe === 'fish') { st.raw -= n; feed('food', n * (38 + 2 * lvl)); feed('fun', 6); S.mood = Math.min(40, S.mood + 8); }
@@ -193,7 +209,7 @@ export const T: Record<string, () => Task | null> = {
       S.stats.meals++;
       S.lastMeal = S.min;
       remember('cook', recipe === 'stew' ? 0.1 : 0.05);
-      const dish = { rabbit: 'roast rabbit', stew: 'a stew', omelette: 'an omelette', fish: 'grilled fish', eggs: 'fried eggs', veg: 'roast vegetables' }[recipe];
+      const dish = { pie: 'a fresh-baked pie', rabbit: 'roast rabbit', stew: 'a stew', omelette: 'an omelette', fish: 'grilled fish', eggs: 'fried eggs', veg: 'roast vegetables' }[recipe];
       if (!S.feelingsNoted.includes('dish:' + dish)) { S.feelingsNoted.push('dish:' + dish); log(`She made ${dish} for the first time${recipe === fav ? '. Her favourite!' : '.'}`); }
       highlight(`had ${dish}${has('table') ? ' at her table' : ''}`);
     };
@@ -204,6 +220,11 @@ export const T: Record<string, () => Task | null> = {
     if (S.stock.fish > 0) {
       return mk('eat', 'Eating dried fish', pick(TH.eat), [go(RACK_STAND, false, urgent(S.needs.food)), act({
         pose: 'gather', face: RACK_P, min: 8, done() { if (S.stock.fish > 0) { S.stock.fish--; feed('food', 32); } },
+      })]);
+    }
+    if (S.stock.honey > 0 && S.stock.veg <= 0) {
+      return mk('eat', 'Eating honey', 'Sweet, sticky, perfect.', [go(standNear(HIVE_P, 1.1, FIRE), false, urgent(S.needs.food)), act({
+        pose: 'gather', face: HIVE_P, min: 6, done() { if (S.stock.honey > 0) { S.stock.honey--; feed('food', 18); feed('fun', 10); } },
       })]);
     }
     // starving with no way to cook: raw fish it is
@@ -574,6 +595,93 @@ export const T: Record<string, () => Task | null> = {
     })]);
   },
 
+  /* ----- clay from the pond's edge ----- */
+  clay() {
+    return mk('clay', 'Digging clay by the pond', pick(['Squelch. Good, sticky clay.', 'My hands will be orange for days.', 'Mud pies, but useful.']), [go(CLAY_STAND), act({
+      pose: 'gather', face: CLAY_P, min: 35, done() { S.stock.clay = Math.min(20, S.stock.clay + 3); addXp('crafting', 2); },
+    })]);
+  },
+  honey() {
+    if (!works('beehive') || S.hive < 1) return null;
+    return mk('honey', 'Collecting honey', pick(['Easy, bees. I just want a little.', 'Ow! Worth it.', 'Liquid gold.']), [go(SITE.beehive.stand), act({
+      pose: 'gather', face: HIVE_P, min: 15, done() { const n = Math.floor(S.hive); S.hive -= n; S.stock.honey = Math.min(10, S.stock.honey + n); highlight('collected honey'); },
+    })]);
+  },
+  bathe() {
+    if (!works('bathhouse')) return null;
+    return mk('bathe', 'Soaking in her bathhouse', pick(['Ahhh. This is the life.', 'Hot water. On a desert island.', 'I’m never getting out.']), sitAt(BATH_P, SP, 60, dm => {
+      feed('fun', dm * 16 / 60); feed('energy', dm * 8 / 60);
+    }, () => { remember('bathe', 0.08); highlight('had a hot bath'); }, 0.05)); // in the tub, up to her shoulders
+  },
+
+  /* ----- island events ----- */
+  salvage() {
+    if (S.wreck.state !== 'ashore') return null;
+    const p = wreckPos();
+    return mk('salvage', 'Searching the shipwreck', pick(['What have we got here…', 'Rope! And is that a lantern?', 'Somebody’s bad day is my lucky one.']), [go(standNear(p, 1.2)), act({
+      pose: 'gather', face: p, min: 60, done() {
+        S.wreck.state = 'salvaged';
+        S.stock.wood = Math.min(20, S.stock.wood + 5);
+        S.stock.fibre = Math.min(20, S.stock.fibre + 4); // rope
+        S.stock.seeds += 4;
+        S.stock.shells += 1;
+        const extra = pick(['a lantern', 'a frying pan', 'a little tin of tea', 'an old compass']);
+        log(`She salvaged planks, rope and seeds from the wreck, and ${extra}.`);
+        say(`Look at all this! And ${extra}!`);
+        highlight('salvaged the shipwreck');
+        S.mood = Math.min(40, S.mood + 15);
+        if (S.task) S.task.celebrate = true;
+      },
+    })]);
+  },
+  turtles() {
+    if (S.turtle.state !== 'nest') return null;
+    const p = nestPos();
+    return mk('turtles', 'Guarding the turtle nest', pick(['Nobody’s digging these up on my watch.', 'Sleep tight, little ones.', 'I wonder how many are in there.']), sitAt(standNear(p, 1.3), p, 40, dm => { feed('company', dm * 10 / 60); feed('fun', dm * 6 / 60); }, () => {
+      S.turtle.visits++;
+      remember('turtles', 0.05);
+      highlight('kept watch over the turtle nest');
+    }));
+  },
+  tendgull() {
+    if (S.gull.state !== 'hurt') return null;
+    return mk('tendgull', 'Looking after the hurt seagull', pick(['There we go, a nice bit of fish.', 'Let me see that wing.', 'You’re getting stronger, aren’t you?']), [go(standNear(GULL_P, 0.8)), act({
+      pose: 'gather', face: GULL_P, min: 20, tick: dm => feed('company', dm * 12 / 60), done() {
+        if (S.stock.raw > 0) S.stock.raw--; // she shares a fish if she has one
+        S.gull.care++;
+        if (S.gull.care < 4) return;
+        // healed: does it stay?
+        const stays = Math.random() < 0.4 + 0.4 * S.taste.animals;
+        S.gull.state = stays ? 'pet' : 'gone';
+        log(stays ? 'The seagull’s wing has healed, but it decided to stay with her.' : 'The seagull’s wing has healed. It circled her once, and flew off over the sea.');
+        say(stays ? 'You’re staying? Then you need a name… Captain.' : 'Goodbye! Fly safe!');
+        highlight(stays ? 'gained a feathered friend' : 'set a healed seagull free');
+        S.mood = Math.min(40, S.mood + 15);
+      },
+    })]);
+  },
+  dig() {
+    const a = S.treasure.spots[S.treasure.found];
+    if (a === undefined) return null;
+    const p = digPos(a);
+    return mk('dig', 'Digging for treasure', pick(['X marks the spot. I hope.', 'Dig, dig, dig…', 'If this is a joke, it’s a cruel one.']), [go(standNear(p, 0.7)), act({
+      pose: 'chop', face: p, min: 45, done() {
+        S.treasure.found++;
+        if (S.treasure.found < S.treasure.spots.length) {
+          say(pick(['Nothing but sand. On to the next cross.', 'An old bottle cap. The next one, then.']));
+          log('She dug at one of the crosses on the map. Nothing yet.');
+          return;
+        }
+        S.stock.shells += 6;
+        S.mood = 40;
+        say('A chest! Coins, beads, a ring… I’m rich! On an island. Ha!');
+        log('At the last cross she dug up a little chest full of old coins and beads.');
+        highlight('found buried treasure');
+        if (S.task) S.task.celebrate = true;
+      },
+    })]);
+  },
+
   /* ----- autumn: mushrooms under the forest trees ----- */
   mushrooms() {
     if (season() !== 'autumn' || S.mushrooms < 1) return null;
@@ -692,9 +800,9 @@ export const T: Record<string, () => Task | null> = {
 };
 
 // Tasks that urgent needs (or something new to try) are allowed to cut short.
-export const INTERRUPTIBLE = new Set<TaskId>(['mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
+export const INTERRUPTIBLE = new Set<TaskId>(['clay', 'honey', 'bathe', 'salvage', 'turtles', 'tendgull', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
 // Outdoor tasks a sudden shower sends her away from.
-export const RAIN_STOPS = new Set<TaskId>(['mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
+export const RAIN_STOPS = new Set<TaskId>(['clay', 'salvage', 'turtles', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
 // Which task "tries out" each newly made thing.
 export const CURIOUS_TASK: Partial<Record<CraftKey, TaskId>> = { rod: 'fish', spear: 'fish', drum: 'drum', journal: 'write', axe: 'chop', pick: 'mine', chair: 'relax', rocker: 'watch' };
 

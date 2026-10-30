@@ -4,6 +4,7 @@
 import { damaged, PLANS, REPAIRABLE } from './plans';
 import { dayNum, highlight, hour, log, S, say, type ProjectKey } from './state';
 import { interrupt, RAIN_STOPS } from './tasks';
+import { drought } from './events';
 import { fx } from './seasons';
 import { clamp, pick, rand } from './util';
 
@@ -25,8 +26,8 @@ export function updateWeather(dm: number) {
     return;
   }
   // no rain on the first morning, she has enough to deal with
-  // the season and the island's own climate decide how often it rains
-  if (S.min < 20 * 60 || Math.random() >= dm * fx().rain * S.island.rain / AVG_GAP_MIN) return;
+  // the season and the island's own climate decide how often it rains (and a drought, whether at all)
+  if (drought() || S.min < 20 * 60 || Math.random() >= dm * fx().rain * S.island.rain / AVG_GAP_MIN) return;
   w.raining = true;
   w.storm = dayNum() >= 3 && Math.random() < STORM_CHANCE * fx().storm;
   w.until = S.min + (w.storm ? rand(120, 300) : rand(60, 240));
@@ -47,7 +48,9 @@ function startStorm() {
   highlight('rode out a storm');
   S.berries = S.berries.map(b => clamp(b - 2, 0, 6)); // the wind strips the bushes
   // the wind may damage one of her buildings
-  const standing = (Object.keys(REPAIRABLE) as ProjectKey[]).filter(k => S.projects[k].done && !damaged().includes(k));
+  // (a tiled roof keeps the shelter and lodge safe)
+  const tiled = (k: ProjectKey) => S.items.tiles && (k === 'hut' || k === 'lodge');
+  const standing = (Object.keys(REPAIRABLE) as ProjectKey[]).filter(k => S.projects[k].done && !damaged().includes(k) && !tiled(k));
   if (standing.length && Math.random() < 0.6) {
     const k = pick(standing);
     S.projects[k].damaged = true;

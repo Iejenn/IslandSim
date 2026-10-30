@@ -7,6 +7,7 @@ import { endOfDay } from './memory';
 import { chooseGoal, comfort, indoors as hasWalls, maybeGiveUp } from './plans';
 import { updateResources } from './resources';
 import { dreamLine, noteTaste } from './taste';
+import { drought, startEvents } from './events';
 import { fx, noteSeason } from './seasons';
 import { dist, FIRE } from './island';
 import { dayNum, hooks, hour, isNight, log, S, say, tr, type TaskId } from './state';
@@ -20,9 +21,10 @@ export function updateNeeds(dm: number) {
   const indoors = S.task && (S.task.id === 'sleep' || S.task.id === 'shelter') && S.sitting;
   const dog = S.dog.state === 'friend';
   n.food -= dm * ((asleep ? 2 : 4) + (dog ? 0.4 : 0)) / 60; // she shares scraps with her dog
-  n.water -= dm * (asleep ? 3 : S.weather.hot ? 9 : 6) / 60; // hot days make her thirsty
+  // hot days and droughts make her thirsty; a water jug at camp means she sips more often
+  n.water -= dm * (asleep ? 3 : S.weather.hot ? 9 : 6) * (drought() ? 1.2 : 1) * (S.items.jug ? 0.85 : 1) / 60;
   n.fun -= dm * (asleep ? 0 : 4) / 60;
-  n.company -= dm * (tr('social') ? 3 : 2) * (dog ? 0.5 : 1) / 60; // a dog is good company
+  n.company -= dm * (tr('social') ? 3 : 2) * (dog ? 0.5 : 1) * (S.gull.state === 'pet' ? 0.8 : 1) / 60; // a dog (or a tame gull) is good company
   if (!asleep) n.energy -= dm * 4 / 60;
   if (S.weather.raining && !indoors) n.fun -= dm * (S.weather.storm ? 4 : 2) * (S.items.sweater ? 0.5 : 1) / 60; // being soaked isn't fun (less so in a sweater)
   // the cold (autumn nights, winter): fine by the fire, indoors, or wrapped up warm
@@ -66,6 +68,7 @@ export function updateNeeds(dm: number) {
     noteComfort();
     noteSeason();
     maybeGiveUp();
+    startEvents();
     // every few days she's reminded of her dream, until it comes true
     if (dayNum() % 4 === 0 && dreamLine() && S.feelingsNoted.includes('dream')) say(dreamLine());
   }
