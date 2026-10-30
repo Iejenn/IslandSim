@@ -16,15 +16,15 @@ export function createForest(scene: Scene) {
     const s = vary(i), yaw = i * 1.7;
     const full = new Group();
     full.add(mesh(new CylinderGeometry(0.13, 0.2, 1.8, 6), M.trunk, 0, 0.9, 0));
-    full.add(mesh(new IcosahedronGeometry(1.15, 0), i % 2 ? M.leaf : M.leaf2, 0, 2.4, 0));
-    full.add(mesh(new IcosahedronGeometry(0.8, 0), i % 2 ? M.leaf2 : M.leaf, 0.45, 3.0, 0.2));
+    full.add(mesh(new IcosahedronGeometry(1.15, 0), i % 2 ? M.forestLeaf : M.forestLeaf2, 0, 2.4, 0));
+    full.add(mesh(new IcosahedronGeometry(0.8, 0), i % 2 ? M.forestLeaf2 : M.forestLeaf, 0.45, 3.0, 0.2));
     full.scale.setScalar(s);
     const stump = new Group();
     stump.add(mesh(new CylinderGeometry(0.2, 0.24, 0.3, 7), M.trunk, 0, 0.15, 0));
     stump.add(mesh(new CylinderGeometry(0.19, 0.19, 0.02, 7), stumpTop, 0, 0.31, 0));
     const sapling = new Group();
     sapling.add(mesh(new CylinderGeometry(0.03, 0.05, 0.6, 5), M.trunk, 0, 0.3, 0));
-    sapling.add(mesh(new IcosahedronGeometry(0.3, 0), M.leaf, 0, 0.7, 0));
+    sapling.add(mesh(new IcosahedronGeometry(0.3, 0), M.forestLeaf, 0, 0.7, 0));
     for (const g of [full, stump, sapling]) {
       g.position.copy(v3(pos));
       g.rotation.y = yaw;

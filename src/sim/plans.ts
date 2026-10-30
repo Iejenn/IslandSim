@@ -347,12 +347,37 @@ export const isDone = (k: PlanKey) => isProject(k) ? S.projects[k].done : !!S.it
 const progressOf = (k: PlanKey) => isProject(k) ? S.projects[k] : S.crafting;
 
 /** How much she wants a plan: its own appeal, tilted by her taste, and a lot more if it's her dream. */
-export const desire = (k: PlanKey) => PLANS[k].weight() * tasteFor(PLANS[k].tags) * (S.dream === k ? 3 : 1);
+export const desire = (k: PlanKey) => PLANS[k].weight() * tasteFor(PLANS[k].tags) * (S.dream === k ? 3 : 1) * quirkFor(k);
+/** Quirks nudge a few plans: a seasick castaway shies away from boats, a collector wants a shelf. */
+function quirkFor(k: PlanKey) {
+  if (S.quirk === 'seasick' && (k === 'canoe' || k === 'houseboat')) return 0.25;
+  if (S.quirk === 'collector' && k === 'shelf') return 2.5;
+  return 1;
+}
+
+const GIVE_UP_DAYS = 4;
+const GIVE_UP_LINES = ['This is too much for now. Maybe later.', 'I keep putting this off. Something else, then.', 'Who was I kidding? Not this one. Not yet.'];
+/**
+ * At dawn: a goal she hasn't even started after a few days may get dropped
+ * (more often by an easy-going castaway, less by a hard worker or if it's her dream).
+ */
+export function maybeGiveUp() {
+  const k = S.goal;
+  if (!k || progressOf(k).started || S.min - S.goalSince < 3 * 1440) return;
+  const chance = 0.4 + (tr('lazy') ? 0.2 : 0) - (tr('hardworking') ? 0.2 : 0) - (S.dream === k ? 0.3 : 0);
+  if (Math.random() > chance) return;
+  S.goal = null;
+  S.gaveUp[k] = dayNum();
+  say(GIVE_UP_LINES[Math.floor(Math.random() * GIVE_UP_LINES.length)]);
+  log(`She gave up on ${PLANS[k].a}, for now.`);
+  highlight(`gave up on ${PLANS[k].a}`);
+}
 
 /** Maybe pick something to make. Returns true if she set a new goal. */
 export function chooseGoal() {
   if (S.goal) return false;
-  const cand = (Object.keys(PLANS) as PlanKey[]).filter(k => !isDone(k) && PLANS[k].unlocked());
+  // (something she gave up on doesn't appeal again for a few days)
+  const cand = (Object.keys(PLANS) as PlanKey[]).filter(k => !isDone(k) && PLANS[k].unlocked() && dayNum() - (S.gaveUp[k] ?? -99) >= GIVE_UP_DAYS);
   if (!cand.length) return false;
   const tot = cand.reduce((s, k) => s + desire(k), 0);
   let r = Math.random() * tot, k = cand[0];
@@ -380,7 +405,8 @@ export function missing(): Record<Resource, number> {
 }
 export const canWork = () => !!S.goal && Object.values(missing()).every(v => v === 0);
 
-const workSpeed = (k: PlanKey) => 1 + 0.08 * S.skills[PLANS[k].kind === 'craft' ? 'crafting' : 'building'].lvl;
+// (a knife that washed ashore with her makes all crafting quicker)
+const workSpeed = (k: PlanKey) => (1 + 0.08 * S.skills[PLANS[k].kind === 'craft' ? 'crafting' : 'building'].lvl) * (S.washedUp === 'knife' && PLANS[k].kind === 'craft' ? 1.2 : 1);
 /** Game minutes of work left on the current goal (faster with skill). */
 export function minutesLeft() {
   const k = S.goal!;

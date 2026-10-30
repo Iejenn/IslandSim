@@ -32,6 +32,16 @@ moored at the dock. Even the colours differ per island (the tarp
 on her shelter, her bedding, the hammock, roofs, the wood). The diary hints
 at who she is, so you find out by watching.
 
+The island has seasons, 12 days each, starting at a random one. Spring
+makes everything grow and breed, summer brings hot days and good fishing,
+autumn turns the forest gold with mushrooms under the trees and more storms,
+and winter is cold: little grows, the fire burns faster, and she's glad of a
+warm bed, a blanket, a sweater and a big woodpile. Islands differ in more
+small ways too: how rainy they are, how many chickens and sheep live there,
+whether a dog ever turns up, what washed ashore with her, her favourite dish
+and a quirk or two (an early riser, a night owl, a collector, seasick…). And
+she's only human: a goal that never gets started may be dropped for a while.
+
 A stray dog may wash ashore and, if she earns its trust, follows her
 everywhere. Storms strip the berry bushes and can damage her buildings until
 she repairs them; on hot days she cools off in the sea. Crabs, gulls and
@@ -88,6 +98,7 @@ src/
     garden.ts      garden beds growing, drying out, ripening, rotting
     weather.ts     rain showers, storms (with damage) and hot days
     taste.ts       her leanings and dream: what kind of life she tends towards
+    seasons.ts     the four seasons and what each changes
     companion.ts   the stray dog and its trust
     animals.ts     chickens and sheep: laying eggs, growing wool, who to herd next
     memory.ts      what she likes/dislikes and the daily diary recap
@@ -97,7 +108,7 @@ src/
                    sky (lights, day/night, lightning), rain, props, forest &
                    boulders, buildings (incl. the lodge, fence and coop),
                    crafted items & furniture, the dog, livestock, rabbits,
-                   wildlife
+                   wildlife, seasonal colours
   character/       loading the model, playing animations, moving the body,
                    tools in her hand
   save.ts          localStorage save/load and the island's layout seed

@@ -23,6 +23,7 @@ import { createLivestock } from './world/livestock';
 import { createProps } from './world/props';
 import { createRabbits } from './world/rabbits';
 import { createRain } from './world/rain';
+import { createSeasons } from './world/seasons';
 import { createSky } from './world/sky';
 import { createStage } from './world/stage';
 import { createTerrain } from './world/terrain';
@@ -38,9 +39,9 @@ const seed = save?.seed ?? newSeed();
 
 /* ---------- world: scattered from the saved seed, so a reload shows the same island ---------- */
 const { renderer, scene, camera, controls } = createStage(document.getElementById('scene')!);
-const { animateWater, updateSky, props } = withSeed(seed, () => {
-  createTerrain(scene);
-  return { animateWater: createWater(scene), updateSky: createSky(scene), props: createProps(scene) };
+const { animateWater, updateSky, props, terrainMat } = withSeed(seed, () => {
+  const terrainMat = createTerrain(scene);
+  return { animateWater: createWater(scene), updateSky: createSky(scene), props: createProps(scene), terrainMat };
 });
 const updateForest = createForest(scene);
 const updateCrafted = createCrafted(scene);
@@ -50,6 +51,7 @@ const updateDog = createDog(scene);
 const updateAnimals = createAnimals(scene);
 const updateLivestock = createLivestock(scene);
 const updateRabbits = createRabbits(scene);
+const updateSeasons = createSeasons(scene, terrainMat);
 
 /* ---------- sim + her ---------- */
 const S = initState(save?.state);
@@ -161,6 +163,7 @@ function frame(now: number) {
   if (ready) updateDog(S, body.her, dt, clockT);
   updateLivestock(S, body.her, dt, clockT);
   updateRabbits(S, dt);
+  updateSeasons(S);
   props.shelter.visible = !S.projects.lodge.done; // the lodge replaces the old shelter
   updateAnimals(dt, clockT, isNight());
   const storm = S.weather.storm;

@@ -4,6 +4,7 @@
 import { damaged, PLANS, REPAIRABLE } from './plans';
 import { dayNum, highlight, hour, log, S, say, type ProjectKey } from './state';
 import { interrupt, RAIN_STOPS } from './tasks';
+import { fx } from './seasons';
 import { clamp, pick, rand } from './util';
 
 const AVG_GAP_MIN = 40 * 60; // on average a shower starts every ~40 game hours
@@ -24,9 +25,10 @@ export function updateWeather(dm: number) {
     return;
   }
   // no rain on the first morning, she has enough to deal with
-  if (S.min < 20 * 60 || Math.random() >= dm / AVG_GAP_MIN) return;
+  // the season and the island's own climate decide how often it rains
+  if (S.min < 20 * 60 || Math.random() >= dm * fx().rain * S.island.rain / AVG_GAP_MIN) return;
   w.raining = true;
-  w.storm = dayNum() >= 3 && Math.random() < STORM_CHANCE;
+  w.storm = dayNum() >= 3 && Math.random() < STORM_CHANCE * fx().storm;
   w.until = S.min + (w.storm ? rand(120, 300) : rand(60, 240));
   S.stats.rainsSeen++;
   if (w.storm) startStorm();
@@ -55,7 +57,7 @@ function startStorm() {
 
 /** At dawn: maybe a scorching day. */
 export function maybeHotDay() {
-  if (S.weather.raining || Math.random() > 0.2) return;
+  if (S.weather.raining || Math.random() > fx().hot) return;
   S.weather.hot = true;
   say(pick(['It’s scorching today.', 'The sand is too hot to walk on.', 'What a heatwave.']));
   log('A scorching hot day.');

@@ -280,9 +280,9 @@ export function createBuildings(scene: Scene) {
     scene.add(g);
     const tree = new Group(); // replaces the forest tree while she builds
     tree.add(mesh(new CylinderGeometry(0.2, 0.3, 4.6, 7), M.trunk, 0, 2.3, 0));
-    tree.add(mesh(new IcosahedronGeometry(1.7, 0), M.leaf, 0, 5.0, 0));
-    tree.add(mesh(new IcosahedronGeometry(1.1, 0), M.leaf2, 0.8, 5.6, -0.4));
-    tree.add(mesh(new IcosahedronGeometry(1.0, 0), M.leaf2, -0.9, 4.6, 0.3));
+    tree.add(mesh(new IcosahedronGeometry(1.7, 0), M.forestLeaf, 0, 5.0, 0));
+    tree.add(mesh(new IcosahedronGeometry(1.1, 0), M.forestLeaf2, 0.8, 5.6, -0.4));
+    tree.add(mesh(new IcosahedronGeometry(1.0, 0), M.forestLeaf2, -0.9, 4.6, 0.3));
     parts.push(tree);
     for (const [x, z] of [[-0.9, -0.9], [0.9, -0.9], [-0.9, 0.9], [0.9, 0.9]]) {
       const beam = mesh(new CylinderGeometry(0.05, 0.05, 1.3, 5), M.log, x * 0.6, H - 0.55, z * 0.6);

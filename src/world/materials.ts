@@ -12,6 +12,8 @@ export const M = {
   pianoBody: mat('#3B2A22', { roughness: 0.5 }), ivory: mat('#F4F0E6', { roughness: 0.5 }), ebony: mat('#1A1512'),
   cloth: mat('#E2604E', { side: DoubleSide }),
   book1: mat('#2F6FA3'), book2: mat('#D9961C'), book3: mat('#7A3E6B'), rod: mat('#5A4632'),
+  // forest leaves get their own materials so the seasons can recolour them (palms stay green)
+  forestLeaf: mat('#4E9A55'), forestLeaf2: mat('#3E8449'),
   // recoloured per island by applyLook()
   tarp: mat('#5E8F5A', { side: DoubleSide }), hammock: mat('#B9A26A', { side: DoubleSide }), cushion: mat('#EDE6D6'),
   blanket: mat('#B5523B'), blanketStripe: mat('#E8D7B5'),

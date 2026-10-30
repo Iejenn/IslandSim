@@ -10,7 +10,7 @@ const NAMES = ['Biscuit', 'Pepper', 'Mango', 'Scout', 'Coco', 'Rusty', 'Pebble',
 
 /** At dawn: from day 3 on, a dog might wash ashore (once). */
 export function maybeDogArrives() {
-  if (S.dog.state !== 'none' || dayNum() < 3 || Math.random() > 0.35) return;
+  if (!S.island.dog || S.dog.state !== 'none' || dayNum() < 3 || Math.random() > 0.35) return; // (not every island has one)
   // somewhere on the beach, away from the forest, rocks and the fishing spot
   let a = 0;
   for (let i = 0; i < 20; i++) {

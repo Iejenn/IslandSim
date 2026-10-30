@@ -2,6 +2,7 @@
 // coop for the chickens). Then she herds them in one by one. Penned chickens
 // lay eggs in the coop; penned sheep grow wool she can shear.
 import { CHICKEN_HOMES, dist, SHEEP_HOMES, type Pt } from './island';
+import { fx } from './seasons';
 import { S } from './state';
 
 const EGGS_PER_HEN_PER_DAY = 0.8;
@@ -12,7 +13,7 @@ export function updateAnimals(dm: number) {
   const days = dm / 1440;
   if (S.projects.coop.done) {
     const hens = S.chickens.filter(c => c.penned).length;
-    S.coopEggs = Math.min(12, S.coopEggs + hens * EGGS_PER_HEN_PER_DAY * days);
+    S.coopEggs = Math.min(12, S.coopEggs + hens * EGGS_PER_HEN_PER_DAY * fx().eggs * days);
   }
   for (const sh of S.sheep) if (sh.penned) sh.wool = Math.min(1, sh.wool + days / WOOL_DAYS);
 }
@@ -25,8 +26,8 @@ export function nextToHerd(from: Pt): { kind: 'chicken' | 'sheep'; i: number; ho
     const d = dist(home, from);
     if (d < bd) { bd = d; best = { kind, i, home }; }
   };
-  S.sheep.forEach((s, i) => { if (!s.penned) consider('sheep', i, SHEEP_HOMES[i]); });
-  if (S.projects.coop.done) S.chickens.forEach((c, i) => { if (!c.penned) consider('chicken', i, CHICKEN_HOMES[i]); });
+  S.sheep.forEach((s, i) => { if (!s.penned && !s.away) consider('sheep', i, SHEEP_HOMES[i]); });
+  if (S.projects.coop.done) S.chickens.forEach((c, i) => { if (!c.penned && !c.away) consider('chicken', i, CHICKEN_HOMES[i]); });
   return best;
 }
 

@@ -1,4 +1,5 @@
 // Top-left HUD: clock, time-speed buttons and the "Follow her" toggle.
+import { season } from '../sim/seasons';
 import { dayNum, clock, hour, S } from '../sim/state';
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -28,7 +29,8 @@ export function createHud() {
     render() {
       $('clock').textContent = `Day ${dayNum()}, ${clock()}`;
       const w = S.weather;
-      $('phase').textContent = PHASES(hour()) + (w.storm ? ' · Storm' : w.raining ? ' · Rain' : w.hot ? ' · Hot' : '');
+      const s = season();
+      $('phase').textContent = PHASES(hour()) + ` · ${s[0].toUpperCase() + s.slice(1)}` + (w.storm ? ' · Storm' : w.raining ? ' · Rain' : w.hot ? ' · Hot' : '');
     },
   };
 }

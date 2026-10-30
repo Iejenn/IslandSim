@@ -1,5 +1,6 @@
 // Garden beds: planted seeds grow over ~2 game days if kept watered, then
 // need harvesting. Dry beds wither; ripe crops left too long rot.
+import { fx } from './seasons';
 import { highlight, log, S } from './state';
 
 const GROW_MIN = 2 * 1440; // game minutes to ripen
@@ -32,7 +33,7 @@ export function updateGarden(dm: number) {
         continue;
       }
       p.dryMin = 0;
-      p.growth += dm / GROW_MIN * (1 + 0.05 * S.skills.gardening.lvl);
+      p.growth += dm / GROW_MIN * (1 + 0.05 * S.skills.gardening.lvl) * fx().grow; // fast in spring, barely in winter
       if (p.growth >= 1) { p.state = 'ripe'; ripened++; }
     } else {
       p.growth += dm / GROW_MIN;
