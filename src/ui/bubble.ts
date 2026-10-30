@@ -19,7 +19,11 @@ export function createBubble(her: Object3D, camera: Camera) {
       if (headV.z > 1) { bubble.classList.remove('on'); return; } // behind the camera
       bubble.textContent = S.thought;
       bubble.classList.add('on');
-      bubble.style.transform = `translate(${(headV.x * 0.5 + 0.5) * innerWidth}px,${(-headV.y * 0.5 + 0.5) * innerHeight}px) translate(-50%,calc(-100% - 14px))`;
+      // keep it on screen: inside the edges, and below the top bar (where it would hide behind the buttons)
+      const w = bubble.offsetWidth, h = bubble.offsetHeight, top = (document.querySelector('.hud')?.getBoundingClientRect().bottom ?? 0) + 8;
+      const x = Math.min(innerWidth - w / 2 - 8, Math.max(w / 2 + 8, (headV.x * 0.5 + 0.5) * innerWidth));
+      const y = Math.max(top + h + 14, (-headV.y * 0.5 + 0.5) * innerHeight);
+      bubble.style.transform = `translate(${x}px,${y}px) translate(-50%,calc(-100% - 14px))`;
     },
   };
 }

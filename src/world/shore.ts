@@ -4,6 +4,7 @@
 import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, CircleGeometry, InstancedMesh, MeshBasicMaterial, Object3D, Points, PointsMaterial, type Scene } from 'three';
 import { height, islandR } from '../sim/island';
 import { seaLevel } from '../sim/tide';
+import { swell, swellDamp } from './water';
 import type { SimState } from '../sim/state';
 import { clamp } from '../sim/util';
 
@@ -38,6 +39,12 @@ export function createShore(scene: Scene) {
   /* surf: soft white specks along the waterline that wash up the sand and slide back */
   const M = ANGLES * PER, pos = new Float32Array(M * 3), col = new Float32Array(M * 3), seed = new Float32Array(M), jit = new Float32Array(M);
   for (let i = 0; i < M; i++) { seed[i] = Math.random(); jit[i] = (Math.random() - 0.5) * (Math.PI * 2 / ANGLES); }
+  // the swell where each stretch of shore meets the sea (worked out at mid-tide; it hardly changes over a metre or two)
+  const edgeX = new Float32Array(ANGLES), edgeZ = new Float32Array(ANGLES), edgeDamp = new Float32Array(ANGLES);
+  for (let i = 0; i < ANGLES; i++) {
+    const a = (i / ANGLES) * Math.PI * 2, r = shoreAt(i, 0.12);
+    edgeX[i] = Math.cos(a) * r; edgeZ[i] = Math.sin(a) * r; edgeDamp[i] = swellDamp(edgeX[i], edgeZ[i]);
+  }
   const foamGeo = new BufferGeometry();
   foamGeo.setAttribute('position', new BufferAttribute(pos, 3));
   foamGeo.setAttribute('color', new BufferAttribute(col, 3));
@@ -63,15 +70,17 @@ export function createShore(scene: Scene) {
    */
   return function updateShore(S: SimState, her: Object3D, t: number, light: number) {
     const sea = seaLevel();
-    // surf
+    // surf: anchored where the water really meets the sand right now (tide + swell)
+    const level = new Float32Array(ANGLES);
+    for (let i = 0; i < ANGLES; i++) level[i] = sea + swell(edgeX[i], edgeZ[i], t, edgeDamp[i]);
     for (let i = 0; i < M; i++) {
       const ai = Math.floor(i / PER), a = (ai / ANGLES) * Math.PI * 2 + jit[i];
       // each wave: rushes up the sand, then slides back and fades
       const ph = (t * 0.22 + seed[i] * 0.35 + Math.sin(ai * 0.37) * 0.3) % 1;
       const up = ph < 0.4 ? ph / 0.4 : 1 - (ph - 0.4) / 0.6;
-      const r = shoreAt(ai, sea + 0.04) + 0.15 - 0.55 * up;
+      const r = shoreAt(ai, level[ai]) + 0.12 - 0.5 * up;
       pos[i * 3] = Math.cos(a) * r; pos[i * 3 + 2] = Math.sin(a) * r;
-      pos[i * 3 + 1] = Math.max(sea + 0.06, height(pos[i * 3], pos[i * 3 + 2]) + 0.03);
+      pos[i * 3 + 1] = Math.max(level[ai] + 0.03, height(pos[i * 3], pos[i * 3 + 2]) + 0.03);
       const b = (0.06 + 0.3 * (ph < 0.4 ? up : up * up)) * (0.15 + 0.85 * light); // (faint in the dark)
       col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = b;
     }
