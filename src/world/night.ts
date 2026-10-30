@@ -8,6 +8,7 @@ import {
 import { glowingSea, moonAge, moonLight } from '../sim/night';
 import { pointAt } from '../sim/island';
 import { seaLevel } from '../sim/tide';
+import { swell, swellDamp } from './water';
 import { clamp } from '../sim/util';
 
 const SKY_R = 140;
@@ -101,6 +102,7 @@ export function createNight(scene: Scene, moonLightSrc: DirectionalLight, camera
     seed.push(Math.random() * 6.28, a);
   }
   const glowGeo = geo(glowPos);
+  const glowDamp = Float32Array.from({ length: N }, (_, i) => swellDamp(glowPos[i * 3], glowPos[i * 3 + 2]));
   glowGeo.setAttribute('color', new BufferAttribute(glowCol, 3)); // (shares glowCol, which we rewrite each frame)
   const glow = new Points(glowGeo, new PointsMaterial({ size: 0.7, map: softDot(), vertexColors: true, transparent: true, opacity: 0.95, blending: AdditiveBlending, depthWrite: false }));
   glow.visible = false;
@@ -167,7 +169,7 @@ export function createNight(scene: Scene, moonLightSrc: DirectionalLight, camera
       const pos = glowGeo.attributes.position;
       for (let i = 0; i < N; i++) {
         const x = pos.getX(i), z = pos.getZ(i);
-        pos.setY(i, seaLevel() + 0.08 + 0.07 * Math.sin(x * 0.35 + t * 1.1) + 0.05 * Math.cos(z * 0.4 + t * 0.8));
+        pos.setY(i, seaLevel() + 0.08 + swell(x, z, t, glowDamp[i]));
       }
       pos.needsUpdate = true;
     }
