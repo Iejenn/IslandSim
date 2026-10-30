@@ -4,7 +4,7 @@
 // gates). Most walks are a straight line; only when that's blocked does she
 // search a small grid around the obstacle (A*) and smooth the result.
 import {
-  BARREL_P, BATH_P, BOULDERS, COOP_P, DRUM_P, FENCE_GATES, FENCE_R, FIRE, FOREST, GARDEN_P, HIVE_P, KILN_P, LODGE_SIZE,
+  SHED_P, BARREL_P, BATH_P, BOULDERS, COOP_P, DRUM_P, FENCE_GATES, FENCE_R, FIRE, FOREST, GARDEN_P, HIVE_P, KILN_P, LODGE_SIZE,
   lodgeLocal, LOOKOUT_P, OVEN_P, RACK_P, SH, SP, SUNDIAL_P, TABLE_P, V, WARREN_P, WOODPILE_P, yawTo, type Pt,
 } from './island';
 import { S } from './state';
@@ -37,6 +37,7 @@ function rebuild() {
   if (done('rack')) { const y = yawTo(RACK_P, FIRE) + Math.PI / 2; wall(local(RACK_P, y, -0.9, 0), local(RACK_P, y, 0.9, 0)); }
   if (done('coop')) c(COOP_P, 0.75);
   if (done('barrel')) c(BARREL_P, 0.42);
+  if (done('shed')) c(SHED_P, 1.0);
   if (done('kiln')) c(KILN_P, 0.95);
   if (done('oven')) c(OVEN_P, 0.75);
   if (done('beehive')) c(HIVE_P, 0.45);

@@ -22,7 +22,7 @@ export function rollTaste(): Taste {
 // what someone with each passion might dream of building
 const DREAMS: Record<Leaning, PlanKey[]> = {
   comfort: ['lodge', 'sofa', 'realbed'],
-  practical: ['lodge', 'hearth', 'dock'],
+  practical: ['lodge', 'hearth', 'dock', 'shed'],
   animals: ['coop', 'blanket'],
   green: ['garden', 'barrel'],
   sea: ['canoe', 'dock', 'trap', 'houseboat'],
@@ -91,6 +91,7 @@ const DREAM_SAY: Partial<Record<PlanKey, string>> = {
   houseboat: 'One day I’ll live on the water. A little houseboat.',
   lookout: 'I want to see the whole island from up high one day.',
   kiln: 'One day I’ll fire my own pottery. There must be clay somewhere.',
+  shed: 'One day every tool I make will have its own hook on a wall.',
 };
 
 // what washed ashore with her, and the little quirks the player can spot

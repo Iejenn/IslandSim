@@ -25,7 +25,7 @@ export type CraftKey = 'axe' | 'pick' | 'rod' | 'spear' | 'snare' | 'basket' | '
 /** Things she builds over several sessions on site. */
 export type ProjectKey = 'garden' | 'rack' | 'dock' | 'hut' | 'hearth' | 'lookout' | 'canoe' | 'lodge' | 'fence' | 'coop'
   | 'trap' | 'barrel' | 'treehouse' // other ways to get food, water and a home
-  | 'houseboat'
+  | 'houseboat' | 'shed'
   | 'kiln' | 'oven' // working with clay
   | 'beehive' | 'sundial' | 'mosaic' | 'bathhouse'; // rare: only some islands (see S.rare)
 export type PlanKey = CraftKey | ProjectKey;
@@ -170,6 +170,7 @@ function createState() {
       barrel: { started: false, progress: 0, done: false },
       treehouse: { started: false, progress: 0, done: false },
       houseboat: { started: false, progress: 0, done: false },
+      shed: { started: false, progress: 0, done: false },
       kiln: { started: false, progress: 0, done: false },
       oven: { started: false, progress: 0, done: false },
       beehive: { started: false, progress: 0, done: false },

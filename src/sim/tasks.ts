@@ -3,14 +3,14 @@
 import { ONE_SHOT_SECONDS } from '../config/animations';
 import { freePlots, growingPlots, ripePlots } from './garden';
 import {
-  TABLE_P, addScaled, dirXZ, SP, BATH_P, CLAY_P, CLAY_STAND, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SUNDIAL_P, BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
+  SHED_P, TABLE_P, addScaled, dirXZ, SP, BATH_P, CLAY_P, CLAY_STAND, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SUNDIAL_P, BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
   HAMMOCK_BED, SHELTER_BED, LOOKOUT_DECK, LOOKOUT_P, pointAt, RACK_P, SAIL_ROUTE, SCREE_P, SCREE_STAND, SEATS, SH, SHELTER, SPRING, standNear,
   V, WOODPILE_P, type Pt,
 } from './island';
 import { feelingAbout, remember } from './memory';
 import { nextToHerd, sheepToShear } from './animals';
 import { gainTrust } from './companion';
-import { checkFinished, damaged, indoors, minutesLeft, PLANS, REPAIRABLE, startPlan, workOn, works } from './plans';
+import { storageCap, checkFinished, damaged, indoors, minutesLeft, PLANS, REPAIRABLE, startPlan, workOn, works } from './plans';
 import { addMeat, addRawFish, nearestBoulder, nearestTree } from './resources';
 import { addXp } from './skills';
 import {
@@ -83,6 +83,7 @@ const SITE: Record<string, { stand: Pt; face: Pt }> = {
   barrel: { stand: BARREL_STAND, face: BARREL_P },
   treehouse: { stand: standNear(TREEHOUSE_P, 1.2, FIRE), face: TREEHOUSE_P },
   houseboat: { stand: DOCK_END, face: HOUSEBOAT_P },
+  shed: { stand: standNear(SHED_P, 1.4, FIRE), face: SHED_P },
   kiln: { stand: standNear(KILN_P, 1.1, FIRE), face: KILN_P },
   oven: { stand: standNear(OVEN_P, 1.0, FIRE), face: OVEN_P },
   beehive: { stand: standNear(HIVE_P, 1.1, FIRE), face: HIVE_P },
@@ -276,7 +277,7 @@ export const T: Record<string, () => Task | null> = {
         pose: 'gather', face: WOODPILE_P, min: 3, done() {
           const n = Math.min(2, Math.floor(S.deadwood));
           S.deadwood -= n;
-          S.stock.wood = Math.min(20, S.stock.wood + n);
+          S.stock.wood = Math.min(storageCap('wood'), S.stock.wood + n);
           addXp('survival', 2);
         },
       })]);
@@ -295,7 +296,7 @@ export const T: Record<string, () => Task | null> = {
       },
     }), go(WOODPILE_STAND, true), act({
       pose: 'gather', face: WOODPILE_P, min: 4, done() {
-        S.stock.wood = Math.min(20, S.stock.wood + 4 + (S.skills.survival.lvl >= 3 ? 1 : 0));
+        S.stock.wood = Math.min(storageCap('wood'), S.stock.wood + 4 + (S.skills.survival.lvl >= 3 ? 1 : 0));
         addXp('survival', 5);
         remember('chop', tr('hardworking') ? 0.04 : tr('lazy') ? -0.05 : -0.01);
       },
@@ -319,7 +320,7 @@ export const T: Record<string, () => Task | null> = {
     if (i < 0) return null;
     const t = FOREST[i];
     return mk('fibre', 'Stripping vines for fibre', pick(TH.fibre), [go(t.stand), act({
-      pose: 'gather', face: t.pos, min: 30, done() { S.stock.fibre = Math.min(20, S.stock.fibre + 2 + (has('basket') ? 1 : 0)); addXp('crafting', 2); },
+      pose: 'gather', face: t.pos, min: 30, done() { S.stock.fibre = Math.min(storageCap('fibre'), S.stock.fibre + 2 + (has('basket') ? 1 : 0)); addXp('crafting', 2); },
     })]);
   },
   stones() {
@@ -328,7 +329,7 @@ export const T: Record<string, () => Task | null> = {
       pose: 'gather', face: SCREE_P, min: 30, done() {
         const n = Math.min(2, Math.floor(S.loose));
         S.loose -= n;
-        S.stock.stone = Math.min(30, S.stock.stone + n);
+        S.stock.stone = Math.min(storageCap('stone'), S.stock.stone + n);
       },
     })]);
   },
@@ -340,7 +341,7 @@ export const T: Record<string, () => Task | null> = {
       pose: 'chop', face: b.pos, min: 45, done() {
         const n = Math.min(3, S.boulders[i]);
         S.boulders[i] -= n;
-        S.stock.stone = Math.min(30, S.stock.stone + n);
+        S.stock.stone = Math.min(storageCap('stone'), S.stock.stone + n);
         S.stats.stonesMined += n;
         addXp('survival', 4);
         remember('mine', tr('hardworking') ? 0.03 : -0.02);
@@ -486,7 +487,7 @@ export const T: Record<string, () => Task | null> = {
           const r = Math.random();
           if (r < (S.quirk === 'collector' ? 0.5 : 0.3)) { say('Ooh, a pretty shell.'); log('Found a pretty shell on the beach.'); S.stock.shells++; S.mood = Math.min(40, S.mood + 5); highlight('found a pretty shell'); remember('explore', 0.08); }
           else if (r < 0.38) { say('A message in a bottle… it’s blank. Figures.'); log('Found an empty bottle on the beach.'); }
-          else if (r < 0.55) { S.stock.wood = Math.min(20, S.stock.wood + 1); say('Driftwood! That’ll burn.'); log('Found driftwood on the beach.'); }
+          else if (r < 0.55) { S.stock.wood = Math.min(storageCap('wood'), S.stock.wood + 1); say('Driftwood! That’ll burn.'); log('Found driftwood on the beach.'); }
           else remember('explore', 0.02);
         },
       }),
@@ -527,7 +528,7 @@ export const T: Record<string, () => Task | null> = {
         done() {
           feed('fun', 35); addXp('survival', 5); remember('sail', 0.12); highlight('went paddling');
           const r = Math.random();
-          if (r < 0.3) { S.stock.wood = Math.min(20, S.stock.wood + 2); log('She towed some driftwood back from her canoe trip.'); }
+          if (r < 0.3) { S.stock.wood = Math.min(storageCap('wood'), S.stock.wood + 2); log('She towed some driftwood back from her canoe trip.'); }
           else if (r < 0.45) { say('Dolphins! Actual dolphins!'); log('She saw dolphins while paddling.'); S.mood = Math.min(40, S.mood + 10); highlight('saw dolphins'); }
         },
       }),
@@ -654,7 +655,7 @@ export const T: Record<string, () => Task | null> = {
   /* ----- clay from the pond's edge ----- */
   clay() {
     return mk('clay', 'Digging clay by the pond', pick(['Squelch. Good, sticky clay.', 'My hands will be orange for days.', 'Mud pies, but useful.']), [go(CLAY_STAND), act({
-      pose: 'gather', face: CLAY_P, min: 35, done() { S.stock.clay = Math.min(20, S.stock.clay + 3); addXp('crafting', 2); },
+      pose: 'gather', face: CLAY_P, min: 35, done() { S.stock.clay = Math.min(storageCap('clay'), S.stock.clay + 3); addXp('crafting', 2); },
     })]);
   },
   honey() {
@@ -677,8 +678,8 @@ export const T: Record<string, () => Task | null> = {
     return mk('salvage', 'Searching the shipwreck', pick(['What have we got here…', 'Rope! And is that a lantern?', 'Somebody’s bad day is my lucky one.']), [go(standNear(p, 1.2)), act({
       pose: 'gather', face: p, min: 60, done() {
         S.wreck.state = 'salvaged';
-        S.stock.wood = Math.min(20, S.stock.wood + 5);
-        S.stock.fibre = Math.min(20, S.stock.fibre + 4); // rope
+        S.stock.wood = Math.min(storageCap('wood'), S.stock.wood + 5);
+        S.stock.fibre = Math.min(storageCap('fibre'), S.stock.fibre + 4); // rope
         S.stock.seeds += 4;
         S.stock.shells += 1;
         const extra = pick(['a lantern', 'a frying pan', 'a little tin of tea', 'an old compass']);

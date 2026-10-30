@@ -180,6 +180,8 @@ export const HIVE_P = ground(V(5.2, 6.4));
 export const SUNDIAL_P = ground(V(-1.4, 4.6));
 export const MOSAIC_P = ground(V(6.6, -0.8));
 reserve(KILN_P, OVEN_P, HIVE_P, SUNDIAL_P, MOSAIC_P);
+export const SHED_P = ground(V(-5.2, 2.0)); // tool shed, between the woodpile and the sheep pen
+reserve(SHED_P);
 export const RACK_P = ground(V(4.0, 0.0));
 export const GARDEN_P = ground(V(2.6, 5.0));
 // 2×2 beds around the garden centre
