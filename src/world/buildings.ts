@@ -2,7 +2,7 @@
 // garden plants. Each project is a list of parts that appear one by one as
 // her building progress goes up, so you can watch it take shape.
 import {
-  BoxGeometry, CylinderGeometry, ExtrudeGeometry, TorusGeometry, Group, IcosahedronGeometry, Shape, SphereGeometry,
+  BoxGeometry, Color, CylinderGeometry, ExtrudeGeometry, TorusGeometry, type MeshStandardMaterial, Group, IcosahedronGeometry, Shape, SphereGeometry,
   type Material, type Mesh, type Object3D, type Scene, ConeGeometry, DodecahedronGeometry,
 } from 'three';
 import { BATH_P, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SP, SUNDIAL_P, HOUSEBOAT_P, HOUSEBOAT_YAW, BARREL_P, TRAP_A, TRAP_P, TREEHOUSE_DECK, TREEHOUSE_P, BOAT_DOCK, COOP_P, DOCK, FENCE_GATES, FENCE_R, FIRE, GARDEN_P, ground, LODGE_P, LODGE_SIZE, LODGE_YAW, LOOKOUT_DECK, LOOKOUT_P, PLOTS, RACK_P, SH, V, WOODPILE_P, yawTo } from '../sim/island';
@@ -450,6 +450,51 @@ export function createBuildings(scene: Scene) {
     parts.forEach((p, i) => { p.visible = i < n; });
   };
   const PARTS: Record<ProjectKey, Object3D[]> = { garden, rack: rack.parts, dock, hut, hearth, lookout, canoe: canoe.parts, lodge: lodge.parts, fence, coop, trap: trap.parts, barrel: barrel.parts, treehouse, houseboat: houseboat.parts, kiln, oven, beehive, sundial, mosaic, bathhouse };
+  /* ---------- weathering: wood greys, stone gathers moss, fabric fades ---------- */
+  // Each building gets its own copies of the shared materials (made on the
+  // first update, after the island's colours are applied), which drift towards
+  // a weathered colour over WEATHER_DAYS.
+  const WEATHER_DAYS = 30;
+  const greyWood = new Color('#77736A'), moss = new Color('#6E8463'), faded = new Color('#D8D2BC');
+  const weatherTo = new Map<Material, Color>([[M.wood, greyWood], [M.log, greyWood], [hull, greyWood], [hiveWood, greyWood], [M.rock, moss], [clayMat, moss], [M.tarp, faded], [M.thatch, faded]]);
+  let aging: { k: ProjectKey; mat: MeshStandardMaterial; from: Color; to: Color }[] | null = null;
+  function setupAging() {
+    aging = [];
+    for (const k of Object.keys(PARTS) as ProjectKey[]) {
+      if (k === 'lodge') continue; // (its roof swaps to tiles; its walls weather via logs below)
+      const clones = new Map<Material, MeshStandardMaterial>();
+      for (const part of PARTS[k]) part.traverse(o => {
+        const m = o as Mesh, mat = m.material as MeshStandardMaterial;
+        const to = m.isMesh ? weatherTo.get(mat) : undefined;
+        if (!to) return;
+        let cl = clones.get(mat);
+        if (!cl) { cl = mat.clone(); clones.set(mat, cl); aging!.push({ k, mat: cl, from: mat.color.clone(), to }); }
+        m.material = cl;
+      });
+    }
+    // the lodge's walls and floor (not the roof, which swaps to tiles)
+    const lodgeClones = new Map<Material, MeshStandardMaterial>();
+    for (const part of lodge.parts) {
+      if (lodge.roofs.includes(part)) continue;
+      const m = part as Mesh, mat = m.material as MeshStandardMaterial, to = weatherTo.get(mat);
+      if (!to) continue;
+      let cl = lodgeClones.get(mat);
+      if (!cl) { cl = mat.clone(); lodgeClones.set(mat, cl); aging.push({ k: 'lodge', mat: cl, from: mat.color.clone(), to }); }
+      m.material = cl;
+    }
+  }
+  let lastAging = -1;
+  function weather(S: SimState) {
+    if (!aging) setupAging();
+    if (S.min - lastAging < 30) return; // every half game hour is plenty
+    lastAging = S.min;
+    for (const a of aging!) {
+      const p = S.projects[a.k];
+      const days = p.done ? (S.min - (p.builtAt ?? 0)) / 1440 : 0;
+      a.mat.color.copy(a.from).lerp(a.to, 0.55 * Math.min(1, days / WEATHER_DAYS));
+    }
+  }
+
   /** Is this world point inside the lodge's walls? */
   const inLodge = (x: number, z: number) => {
     const dx = x - LODGE_P.x, dz = z - LODGE_P.z, c = Math.cos(LODGE_YAW), s = Math.sin(LODGE_YAW);
@@ -462,6 +507,7 @@ export function createBuildings(scene: Scene) {
    * @param t real seconds (bobbing)
    */
   return function updateBuildings(S: SimState, her: Object3D, t: number) {
+    weather(S);
     for (const k of Object.keys(PARTS) as ProjectKey[]) showParts(PARTS[k], S.projects[k].started, S.projects[k].progress, S.projects[k].damaged);
     // the lodge replaces the shelter (and its stone walls) once it's finished
     if (S.projects.lodge.done) for (const p of hut) p.visible = false;

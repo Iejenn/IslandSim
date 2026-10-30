@@ -8,6 +8,7 @@ import { chooseGoal, comfort, indoors as hasWalls, maybeGiveUp } from './plans';
 import { updateResources } from './resources';
 import { dreamLine, noteTaste } from './taste';
 import { drought, startEvents } from './events';
+import { regrowPaths } from './paths';
 import { fx, noteSeason } from './seasons';
 import { dist, FIRE } from './island';
 import { dayNum, hooks, hour, isNight, log, S, say, tr, type TaskId } from './state';
@@ -69,6 +70,7 @@ export function updateNeeds(dm: number) {
     noteSeason();
     maybeGiveUp();
     startEvents();
+    regrowPaths();
     // every few days she's reminded of her dream, until it comes true
     if (dayNum() % 4 === 0 && dreamLine() && S.feelingsNoted.includes('dream')) say(dreamLine());
   }

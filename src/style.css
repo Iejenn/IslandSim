@@ -86,10 +86,17 @@ h2:first-child{margin-top:2px}
 
 .hint{color:var(--soft);font-size:13px;margin:0 0 6px}
 
-.diary{list-style:none;margin:0;padding:0}
-.diary li{padding:8px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:78px 1fr;gap:10px}
-.diary time{color:var(--soft);font-size:13px;font-variant-numeric:tabular-nums}
-.diary span{font-size:14px}
+/* diary: grouped by day, the day's recap on top, big moments highlighted */
+.diary,.diary ol{list-style:none;margin:0;padding:0}
+.diary .day{padding:10px 0 6px;border-bottom:1px solid var(--line)}
+.diary h3{margin:0 0 6px;font-size:15px;display:flex;align-items:baseline;gap:8px}
+.diary h3 span{font-weight:500;font-size:12px;color:var(--soft);text-transform:uppercase;letter-spacing:.04em}
+.diary .recap{margin:0 0 6px;padding:7px 10px;border-radius:10px;background:var(--line);font-size:13px;font-style:italic;line-height:1.4}
+.diary ol li{padding:5px 0;display:grid;grid-template-columns:44px 1fr;gap:10px}
+.diary time{color:var(--soft);font-size:12px;font-variant-numeric:tabular-nums;padding-top:1px}
+.diary ol span{font-size:14px;line-height:1.4}
+.diary ol li.big span{font-weight:600}
+.diary ol li.big time::after{content:" ✦";color:var(--lagoon)}
 .link-btn{border:0;background:none;padding:14px 0 0;color:var(--soft);font-size:13px;text-decoration:underline}
 
 .overlay{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:rgba(8,18,28,.55);padding:24px}

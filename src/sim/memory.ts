@@ -45,9 +45,8 @@ const joinList = (a: string[]) => a.length <= 1 ? a.join('') : `${a.slice(0, -1)
 /** At dawn: write yesterday's recap, let old feelings fade a little. */
 export function endOfDay(day: number, happiness: number) {
   const mood = happiness >= 70 ? 'A good day.' : happiness >= 45 ? 'Not bad.' : happiness >= 25 ? 'A hard day.' : 'A miserable day.';
-  log(S.today.length
-    ? `Looking back on day ${day}: she ${joinList(S.today.slice(0, 5))}. ${mood}`
-    : `Looking back on day ${day}: nothing much happened. ${mood}`);
+  // (filed under the day it's about, shown at the top of that day)
+  log(S.today.length ? `She ${joinList(S.today.slice(0, 5))}. ${mood}` : `Nothing much happened. ${mood}`, 'recap', day);
   S.today = [];
   for (const k in S.likes) S.likes[k as TaskId]! *= 0.85;
 }

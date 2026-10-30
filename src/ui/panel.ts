@@ -5,7 +5,8 @@ import { freePlots, growingPlots, ripePlots } from '../sim/garden';
 import { happiness } from '../sim/needs';
 import { missing, PLANS } from '../sim/plans';
 import { xpNeed } from '../sim/skills';
-import { dayNum, NEEDS, S, SKILLS, TRAITS, type CraftKey, type NeedKey, type ProjectKey, type Resource, type SkillKey } from '../sim/state';
+import { season } from '../sim/seasons';
+import { dayNum, NEEDS, S, SKILLS, TRAITS, type DiaryEntry, type CraftKey, type NeedKey, type ProjectKey, type Resource, type SkillKey } from '../sim/state';
 
 const $ = (id: string) => document.getElementById(id)!;
 const level = (v: number) => v < 25 ? 'low' : v < 50 ? 'mid' : 'ok';
@@ -83,6 +84,28 @@ function renderCamp() {
   $('camp').innerHTML = section('Supplies', stock) + section('Made by hand', made) + section('Built', built) + section('Company', friends) + section('The island', island);
 }
 
+/**
+ * Diary grouped by day, newest first: a heading with the season, that day's
+ * recap as a summary, then what happened (big moments highlighted).
+ */
+function renderDiary() {
+  const days = new Map<number, { recap?: string; items: DiaryEntry[] }>();
+  for (const d of S.diary) {
+    // (entries from older saves have the day inside the time: "Day 3, 07:00")
+    const m = /^Day (\d+), (.*)$/.exec(d.t), day = d.day ?? (m ? +m[1] : dayNum()), t = m ? m[2] : d.t;
+    if (!days.has(day)) days.set(day, { items: [] });
+    const g = days.get(day)!;
+    if (d.kind === 'recap' || d.text.startsWith('Looking back on day')) g.recap = d.text.replace(/^Looking back on day \d+: /, '');
+    else g.items.push({ ...d, t });
+  }
+  return [...days.entries()].sort((a, b) => b[0] - a[0]).map(([day, g]) => {
+    const s = season(day);
+    return `<li class="day"><h3>Day ${day} <span>${cap(s)}${day === dayNum() ? ' · today' : ''}</span></h3>`
+      + (g.recap ? `<p class="recap">${g.recap}</p>` : '')
+      + `<ol>${g.items.map(d => `<li${d.kind === 'big' ? ' class="big"' : ''}><time>${d.t}</time><span>${d.text}</span></li>`).join('')}</ol></li>`;
+  }).join('');
+}
+
 export function createPanel(onNewIsland: () => void) {
   const needsEl = $('needs'), skillsEl = $('skills'), panel = $('panel'), toggle = $('sheetToggle');
   needsEl.innerHTML = Object.entries(NEEDS).map(([k, l]) =>
@@ -148,7 +171,7 @@ export function createPanel(onNewIsland: () => void) {
       renderCamp();
       if (S.diaryDirty) {
         S.diaryDirty = false;
-        $('diary').innerHTML = S.diary.map(d => `<li><time>${d.t}</time><span>${d.text}</span></li>`).join('');
+        $('diary').innerHTML = renderDiary();
       }
     },
   };

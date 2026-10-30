@@ -19,7 +19,7 @@ export function maybeDogArrives() {
     if (away(FOREST_A) && away(ROCKS_A) && away(FISH_A)) break;
   }
   S.dog = { state: 'wild', trust: 0, name: '', home: ground(pointAt(a, 0.78)) };
-  log('A scruffy dog washed up on the beach, half-starved and wary of her.');
+  log('A scruffy dog washed up on the beach, half-starved and wary of her.', 'big');
   say('A dog?! Where did you come from?');
   highlight('met a stray dog');
 }
@@ -31,7 +31,7 @@ export function gainTrust(amount: number) {
   if (S.dog.trust < 1) return;
   S.dog.state = 'friend';
   S.dog.name = pick(NAMES);
-  log(`The dog finally trusts her. She named it ${S.dog.name}.`);
+  log(`The dog finally trusts her. She named it ${S.dog.name}.`, 'big');
   say(`I’ll call you ${S.dog.name}. We’re a team now.`);
   highlight(`made friends with ${S.dog.name}`);
   remember('befriend', 0.3);

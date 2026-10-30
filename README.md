@@ -51,6 +51,15 @@ storms can't tear off, and a bread oven for pies. And each island allows only
 a couple of rare projects: a beehive, a sundial, a shell mosaic or a
 bathhouse by the pond.
 
+The island also changes simply because she lives there: her feet wear paths
+into the grass where she walks most (they grow over again if she stops),
+buildings weather (wood greys, stone gathers moss, the tarp fades; a repair
+freshens them up), and wildflowers spread around her camp a little more each
+spring. She walks around things now (the fire, trees, walls, the fence via
+its gates) instead of through them. Sound is generated in the browser (waves,
+wind, rain, the fire, birds, crickets, footsteps, chopping, her drum); turn it
+on with the Sound button.
+
 A stray dog may wash ashore and, if she earns its trust, follows her
 everywhere. Storms strip the berry bushes and can damage her buildings until
 she repairs them; on hot days she cools off in the sea. Crabs, gulls and
@@ -109,6 +118,8 @@ src/
     taste.ts       her leanings and dream: what kind of life she tends towards
     seasons.ts     the four seasons and what each changes
     events.ts      the island's own events (shipwreck, turtles, drought…)
+    pathing.ts     walking around obstacles (A* when the straight line is blocked)
+    paths.ts       trodden paths: where her feet wear the grass
     companion.ts   the stray dog and its trust
     animals.ts     chickens and sheep: laying eggs, growing wool, who to herd next
     memory.ts      what she likes/dislikes and the daily diary recap
@@ -118,7 +129,9 @@ src/
                    sky (lights, day/night, lightning), rain, props, forest &
                    boulders, buildings (incl. the lodge, fence and coop),
                    crafted items & furniture, the dog, livestock, rabbits,
-                   wildlife, seasonal colours, event objects
+                   wildlife, seasonal colours, event objects, trodden
+                   paths, wildflowers
+  audio/           sound effects and ambience, generated with the Web Audio API
   character/       loading the model, playing animations, moving the body,
                    tools in her hand
   save.ts          localStorage save/load and the island's layout seed
