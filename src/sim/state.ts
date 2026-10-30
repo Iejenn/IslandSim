@@ -2,7 +2,7 @@
 // inspect and could later be saved/loaded. No Three.js or DOM in here: the
 // sim talks to the outside world only through `hooks`, which main.ts wires up.
 import type { AnimKey } from '../config/animations';
-import { BOULDERS, BUSHES, CHICKEN_HOMES, copy, FOREST, FOREST_START, PLOTS, SHEEP_HOMES, START, type Pt } from './island';
+import { ORCHARD, BOULDERS, BUSHES, CHICKEN_HOMES, copy, FOREST, FOREST_START, PLOTS, SHEEP_HOMES, START, type Pt } from './island';
 import { rollEvents } from './events';
 import { rollDream, rollTaste } from './taste';
 import { clamp, mergeInto, pick, rand } from './util';
@@ -25,7 +25,7 @@ export type CraftKey = 'axe' | 'pick' | 'rod' | 'spear' | 'snare' | 'basket' | '
 /** Things she builds over several sessions on site. */
 export type ProjectKey = 'garden' | 'rack' | 'dock' | 'hut' | 'hearth' | 'lookout' | 'canoe' | 'lodge' | 'fence' | 'coop'
   | 'trap' | 'barrel' | 'treehouse' // other ways to get food, water and a home
-  | 'houseboat' | 'shed' | 'bandstand'
+  | 'houseboat' | 'shed' | 'bandstand' | 'orchard'
   | 'kiln' | 'oven' // working with clay
   | 'beehive' | 'sundial' | 'mosaic' | 'bathhouse'; // rare: only some islands (see S.rare)
 export type PlanKey = CraftKey | ProjectKey;
@@ -37,6 +37,7 @@ export type TaskId =
   | 'befriend' | 'play' | 'repair' | 'swim' | 'herd' | 'shear' | 'collect' | 'checktrap' | 'hunt' | 'checksnares' | 'mushrooms'
   | 'clay' | 'salvage' | 'turtles' | 'tendgull' | 'dig' | 'honey' | 'bathe'
   | 'cairn' | 'sandcastle' | 'clouds' | 'bouquet' | 'whittle' | 'dance'
+  | 'plantfruit' | 'pickfruit' | 'nightwalk' | 'beachstars'
   | 'celebrate' | 'stand';
 
 /* ---------- task steps ---------- */
@@ -78,8 +79,10 @@ export interface Task {
 export interface DiaryEntry { t: string; text: string; day?: number; kind?: 'big' | 'recap' }
 
 /** One garden bed. growth 0→1 is ripe; water 0→100 drains over time. */
+export type Crop = 'greens' | 'tomato' | 'corn' | 'pumpkin' | 'flowers';
 export interface Plot {
   state: 'empty' | 'growing' | 'ripe' | 'withered';
+  crop?: Crop; // what's growing in it (older saves: tomatoes)
   growth: number;
   water: number;
   dryMin: number; // game minutes spent completely dry
@@ -148,7 +151,7 @@ function createState() {
 
     /* ---------- island life ---------- */
     // logs on the woodpile, stones, plant fibre, saplings to replant, fresh fish to cook, dried fish, garden seeds
-    stock: { wood: 2, stone: 0, fibre: 0, saplings: 0, raw: 0, fish: 0, seeds: 0, veg: 0, shells: 0, eggs: 0, wool: 0, meat: 0, clay: 0, honey: 0 }, // veg: stored garden vegetables; shells: her collection
+    stock: { wood: 2, stone: 0, fibre: 0, saplings: 0, raw: 0, fish: 0, seeds: 0, veg: 0, shells: 0, eggs: 0, wool: 0, meat: 0, clay: 0, honey: 0, fruit: 0 }, // veg: stored garden vegetables; shells: her collection
     rawSince: 0, // game minute the oldest uncooked fish was caught
     meatSince: 0, // …and the oldest uncooked rabbit
     lastMeal: 0, // game minute of her last cooked meal
@@ -174,6 +177,7 @@ function createState() {
       houseboat: { started: false, progress: 0, done: false },
       shed: { started: false, progress: 0, done: false },
       bandstand: { started: false, progress: 0, done: false },
+      orchard: { started: false, progress: 0, done: false },
       kiln: { started: false, progress: 0, done: false },
       oven: { started: false, progress: 0, done: false },
       beehive: { started: false, progress: 0, done: false },
@@ -209,6 +213,8 @@ function createState() {
     snareCatch: 0, // rabbits waiting in her snares
     mushrooms: 0, // patches of mushrooms in the forest (autumn only)
     hive: 0, // honey waiting in the beehive
+    // fruit trees she planted in her orchard (one per spot in island.ORCHARD)
+    orchard: ORCHARD.map(() => ({ kind: null as FruitKind | null, growth: 0, fruit: 0, planted: 0 })),
     // which rare projects this island allows (most islands get two of the four)
     rare: pickSome(['beehive', 'sundial', 'mosaic', 'bathhouse'] as ProjectKey[], Math.random() < 0.3 ? 3 : 2),
     // things that happen on this island, and when (see events.ts)
@@ -259,6 +265,7 @@ export function initState(saved?: Record<string, unknown>) {
     if (S.berries.length !== fresh.berries.length) S.berries = fresh.berries;
     if (S.chickens.length !== fresh.chickens.length) S.chickens = fresh.chickens;
     if (S.sheep.length !== fresh.sheep.length) S.sheep = fresh.sheep;
+    if (S.orchard.length !== fresh.orchard.length) S.orchard = fresh.orchard;
     // (saves from before "Her story": start it from the big moments still in the diary)
     if (!S.story.length) S.story = S.diary.filter(d => d.kind === 'big' && d.day && !/^(Spring has come|Summer is here|Autumn has come|Winter has come)/.test(d.text))
       .reverse().map(d => ({ day: d.day!, text: d.text }));
@@ -273,6 +280,7 @@ export const hooks = {
   onDeath: () => {},
 };
 
+export type FruitKind = 'mango' | 'banana' | 'lemon';
 export const tr = (k: Trait) => S.traits.includes(k);
 /** n different items from a list, in random order. */
 function pickSome<T>(a: T[], n: number) { return [...a].sort(() => Math.random() - 0.5).slice(0, n); }

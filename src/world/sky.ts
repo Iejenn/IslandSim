@@ -1,6 +1,7 @@
 // Sun, moon, sky colour, stars and the campfire glow over the day/night cycle.
-import { BufferGeometry, Color, DirectionalLight, Float32BufferAttribute, HemisphereLight, Points, PointsMaterial, type Fog, type Mesh, type PointLight, type Scene } from 'three';
+import { type Camera, BufferGeometry, Color, DirectionalLight, Float32BufferAttribute, HemisphereLight, Points, PointsMaterial, type Fog, type Mesh, type PointLight, type Scene } from 'three';
 import { clamp, smooth } from '../sim/util';
+import { createNight } from './night';
 
 // three r155+ uses physical light units. r147 (legacy mode) silently multiplied
 // every light by π, so we do it here to keep the original brightness.
@@ -11,7 +12,7 @@ export const FIRE_LIGHT_SCALE = LEGACY * 0.84;
 
 export interface Campfire { flame: Mesh; flame2: Mesh; light: PointLight }
 
-export function createSky(scene: Scene) {
+export function createSky(scene: Scene, camera: Camera) {
   const hemi = new HemisphereLight('#CFEFFF', '#6B8F4E', 0.6 * LEGACY);
   scene.add(hemi);
   const sun = new DirectionalLight('#FFF1D6', 1.6 * LEGACY);
@@ -24,11 +25,13 @@ export function createSky(scene: Scene) {
   const moon = new DirectionalLight('#9DB8FF', 0);
   moon.position.set(-20, 30, -10);
   scene.add(moon);
+  const updateNight = createNight(scene, moon, camera); // moon phases, constellations, shooting stars, glowing sea
 
   const stars = (() => {
     const p: number[] = [];
-    for (let i = 0; i < 400; i++) {
-      const th = Math.random() * Math.PI * 2, ph = Math.random() * 1.3;
+    for (let i = 0; i < 900; i++) {
+      // (the camera only tilts up a little, so most stars sit low over the sea)
+      const th = Math.random() * Math.PI * 2, ph = i < 300 ? Math.random() * 1.3 : Math.PI / 2 - 0.02 - Math.random() * Math.random() * 0.5;
       p.push(150 * Math.sin(ph) * Math.cos(th), 150 * Math.cos(ph), 150 * Math.sin(ph) * Math.sin(th));
     }
     const g = new BufferGeometry();
@@ -69,6 +72,8 @@ export function createSky(scene: Scene) {
     fog.far = 260 - 140 * rain;
     hemi.intensity = (0.18 + 0.45 * day + flash * 1.5) * LEGACY;
     moon.intensity = 0.35 * (1 - day) * LEGACY;
+    updateNight(t, h, rain, dt); // (scales the moonlight by the phase)
+    stars.position.copy(camera.position);
     (stars.material as PointsMaterial).opacity = clamp(-e * 3, 0, 1) * 0.9 * (1 - rain); // clouds hide the stars
 
     const { flame, flame2, light } = campfire;

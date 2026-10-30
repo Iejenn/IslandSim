@@ -31,7 +31,7 @@ export function createStage(host: HTMLElement) {
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 0.8, 0);
   controls.enableDamping = true;
-  controls.maxPolarAngle = 1.38;
+  controls.maxPolarAngle = 1.45; // (a little lower than before, so you can tilt up to the moon and stars)
   controls.minDistance = 4;
   controls.maxDistance = 120; // room to see the whole (bigger) island
 

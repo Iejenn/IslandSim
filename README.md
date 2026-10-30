@@ -81,6 +81,19 @@ hands land on the drum skin, the ukulele, the flute and the marimba bars),
 and each instrument has its own generated music that gets steadier as her
 music skill grows.
 
+Her garden grows more than tomatoes: greens, corn, pumpkins and flowers too,
+depending on the season and how green her fingers are. A gardener may lay
+out an orchard and plant mango, banana and lemon trees, which take most of a
+season to grow and then bear fruit to pick, eat fresh or bake into a fruit
+pie (and a pot turns spare vegetables into soup).
+
+The nights have their own life. The moon waxes and wanes over eight days,
+shooting stars streak low over the sea, and two island constellations (the
+turtle and the canoe) hang over the horizon; tilt the camera up to see them.
+On some nights, mostly in summer, the waves glow blue and she walks along the
+shore in them. She lies on the beach to watch the stars, makes a wish on a
+shooting star now and then, and on a full moon she dances on the sand.
+
 She moves like she means it: she stirs the pot, carves and whittles with a
 knife and a piece of wood, strokes her dog lying beside her, casts her rod,
 dances when life is good, and waves back when you tap her. Butterflies,
@@ -141,7 +154,8 @@ src/
     skills.ts      XP and level-ups
     plans.ts       everything she can craft or build: costs, when she wants it, progress
     resources.ts   forest regrowth, fallen branches, loose stones, fish going off
-    garden.ts      garden beds growing, drying out, ripening, rotting
+    garden.ts      garden beds and crops: growing, drying out, ripening, rotting
+    night.ts       moon phases and which nights the sea glows
     weather.ts     rain showers, storms (with damage) and hot days
     taste.ts       her leanings and dream: what kind of life she tends towards
     seasons.ts     the four seasons and what each changes
@@ -159,7 +173,8 @@ src/
                    crafted items & furniture, the dog, livestock, rabbits,
                    wildlife, seasonal colours, event objects, trodden
                    paths, wildflowers, atmosphere (mist, rainbow, fireflies,
-                   leaves, songbirds), traces of her hobbies, tap-to-look
+                   leaves, songbirds), the night sky (moon, constellations,
+                   shooting stars, glowing waves), traces of her hobbies, tap-to-look
   audio/           sound effects and ambience, generated with the Web Audio API
   character/       loading the model, posing her arms for each instrument (perform.ts), playing animations, moving the body,
                    tools in her hand

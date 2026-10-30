@@ -49,6 +49,7 @@ function renderCamp() {
   if (S.stock.shells) stock.push(['Shells collected', String(S.stock.shells)]);
   if (S.stock.clay) stock.push(['Clay', String(S.stock.clay)]);
   if (S.stock.honey || S.projects.beehive.done) stock.push(['Honey', S.stock.honey ? n(S.stock.honey, 'jar', 'jars') : 'none yet']);
+  if (S.stock.fruit || S.orchard.some(t => t.kind)) stock.push(['Fruit', S.stock.fruit ? n(S.stock.fruit, 'piece', 'pieces') : 'none ripe yet']);
   if (S.stock.eggs || S.projects.coop.done) stock.push(['Eggs', String(S.stock.eggs)]);
   if (S.stock.wool || S.stats.shorn) stock.push(['Wool', String(S.stock.wool)]);
   if (S.projects.rack.done) stock.push(['Dried food', String(S.stock.fish)]);

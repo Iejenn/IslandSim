@@ -24,7 +24,7 @@ const DREAMS: Record<Leaning, PlanKey[]> = {
   comfort: ['lodge', 'sofa', 'realbed'],
   practical: ['lodge', 'hearth', 'dock', 'shed'],
   animals: ['coop', 'blanket'],
-  green: ['garden', 'barrel'],
+  green: ['garden', 'barrel', 'orchard'],
   sea: ['canoe', 'dock', 'trap', 'houseboat'],
   creative: ['shelf', 'drum', 'treehouse', 'kiln', 'bandstand'],
   adventure: ['treehouse', 'lookout', 'canoe', 'houseboat'],
@@ -52,7 +52,7 @@ const TASK_LEANING: Partial<Record<TaskId, Leaning>> = {
   herd: 'animals', collect: 'animals', shear: 'animals', befriend: 'animals', play: 'animals',
   plant: 'green', water: 'green', harvest: 'green', replant: 'green',
   drum: 'creative', write: 'creative',
-  dance: 'creative', cairn: 'adventure', sandcastle: 'sea', clouds: 'comfort', bouquet: 'green', whittle: 'creative', mushrooms: 'green', turtles: 'animals', tendgull: 'animals', honey: 'green', bathe: 'comfort', dig: 'adventure', salvage: 'adventure', explore: 'adventure', hunt: 'adventure', checksnares: 'practical', watch: 'adventure', stargaze: 'adventure',
+  nightwalk: 'adventure', beachstars: 'adventure', plantfruit: 'green', pickfruit: 'green', dance: 'creative', cairn: 'adventure', sandcastle: 'sea', clouds: 'comfort', bouquet: 'green', whittle: 'creative', mushrooms: 'green', turtles: 'animals', tendgull: 'animals', honey: 'green', bathe: 'comfort', dig: 'adventure', salvage: 'adventure', explore: 'adventure', hunt: 'adventure', checksnares: 'practical', watch: 'adventure', stargaze: 'adventure',
   relax: 'comfort',
 };
 /** −0.05 … +0.1 extra score for activities that match her taste. */
@@ -90,6 +90,7 @@ const DREAM_SAY: Partial<Record<PlanKey, string>> = {
   treehouse: 'A house up in the trees… like when I was little.',
   houseboat: 'One day I’ll live on the water. A little houseboat.',
   lookout: 'I want to see the whole island from up high one day.',
+  orchard: 'One day I’ll pick fruit from trees I planted myself.',
   bandstand: 'One day I’ll have a little stage, and play my music to the whole island.',
   kiln: 'One day I’ll fire my own pottery. There must be clay somewhere.',
   shed: 'One day every tool I make will have its own hook on a wall.',

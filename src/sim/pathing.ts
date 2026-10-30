@@ -4,7 +4,7 @@
 // gates). Most walks are a straight line; only when that's blocked does she
 // search a small grid around the obstacle (A*) and smooth the result.
 import {
-  BANDSTAND_P, MARIMBA_P, POND_R, SHED_P, BARREL_P, BATH_P, BOULDERS, COOP_P, DRUM_P, FENCE_GATES, FENCE_R, FIRE, FOREST, GARDEN_P, HIVE_P, KILN_P, LODGE_SIZE,
+  ORCHARD, BANDSTAND_P, MARIMBA_P, POND_R, SHED_P, BARREL_P, BATH_P, BOULDERS, COOP_P, DRUM_P, FENCE_GATES, FENCE_R, FIRE, FOREST, GARDEN_P, HIVE_P, KILN_P, LODGE_SIZE,
   lodgeLocal, LOOKOUT_P, OVEN_P, RACK_P, SH, SP, SUNDIAL_P, TABLE_P, V, WARREN_P, WOODPILE_P, yawTo, type Pt,
 } from './island';
 import { S } from './state';
@@ -46,6 +46,7 @@ function rebuild() {
   if (done('sundial')) c(SUNDIAL_P, 0.35);
   if (done('bathhouse')) c(BATH_P, 0.85);
   if (done('lookout')) c(LOOKOUT_P, 0.85);
+  S.orchard.forEach((t, i) => { if (t.kind && t.growth > 0.3) c(ORCHARD[i].pos, 0.25); }); // fruit trees, once they're more than a twig
   if (done('garden')) { // the little fence around the beds (open on the side she works from)
     const g = GARDEN_P, r = 1.35;
     wall(V(g.x - r, g.z - r), V(g.x + r, g.z - r)); wall(V(g.x + r, g.z - r), V(g.x + r, g.z + r)); wall(V(g.x - r, g.z + r), V(g.x - r, g.z - r));
@@ -72,7 +73,7 @@ function rebuild() {
   }
 }
 function refresh() {
-  const key = Object.values(S.projects).map(p => p.done ? 1 : 0).join('') + S.trees.map(t => t.state[1]).join('') + S.boulders.map(b => b > 0 ? 1 : 0).join('')
+  const key = Object.values(S.projects).map(p => p.done ? 1 : 0).join('') + S.orchard.map(t => t.kind && t.growth > 0.3 ? 1 : 0).join('') + S.trees.map(t => t.state[1]).join('') + S.boulders.map(b => b > 0 ? 1 : 0).join('')
     + (S.items.drum ? 'd' : '') + (S.items.table ? 't' : '');
   if (key !== cacheKey) { cacheKey = key; rebuild(); }
 }

@@ -1,9 +1,9 @@
 // Everything she can do, expressed as a list of steps (walk here, do this
 // for N game minutes, wait for an animation). runner.ts plays them out.
 import { ONE_SHOT_SECONDS } from '../config/animations';
-import { freePlots, growingPlots, ripePlots } from './garden';
+import { chooseCrop, CROP_YIELD, freePlots, growingPlots, ripePlots } from './garden';
 import {
-  BANDSTAND_FLOOR, BANDSTAND_P, BAND_SPOTS, bandLocal, MARIMBA_P, type Instrument, SHED_P, TABLE_P, addScaled, dirXZ, SP, BATH_P, CLAY_P, CLAY_STAND, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SUNDIAL_P, BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
+  ORCHARD, ORCHARD_P, BANDSTAND_FLOOR, BANDSTAND_P, BAND_SPOTS, bandLocal, MARIMBA_P, type Instrument, SHED_P, TABLE_P, addScaled, dirXZ, SP, BATH_P, CLAY_P, CLAY_STAND, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SUNDIAL_P, BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
   HAMMOCK_BED, SHELTER_BED, LOOKOUT_DECK, LOOKOUT_P, pointAt, RACK_P, SAIL_ROUTE, SCREE_P, SCREE_STAND, SEATS, SH, SHELTER, SPRING, standNear,
   V, WOODPILE_P, type Pt,
 } from './island';
@@ -15,8 +15,9 @@ import { addMeat, addRawFish, nearestBoulder, nearestTree } from './resources';
 import { addXp } from './skills';
 import {
   dayNum, feed, highlight, hour, isNight, log, S, say, tr,
-  type CraftKey, type DoStep, type GoStep, type PlanKey, type Resource, type Step, type Task, type TaskId, type WaitStep,
+  type CraftKey, type Crop, type DoStep, type GoStep, type PlanKey, type Resource, type Step, type Task, type TaskId, type WaitStep,
 } from './state';
+import { fullMoon, glowingSea } from './night';
 import { fx, season } from './seasons';
 import { TH, thoughtFor } from './thoughts';
 import { clamp, pick, rand } from './util';
@@ -32,6 +33,13 @@ export function catchChance() {
 export function sleepShift() {
   return S.quirk === 'earlybird' ? -1.5 : S.quirk === 'nightowl' ? 1.5 : 0;
 }
+
+const CROP_NAME: Record<Crop, string> = { greens: 'greens', tomato: 'tomatoes', corn: 'corn', pumpkin: 'pumpkins', flowers: 'flowers' };
+const CROP_FIRST: Record<Crop, string> = {
+  greens: 'Her first garden greens: crisp and green and all her own.', tomato: 'Her first tomatoes ripened, warm from the sun.',
+  corn: 'She picked her first corn cobs, taller than she is.', pumpkin: 'Her first pumpkin! Big, round and orange.',
+  flowers: 'Her first bed of garden flowers bloomed. She put them all in a vase.',
+};
 
 /* ---------- step builders ---------- */
 const go = (p: Pt, carry?: boolean, run?: boolean): GoStep => ({ type: 'go', to: copy(p), carry: !!carry, run });
@@ -108,6 +116,7 @@ const SITE: Record<string, { stand: Pt; face: Pt }> = {
   sundial: { stand: standNear(SUNDIAL_P, 0.9, FIRE), face: SUNDIAL_P },
   mosaic: { stand: standNear(MOSAIC_P, 1.0, FIRE), face: MOSAIC_P },
   bathhouse: { stand: standNear(BATH_P, 1.3, SP), face: BATH_P },
+  orchard: { stand: standNear(ORCHARD_P, 1.2), face: ORCHARD_P },
   bandstand: { stand: bandLocal(0, 2.2), face: BANDSTAND_P },
 };
 /* where event things are: on the beach at the event's angle */
@@ -199,19 +208,20 @@ export const T: Record<string, () => Task | null> = {
     const pot = has('bucket') || S.washedUp === 'pot';
     const oven = works('oven') && S.stock.wood > 0;
     const options = ([
-      oven && st.veg > 0 && (st.eggs > 0 || st.meat > 0 || st.raw > 0) && 'pie',
+      oven && ((st.veg > 0 && (st.eggs > 0 || st.meat > 0 || st.raw > 0)) || st.fruit >= 2) && 'pie',
       (st.raw > 0 || st.meat > 0) && st.veg > 0 && pot && 'stew',
       st.eggs >= 2 && st.veg > 0 && 'omelette',
       st.meat > 0 && 'rabbit',
       st.raw > 0 && 'fish',
       st.eggs >= 2 && 'eggs',
+      st.veg >= 2 && pot && 'soup',
       st.veg >= 2 && 'veg',
-    ].filter(Boolean)) as ('pie' | 'stew' | 'omelette' | 'rabbit' | 'fish' | 'eggs' | 'veg')[];
+    ].filter(Boolean)) as ('soup' | 'pie' | 'stew' | 'omelette' | 'rabbit' | 'fish' | 'eggs' | 'veg')[];
     const fav = options.find(o => o === S.favFood || (S.favFood === 'eggs' && o === 'omelette') || (S.favFood === 'veg' && o === 'pie'));
     const recipe = fav ?? options[0] ?? null;
     if (!recipe) return null;
     const n = recipe === 'fish' ? Math.min(2, st.raw) : 1;
-    const label = { pie: 'Baking a pie in the oven', rabbit: 'Roasting rabbit', stew: st.raw > 0 ? 'Cooking a fish stew' : 'Cooking a rabbit stew', omelette: 'Making an omelette', fish: 'Grilling fish', eggs: 'Frying eggs', veg: 'Roasting vegetables' }[recipe];
+    const label = { soup: 'Cooking a vegetable soup', pie: st.fruit >= 2 && !(st.veg > 0 && (st.eggs > 0 || st.meat > 0 || st.raw > 0)) ? 'Baking a fruit pie' : 'Baking a pie in the oven', rabbit: 'Roasting rabbit', stew: st.raw > 0 ? 'Cooking a fish stew' : 'Cooking a rabbit stew', omelette: 'Making an omelette', fish: 'Grilling fish', eggs: 'Frying eggs', veg: 'Roasting vegetables' }[recipe];
     const steps = recipe === 'pie'
       ? [go(SITE.oven.stand), act({ pose: 'gather', face: OVEN_P, min: 40, begin() { st.wood--; }, done: () => serve() })]
       : kitchen
@@ -220,7 +230,12 @@ export const T: Record<string, () => Task | null> = {
     const serve = () => {
       if (!kitchen && recipe !== 'pie' && S.fire <= 0) { say('The fire went out before it was done…'); return; }
       const lvl = S.skills.fishing.lvl;
-      if (recipe === 'pie') { st.veg--; if (st.eggs > 0) st.eggs--; else if (st.meat > 0) st.meat--; else st.raw--; feed('food', 65); feed('fun', 10); S.mood = Math.min(40, S.mood + 14); }
+      if (recipe === 'pie') {
+        if (st.veg > 0 && (st.eggs > 0 || st.meat > 0 || st.raw > 0)) { st.veg--; if (st.eggs > 0) st.eggs--; else if (st.meat > 0) st.meat--; else st.raw--; }
+        else st.fruit -= 2; // a sweet fruit pie
+        feed('food', 65); feed('fun', 10); S.mood = Math.min(40, S.mood + 14);
+      }
+      else if (recipe === 'soup') { st.veg -= 2; feed('food', 52); feed('fun', 7); feed('water', 10); S.mood = Math.min(40, S.mood + 9); }
       else if (recipe === 'stew') { if (st.raw > 0) st.raw--; else st.meat--; st.veg--; feed('food', 60 + 2 * lvl); feed('fun', 8); S.mood = Math.min(40, S.mood + 12); }
       else if (recipe === 'omelette') { st.eggs -= 2; st.veg--; feed('food', 48); feed('fun', 7); S.mood = Math.min(40, S.mood + 10); }
       else if (recipe === 'rabbit') { st.meat--; feed('food', 52 + 2 * lvl); feed('fun', 6); S.mood = Math.min(40, S.mood + 8); }
@@ -233,7 +248,7 @@ export const T: Record<string, () => Task | null> = {
       S.stats.meals++;
       S.lastMeal = S.min;
       remember('cook', recipe === 'stew' ? 0.1 : 0.05);
-      const dish = { pie: 'a fresh-baked pie', rabbit: 'roast rabbit', stew: 'a stew', omelette: 'an omelette', fish: 'grilled fish', eggs: 'fried eggs', veg: 'roast vegetables' }[recipe];
+      const dish = { soup: 'vegetable soup', pie: 'a fresh-baked pie', rabbit: 'roast rabbit', stew: 'a stew', omelette: 'an omelette', fish: 'grilled fish', eggs: 'fried eggs', veg: 'roast vegetables' }[recipe];
       if (!S.feelingsNoted.includes('dish:' + dish)) { S.feelingsNoted.push('dish:' + dish); log(`She made ${dish} for the first time${recipe === fav ? '. Her favourite!' : '.'}`); }
       highlight(`had ${dish}${has('table') ? ' at her table' : ''}`);
     };
@@ -244,6 +259,11 @@ export const T: Record<string, () => Task | null> = {
     if (S.stock.fish > 0) {
       return mk('eat', 'Eating dried fish', pick(TH.eat), [go(RACK_STAND, false, urgent(S.needs.food)), act({
         pose: 'gather', face: RACK_P, min: 8, done() { if (S.stock.fish > 0) { S.stock.fish--; feed('food', 32); } },
+      })]);
+    }
+    if (S.stock.fruit > 0) {
+      return mk('eat', 'Eating fruit', pick(['Juicy!', 'Sweet as anything.', 'Sticky fingers.']), [act({
+        pose: 'gather', min: 6, done() { if (S.stock.fruit > 0) { S.stock.fruit--; feed('food', 16); feed('fun', 5); feed('water', 4); } },
       })]);
     }
     if (S.stock.honey > 0 && S.stock.veg <= 0) {
@@ -406,7 +426,7 @@ export const T: Record<string, () => Task | null> = {
         for (const p of freePlots().slice(0, n)) {
           if (S.stock.seeds <= 0) break;
           S.stock.seeds--;
-          Object.assign(p, { state: 'growing', growth: 0, water: 70, dryMin: 0 });
+          Object.assign(p, { state: 'growing', growth: 0, water: 70, dryMin: 0, crop: chooseCrop() });
         }
         addXp('gardening', 6 * n);
         remember('plant', 0.04);
@@ -432,18 +452,25 @@ export const T: Record<string, () => Task | null> = {
     if (!ripePlots().length) return null;
     return mk('harvest', 'Harvesting the garden', pick(TH.harvest), [go(GARDEN_STAND), act({
       pose: 'gather', face: GARDEN_P, min: 15, done() {
-        const ripe = ripePlots();
+        const ripe = ripePlots(), got: Crop[] = [];
         for (const p of ripe) {
-          feed('food', 10); // a few bites right there
-          S.stock.veg = Math.min(10, S.stock.veg + 1); // the rest goes in the pantry
+          const crop = p.crop ?? 'tomato';
+          if (crop === 'flowers') { S.bouquetAt = S.min; S.mood = Math.min(40, S.mood + 8); feed('fun', 6); } // straight into a vase
+          else {
+            feed('food', 10); // a few bites right there
+            S.stock.veg = Math.min(14, S.stock.veg + CROP_YIELD[crop]); // the rest goes in the pantry
+          }
+          if (!got.includes(crop)) got.push(crop);
           S.stock.seeds += Math.random() < 0.6 ? 2 : 1; // she keeps seed from the crop
           Object.assign(p, { state: 'empty', growth: 0, water: 0, dryMin: 0 });
+          const first = `crop:${crop}`;
+          if (!S.feelingsNoted.includes(first)) { S.feelingsNoted.push(first); log(CROP_FIRST[crop], 'big'); }
         }
         S.stats.harvests++;
         S.mood = Math.min(40, S.mood + 6);
         addXp('gardening', 10);
         remember('harvest', 0.08);
-        log(`She harvested ${ripe.length} garden bed${ripe.length > 1 ? 's' : ''}.`);
+        log(`She harvested ${got.map(c => CROP_NAME[c]).join(' and ')} from the garden.`);
         highlight('harvested from the garden');
       },
     })]);
@@ -673,11 +700,12 @@ export const T: Record<string, () => Task | null> = {
   },
   dance() {
     // when she's really happy: a little dance on her bandstand, or by the fire
-    const band = works('bandstand'), p = band ? BAND_SPOTS.ukulele.player : standNear(FIRE, 2.4, SEATS[0].p);
-    return mk('dance', band ? 'Dancing on her bandstand' : 'Dancing by the fire', pick(['La la laaa!', 'Nobody’s watching. Dance!', 'Spin, spin, spin!']), [go(p), act({
+    const moon = (hour() >= 19.5 || hour() < 1) && fullMoon(), band = works('bandstand') && !moon;
+    const p = moon ? ground(pointAt(rand(0, 6.3), 0.9)) : band ? BAND_SPOTS.ukulele.player : standNear(FIRE, 2.4, SEATS[0].p);
+    return mk('dance', moon ? 'Dancing in the moonlight' : band ? 'Dancing on her bandstand' : 'Dancing by the fire', pick(['La la laaa!', 'Nobody’s watching. Dance!', 'Spin, spin, spin!']), [go(p), act({
       pose: 'idle', face: band ? bandLocal(0, 4) : FIRE, min: 25, lift: band ? BANDSTAND_FLOOR : 0,
       tick: dm => { feed('fun', dm * 20 / 60); feed('energy', -dm * 2 / 60); },
-      done() { S.mood = Math.min(40, S.mood + 10); remember('dance', 0.08); highlight('danced'); },
+      done() { S.mood = Math.min(40, S.mood + 10); remember('dance', 0.08); highlight(moon ? 'danced on the beach under a full moon' : 'danced'); },
     })]);
   },
   whittle() {
@@ -689,6 +717,67 @@ export const T: Record<string, () => Task | null> = {
       remember('whittle', 0.05);
       highlight(`whittled a little wooden ${pick(['turtle', 'dog', 'bird', 'fish', 'boat'])}`);
     }));
+  },
+
+  /* ----- the orchard ----- */
+  plantfruit() {
+    const i = S.orchard.findIndex(t => !t.kind);
+    if (!works('orchard') || i < 0 || season() === 'winter') return null;
+    const kind = (['mango', 'banana', 'lemon'] as const)[i % 3], spot = ORCHARD[i];
+    return mk('plantfruit', `Planting a ${kind} tree`, pick(['Grow big and sweet, little one.', 'In a year you’ll be taller than me.', 'A pit, a hole, some water… and patience.']), [go(spot.stand), act({
+      pose: 'gather', face: spot.pos, min: 25, done() {
+        S.orchard[i] = { kind, growth: 0, fruit: 0, planted: dayNum() };
+        addXp('gardening', 6);
+        highlight(`planted a ${kind} tree`);
+        if (S.orchard.filter(t => t.kind).length === 1) log(`She planted her first fruit tree, a little ${kind}.`, 'big');
+      },
+    })]);
+  },
+  pickfruit() {
+    const i = S.orchard.findIndex(t => t.kind && t.fruit >= 1);
+    if (i < 0) return null;
+    const t = S.orchard[i], spot = ORCHARD[i];
+    return mk('pickfruit', `Picking ${t.kind}s`, pick(['Ripe and sweet!', 'Straight from the tree.', 'One for the basket, one for me.']), [go(spot.stand), act({
+      pose: 'gather', face: spot.pos, min: 15, done() {
+        const n = Math.floor(t.fruit);
+        t.fruit -= n;
+        S.stock.fruit = Math.min(12, S.stock.fruit + n);
+        feed('food', 8); feed('fun', 4); // tasting one
+        addXp('foraging', 4);
+        const first = `fruit:${t.kind}`;
+        if (!S.feelingsNoted.includes(first)) { S.feelingsNoted.push(first); log(`The first ${t.kind}s from her own tree! The best she’s ever tasted.`, 'big'); }
+        highlight(`picked ${t.kind}s`);
+      },
+    })]);
+  },
+
+  /* ----- after dark ----- */
+  nightwalk() {
+    // along the waterline on a night the waves glow blue
+    if (!glowingSea()) return null;
+    const a0 = rand(0, 6.3), pts = [0, 0.3, 0.6].map(o => ground(pointAt(a0 + o, 0.95)));
+    return mk('nightwalk', 'Walking along the glowing waves', pick(['The sea is full of stars!', 'Every step makes it sparkle.', 'I’ve never seen anything so beautiful.']), [
+      go(pts[0]), act({ pose: 'idle', min: 8, face: pointAt(a0, 1.5) }),
+      go(pts[1]), act({ pose: 'idle', min: 8, face: pointAt(a0 + 0.3, 1.5) }),
+      go(pts[2]), act({ pose: 'idle', min: 8, face: pointAt(a0 + 0.6, 1.5), done() {
+        feed('fun', 25); S.mood = Math.min(40, S.mood + 12);
+        if (!S.feelingsNoted.includes('glow')) { S.feelingsNoted.push('glow'); log('The waves glowed blue tonight, and she walked along them for ages.', 'big'); }
+        highlight('walked along the glowing waves'); remember('nightwalk', 0.1);
+      } }),
+    ]);
+  },
+  beachstars() {
+    // lying on the beach, watching the stars (and wishing on a shooting star, sometimes)
+    const a = pick([0.3, -0.3, -1.5, -2.9, 1.0]) + rand(-0.1, 0.1), p = ground(pointAt(a, 0.9)); // (past the palms, which stand at 0.7–0.84)
+    return mk('beachstars', 'Lying on the beach, watching the stars', pick(['So many stars.', 'There’s the turtle. And the canoe.', 'Hello, moon.']),
+      lieAt(p, ground(pointAt(a, 0.5)), 40, dm => { feed('fun', dm * 14 / 60); feed('energy', dm * 3 / 60); }, () => {
+        remember('beachstars', 0.06);
+        if (Math.random() < 0.35) {
+          say('A shooting star! I made a wish.');
+          if (!S.feelingsNoted.includes('wish')) { S.feelingsNoted.push('wish'); log('She saw a shooting star and made a wish. She won’t say what.', 'big'); }
+          highlight('wished on a shooting star');
+        } else highlight('watched the stars from the beach');
+      }));
   },
 
   /* ----- clay from the pond's edge ----- */
@@ -897,9 +986,9 @@ export const T: Record<string, () => Task | null> = {
 };
 
 // Tasks that urgent needs (or something new to try) are allowed to cut short.
-export const INTERRUPTIBLE = new Set<TaskId>(['dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'honey', 'bathe', 'salvage', 'turtles', 'tendgull', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
+export const INTERRUPTIBLE = new Set<TaskId>(['plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'honey', 'bathe', 'salvage', 'turtles', 'tendgull', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
 // Outdoor tasks a sudden shower sends her away from.
-export const RAIN_STOPS = new Set<TaskId>(['cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'salvage', 'turtles', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
+export const RAIN_STOPS = new Set<TaskId>(['plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'salvage', 'turtles', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
 // Which task "tries out" each newly made thing.
 export const CURIOUS_TASK: Partial<Record<CraftKey, TaskId>> = { rod: 'fish', spear: 'fish', drum: 'drum', flute: 'drum', ukulele: 'drum', marimba: 'drum', journal: 'write', axe: 'chop', pick: 'mine', chair: 'relax', rocker: 'watch' };
 
