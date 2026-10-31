@@ -674,6 +674,14 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     weight: () => 1.4 + 0.5 * S.taste.animals,
     tags: ['animals', 'practical'],
   },
+  map: {
+    kind: 'craft', name: 'bark map', a: 'a map of the island', cost: { wood: 1, fibre: 2 }, minutes: 60,
+    unlocked: () => Object.keys(S.places ?? {}).length >= 2,
+    want: 'I should draw a map: every place I’ve found, and the blank bits still to explore.',
+    done: 'My map! Look at all the places I’ve been. And all the blank bits…',
+    weight: () => 1.2 + 0.9 * S.taste.adventure + (tr('curious') ? 0.5 : 0),
+    tags: ['adventure', 'creative'],
+  },
   chimes: {
     kind: 'craft', name: 'wind chimes', a: 'wind chimes', cost: { bamboo: 3, fibre: 1, shells: 1 }, minutes: 50,
     unlocked: () => S.isletFound && S.skills.crafting.lvl >= 2 && S.stock.shells >= 1,

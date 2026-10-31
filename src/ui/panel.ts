@@ -1,6 +1,7 @@
 // Observer panel: her name/traits/activity and goal, then Status (vitals,
 // needs, skills), Camp (what she has and has made) and Diary tabs, plus the
 // death overlay. The player only watches; this never changes sim state.
+import { foundPlaces, PLACE_KEYS, PLACES } from '../sim/places';
 import { birthdayToday, DAY_MOOD, ill, ILL_LABEL, titles } from '../sim/life';
 import { injured } from '../sim/events';
 import { freePlots, growingPlots, ripePlots } from '../sim/garden';
@@ -59,6 +60,7 @@ function renderCamp() {
   if (S.book) stock.push(['Her book', `“${S.book}”`]);
   if (S.recordFish) stock.push(['Record catch', `${S.recordFish} kg`]);
   if (S.islandName) stock.push(['Her island', S.islandName]);
+  if (S.relics?.length) stock.push(['From the wreck', S.relics.join(', ')]);
   if (S.stock.ore || S.stock.iron || S.projects.furnace.done) stock.push(['Iron', `${S.stock.iron} (and ${S.stock.ore} ore)`]);
   if (S.stock.honey || S.projects.beehive.done) stock.push(['Honey', S.stock.honey ? n(S.stock.honey, 'jar', 'jars') : 'none yet']);
   if (S.stock.fruit || S.orchard.some(t => t.kind)) stock.push(['Fruit', S.stock.fruit ? n(S.stock.fruit, 'piece', 'pieces') : 'none ripe yet']);
@@ -85,6 +87,12 @@ function renderCamp() {
   if (stumps || saplings) island.push(['Forest', [n(trees, 'tree', 'trees'), stumps && n(stumps, 'stump', 'stumps'), saplings && n(saplings, 'young tree', 'young trees')].filter(Boolean).join(' · ')]);
   const mined = S.boulders.filter(b => b < 8).length;
   if (mined) island.push(['Boulders', `${S.boulders.filter(b => b > 0).length} left`]);
+  // the hidden places she's found (the rest stay a secret)
+  const found = foundPlaces();
+  if (found.length) {
+    island.push(['Places found', `${found.length} of ${PLACE_KEYS.length}${S.items.map ? ' · on her map' : ''}`]);
+    for (const k of found) island.push([cap(PLACES[k].name.replace(/^the /, '')), `found on day ${S.places[k]}`]);
+  }
   if (S.isletFound) island.push(['Bamboo islet', `${S.bamboo.reduce((a, b) => a + Math.floor(b), 0)} canes · ${S.projects.bridge.done ? 'bridged' : 'reached at low tide'}`]);
   if (S.min > 1440 * 1.5) island.push(['She likes building with', S.style ?? 'wood']);
 

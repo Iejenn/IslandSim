@@ -141,7 +141,7 @@ export function checkMastery(k: SkillKey) {
   say(pick([`They’d call me the ${m.title.toLowerCase()} back home.`, 'I’m actually really good at this now.', 'Look how far I’ve come.']));
 }
 export const isMaster = (k: SkillKey) => !!S.mastery[k];
-export const titles = () => (Object.keys(S.mastery) as SkillKey[]).map(k => MASTERY[k]!.title);
+export const titles = () => [...(Object.keys(S.mastery) as SkillKey[]).map(k => MASTERY[k]!.title), ...(S.explorer ? ['Island explorer'] : [])];
 /** Is she in a fit state for the evening? (birthday parties start around six) */
 export const partyTime = () => birthdayToday() && hour() >= 17 && hour() < 22 && !S.partied;
 export { SKILLS };

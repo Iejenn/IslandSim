@@ -145,6 +145,16 @@ creatures (her hens lay more and her sheep grow thicker fleeces).
 Photo mode (under the gear) hides everything but the island: frame your shot
 and save it as a picture.
 
+The island also hides places she discovers over time. An adventurous or
+restless castaway goes roaming and stumbles on them: an overgrown ruin of
+carved stones deep in the forest, a blowhole on the rocky coast (wilder in
+rough weather), a hidden cove she can only reach at low tide, the top of the
+pond's hill, cliffs full of nesting seabirds in spring and summer, a wreck on
+the reef she spots from her canoe and dives to for old treasures, and
+glow-worms in the cave at night. She draws a bark map of what she's found,
+keeps going back to her favourite spots, and finding them all makes her the
+island explorer.
+
 The nights have their own life. The moon waxes and wanes over eight days,
 shooting stars streak low over the sea, and two island constellations (the
 turtle and the canoe) hang over the horizon; tilt the camera up to see them.
