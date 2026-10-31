@@ -259,6 +259,12 @@ function frame(now: number) {
     S.min += dm;
     updateNeeds(dm);
     if (!S.dead) runTask(dt * animScale, dm);
+  } else if (ready && started && !menu.isOpen && !S.dead && !S.task) {
+    // paused straight after loading (a save leaves out what she was doing): let her take it up again
+    // without any time passing, so she's back up in the treehouse or in bed instead of standing below it
+    const task = () => S.task; // (read fresh: runTask changes it)
+    for (let i = 0; i < 4; i++) { runTask(0, 0); if (task()?.started !== false) break; }
+    if (task()) animator?.mixer.update(3); // (and settle into the pose, though the clock is stopped)
   }
   animator?.mixer.update(S.dead ? dt : dt * animScale);
   // what her hands are doing right now (only while she's actually at it, not walking there)

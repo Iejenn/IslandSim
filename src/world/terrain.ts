@@ -1,7 +1,7 @@
 // Island terrain mesh, shaped by the same height() the sim uses for walking.
 import { Color, Float32BufferAttribute, Mesh, MeshStandardMaterial, PlaneGeometry, type Scene } from 'three';
-import { barT, BOULDERS, FOREST, FOREST_START, forestness, height, northness, isletT, tAt } from '../sim/island';
-import { smooth } from '../sim/util';
+import { barT, BOULDERS, FOREST, FOREST_START, forestness, height, MEADOW_TREES, northness, isletT, tAt } from '../sim/island';
+import { lerp, smooth } from '../sim/util';
 
 export function createTerrain(scene: Scene) {
   const g = new PlaneGeometry(200, 200, 300, 300); // big enough for the island (lobes included) plus its shallow shelf
@@ -11,6 +11,7 @@ export function createTerrain(scene: Scene) {
   const c = new Color(), gc = new Color();
   // darker forest floor around the forest, grey stony ground around the boulders
   const forestFloor = new Color('#3E7343'), stony = new Color('#9C9B8C');
+  const trees = [...FOREST, ...MEADOW_TREES.map(pos => ({ pos }))];
   const near = (x: number, z: number, pts: { pos: { x: number; z: number } }[], r: number) =>
     pts.reduce((m, p) => Math.max(m, 1 - Math.hypot(p.pos.x - x, p.pos.z - z) / r), 0);
   // heights first, so the slope at each vertex is known when colouring it
@@ -21,7 +22,9 @@ export function createTerrain(scene: Scene) {
     // (the bamboo islet and its sandbar are coloured like a little island of their own)
     const x = pa.getX(i), z = pa.getZ(i), t0 = Math.min(tAt(x, z), isletT(x, z), barT(x, z));
     // colour by a "t" pulled inwards on the forest and north headlands, so the forest, the meadow and the hill stand on grass, not sand
-    const t = t0 < 0.97 ? t0 * (1 - 0.2 * forestness(Math.atan2(z, x)) - 0.28 * northness(Math.atan2(z, x))) : t0;
+    let t = t0 < 0.97 ? t0 * (1 - 0.2 * forestness(Math.atan2(z, x)) - 0.28 * northness(Math.atan2(z, x))) : t0;
+    // and a patch of grass under every tree near the beach, so no tree stands in the sand
+    if (t0 < 0.97 && t > 0.56) t = lerp(t, 0.56, smooth(near(x, z, trees, 3.4)));
     // grass → sand → wet sand → deep water, by distance from the centre
     gc.copy(g1).lerp(g2, 0.5 + 0.5 * Math.sin(x * 0.7 + z * 0.5));
     if (t < 0.97) gc.lerp(forestFloor, 0.75 * smooth(near(x, z, FOREST.slice(0, FOREST_START), 2.6)));
