@@ -17,7 +17,7 @@ const rows: string[] = [];
 const firsts: Record<string, number> = {}, openings = new Set<string>(), camps: Set<string>[] = [];
 let dreams = 0, dreamsMet = 0, idle = 0;
 const styles: Record<string, number> = {}, masterOf: Record<string, number> = {}, placeOf: Record<string, number> = {};
-const totals = { placesFound: 0, explorers: 0, maps: 0, relics: 0, barn: 0, duckhouse: 0, dovecote: 0, press: 0, cheese: 0, careLvl: 0, ducks: 0, parrot: 0, favHen: 0, fishKinds: 0, decor: 0, ill: 0, masters: 0, totems: 0, birthdays: 0, moods: 0, saltpans: 0, firecover: 0, smokehouse: 0, workshop: 0, furnace: 0, irontools: 0, saltMade: 0, reworks: 0, isletFound: 0, bridge: 0, cave: 0, water: 0, flinttools: 0, chimes: 0, styledMade: 0, styledMatch: 0, tidepools: 0, orchard: 0, fruitTrees: 0, bearing: 0, crops: 0, nightwalk: 0, beachstars: 0, moondance: 0, treesNow: 0, bornHens: 0, bornSheep: 0, cairns: 0, carvings: 0, hobbyMin: 0, salvaged: 0, hatched: 0, gullPet: 0, treasure: 0, kiln: 0, clayItems: 0, rareBuilt: 0, rareAllowed: 0, present: 0, spear: 0, snare: 0, hunted: 0, freed: 0, rabbitsLeft: 0, houseboat: 0, lodge: 0, fence: 0, coop: 0, penned: 0, eggs: 0, wool: 0, lodgeFurniture: 0, died: 0, built: 0, crafted: 0, furniture: 0, felled: 0, standing: 0, meals: 0, stews: 0, fireOutHours: 0, dogFriend: 0, storms: 0, repairs: 0, broken: 0, comfort: 0 };
+const totals = { pondDrinks: 0, campDrinks: 0, pondAfterCamp: 0, placesFound: 0, explorers: 0, maps: 0, relics: 0, barn: 0, duckhouse: 0, dovecote: 0, press: 0, cheese: 0, careLvl: 0, ducks: 0, parrot: 0, favHen: 0, fishKinds: 0, decor: 0, ill: 0, masters: 0, totems: 0, birthdays: 0, moods: 0, saltpans: 0, firecover: 0, smokehouse: 0, workshop: 0, furnace: 0, irontools: 0, saltMade: 0, reworks: 0, isletFound: 0, bridge: 0, cave: 0, water: 0, flinttools: 0, chimes: 0, styledMade: 0, styledMatch: 0, tidepools: 0, orchard: 0, fruitTrees: 0, bearing: 0, crops: 0, nightwalk: 0, beachstars: 0, moondance: 0, treesNow: 0, bornHens: 0, bornSheep: 0, cairns: 0, carvings: 0, hobbyMin: 0, salvaged: 0, hatched: 0, gullPet: 0, treasure: 0, kiln: 0, clayItems: 0, rareBuilt: 0, rareAllowed: 0, present: 0, spear: 0, snare: 0, hunted: 0, freed: 0, rabbitsLeft: 0, houseboat: 0, lodge: 0, fence: 0, coop: 0, penned: 0, eggs: 0, wool: 0, lodgeFurniture: 0, died: 0, built: 0, crafted: 0, furniture: 0, felled: 0, standing: 0, meals: 0, stews: 0, fireOutHours: 0, dogFriend: 0, storms: 0, repairs: 0, broken: 0, comfort: 0 };
 const FURNITURE = ['chair', 'table', 'bed', 'shelf', 'rocker'], LODGE_FURNITURE = ['realbed', 'sofa', 'kitchen'], WOOL_ITEMS = ['blanket', 'sweater'];
 for (let r = 0; r < runs; r++) {
   const S = initState();
@@ -35,6 +35,8 @@ for (let r = 0; r < runs; r++) {
     for (const p of S.plots) if (p.crop && p.state !== 'empty') crops.add(p.crop);
     const label = S.task ? S.task.id + S.task.label : '';
     if (label !== lastTask && S.task) {
+      // v2.0: where she drinks (and whether she still walks to the far pond once she has water in camp)
+      if (S.task.id === 'drink') { if (S.task.label === 'Drinking at the spring') { totals.pondDrinks++; if (S.projects.well.done || S.projects.pipe.done) totals.pondAfterCamp++; } else totals.campDrinks++; }
       if (S.task.id === 'nightwalk') totals.nightwalk++;
       if (S.task.id === 'beachstars') totals.beachstars++;
       if (S.task.id === 'tidepools') totals.tidepools++;
@@ -125,7 +127,8 @@ console.log(`\n${runs} islands × ${days} days: ${totals.died} died · avg ${avg
   `v1.6: ${avg(totals.masters)} masteries per island (${Object.entries(masterOf).map(([k, v]) => `${k} ${v}`).join(', ')}) · ${avg(totals.totems)} totems · ${avg(totals.decor)} decorations · ${avg(totals.ill)} illnesses\n` +
   `v1.7: ducks on ${totals.ducks}/${runs}, parrot friend on ${totals.parrot}/${runs}, favourite hen on ${totals.favHen}/${runs}, ${avg(totals.fishKinds)} kinds of fish\n` +
   `v1.8: barn ${totals.barn}, duck house ${totals.duckhouse}, dovecote ${totals.dovecote}, cheese press ${totals.press}, made cheese ${totals.cheese} (of ${runs}) · animal care lvl ${avg(totals.careLvl)}\n` +
-  `v1.9: ${avg(totals.placesFound)}/7 places found (${Object.entries(placeOf).map(([k, v]) => `${k} ${v}`).join(', ')}) · map on ${totals.maps}, explorer on ${totals.explorers} (of ${runs}) · ${avg(totals.relics)} relics`);
+  `v1.9: ${avg(totals.placesFound)}/7 places found (${Object.entries(placeOf).map(([k, v]) => `${k} ${v}`).join(', ')}) · map on ${totals.maps}, explorer on ${totals.explorers} (of ${runs}) · ${avg(totals.relics)} relics` +
+  `\nv2.0: drinks per island: ${avg(totals.pondDrinks)} at the pond (${avg(totals.pondAfterCamp)} after water came to camp), ${avg(totals.campDrinks)} in camp (barrel, well, pipe)`);
 // how different two finished camps are: 0 = made exactly the same things, 1 = nothing in common
 let diff = 0, pairs = 0;
 for (let i = 0; i < camps.length; i++) for (let j = i + 1; j < camps.length; j++) {

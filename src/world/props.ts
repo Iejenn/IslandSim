@@ -5,7 +5,7 @@ import {
   BoxGeometry, CatmullRomCurve3, ConeGeometry, CylinderGeometry, DodecahedronGeometry, Group, IcosahedronGeometry,
   PointLight, SphereGeometry, TubeGeometry, Vector3, type Mesh, type Scene,
 } from 'three';
-import { BUSHES, FIRE, FISH_A, POND_R, SEATS, SH, SP, V, clearOf, ground, pointAt, yawTo, type Pt } from '../sim/island';
+import { BUSHES, FIRE, FISH_A, HILL_C, MEADOW_TREES, POND_R, SEATS, SH, SP, V, clearOf, ground, pointAt, yawTo, type Pt } from '../sim/island';
 import { rand } from '../sim/util';
 import { pickable } from './inspect';
 import { flameMat, flameMat2, M, mesh } from './materials';
@@ -138,12 +138,26 @@ export function createProps(scene: Scene) {
     const a = i / 20 * Math.PI * 2 + rand(-0.12, 0.12);
     if (Math.abs(((a - FISH_A + Math.PI * 3) % (Math.PI * 2)) - Math.PI) < 0.35) continue; // keep the fishing spot open
     const p = pointAt(a, rand(0.7, 0.84));
-    if (clearOf(p, 2)) palm(p, rand(0.85, 1.15));
+    if (clearOf(p, 2) && Math.hypot(p.x - HILL_C.x, p.z - HILL_C.z) > 7) palm(p, rand(0.85, 1.15)); // (palms on the beach, not up the pond's hill)
   }
   for (let n = 0, tries = 0; n < 16 && tries < 160; tries++) {
     const p = pointAt(rand(0, 6.3), rand(0.45, 0.95));
     if (clearOf(p, 1.6)) { rock(p, rand(0.2, 0.5)); n++; }
   }
+
+  // v2.0: big old shade trees out on the north meadow (wider and rounder than the forest's)
+  MEADOW_TREES.forEach((p, i) => {
+    const g = new Group(), s = 1.15 + (i % 3) * 0.15;
+    g.add(mesh(new CylinderGeometry(0.17, 0.26, 1.9, 6), M.trunk, 0, 0.95, 0));
+    g.add(mesh(new IcosahedronGeometry(1.4, 0), i % 2 ? M.forestLeaf : M.forestLeaf2, 0, 2.5, 0));
+    g.add(mesh(new IcosahedronGeometry(1.0, 0), i % 2 ? M.forestLeaf2 : M.forestLeaf, 0.8, 2.3, 0.3));
+    g.add(mesh(new IcosahedronGeometry(0.9, 0), M.forestLeaf, -0.7, 2.4, -0.3));
+    g.scale.setScalar(s);
+    g.rotation.y = i * 2.3;
+    g.position.copy(v3(p));
+    scene.add(g);
+    pickable(g, () => ({ title: 'A shade tree', lines: ['An old tree out on the meadow', 'Too fine to cut down'] }));
+  });
 
   return {
     campfire,

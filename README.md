@@ -20,8 +20,11 @@ for cooking when the campfire is out). Chickens and sheep roam the island
 from day one, but they're no use to her until she fences off her home and
 builds a coop: then she herds them in one by one, collects eggs for omelettes
 and shears the sheep for wool (a blanket, a sweater for rainy days). Her
-pond sits at the foot of a hill on a headland on the far side, fed by a
-waterfall from a spring on the hilltop, with berry bushes around it.
+pond sits at the foot of a hill out at the end of a long north headland, fed
+by a waterfall from a spring on the hilltop. It's a real walk from camp,
+across an open meadow with old shade trees and a berry thicket, so water in
+camp (a rain barrel, a well or a long bamboo pipe) saves her many trips: once
+she has it, she only drinks at the pond when she's out there anyway.
 
 Every castaway is different. Besides her two traits she has her own taste
 (cosy comforts, practical things, animals, gardening, the sea, making things,
@@ -96,8 +99,8 @@ The island keeps growing with her. Out in the bay lies a little islet full of
 bamboo: at low tide a sandbar rises out of the water and she can walk across,
 until she builds a bridge. A cave in the pond's hill is choked with rubble
 until she clears it; inside she digs flint for sharper tools, and fish keeps
-longer in its cool. Water comes to camp through a bamboo pipe from the pond, or
-from a stone well. Every castaway has a favourite material (bamboo, wood or
+longer in its cool. Water comes to camp through a long bamboo pipe from the
+pond, or from a stone well. Every castaway has a favourite material (bamboo, wood or
 stone) and most of what she builds follows it: bamboo chairs and a lashed
 bamboo fence, a plank bridge, or a dry-stone wall and stone benches, with the
 odd piece in something else. She never waits for the tide to build: without

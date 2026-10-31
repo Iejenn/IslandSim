@@ -1,6 +1,6 @@
 // Island terrain mesh, shaped by the same height() the sim uses for walking.
 import { Color, Float32BufferAttribute, Mesh, MeshStandardMaterial, PlaneGeometry, type Scene } from 'three';
-import { barT, BOULDERS, FOREST, FOREST_START, forestness, height, isletT, tAt } from '../sim/island';
+import { barT, BOULDERS, FOREST, FOREST_START, forestness, height, northness, isletT, tAt } from '../sim/island';
 import { smooth } from '../sim/util';
 
 export function createTerrain(scene: Scene) {
@@ -20,8 +20,8 @@ export function createTerrain(scene: Scene) {
   for (let i = 0; i < pa.count; i++) {
     // (the bamboo islet and its sandbar are coloured like a little island of their own)
     const x = pa.getX(i), z = pa.getZ(i), t0 = Math.min(tAt(x, z), isletT(x, z), barT(x, z));
-    // colour by a "t" pulled inwards on the forest headland, so the forest stands on grass, not sand
-    const t = t0 < 0.97 ? t0 * (1 - 0.2 * forestness(Math.atan2(z, x))) : t0;
+    // colour by a "t" pulled inwards on the forest and north headlands, so the forest, the meadow and the hill stand on grass, not sand
+    const t = t0 < 0.97 ? t0 * (1 - 0.2 * forestness(Math.atan2(z, x)) - 0.28 * northness(Math.atan2(z, x))) : t0;
     // grass → sand → wet sand → deep water, by distance from the centre
     gc.copy(g1).lerp(g2, 0.5 + 0.5 * Math.sin(x * 0.7 + z * 0.5));
     if (t < 0.97) gc.lerp(forestFloor, 0.75 * smooth(near(x, z, FOREST.slice(0, FOREST_START), 2.6)));

@@ -4,7 +4,7 @@
 // gates). Most walks are a straight line; only when that's blocked does she
 // search a small grid around the obstacle (A*) and smooth the result.
 import {
-  BARN_P, DOVECOTE_P, DECOR_SPOTS, TOTEM_SPOTS, FIRECOVER_POSTS, SMOKE_P, WORKSHOP_P, FURNACE_P, BAR_A, BAR_B, onIslet, SPOUT_P, WELL_P, ORCHARD, BANDSTAND_P, MARIMBA_P, POND_R, SHED_P, BARREL_P, BATH_P, BOULDERS, COOP_P, DRUM_P, FENCE_GATES, FENCE_R, FIRE, FOREST, GARDEN_P, HIVE_P, KILN_P, LODGE_SIZE,
+  BARN_P, DOVECOTE_P, DECOR_SPOTS, TOTEM_SPOTS, FIRECOVER_POSTS, SMOKE_P, WORKSHOP_P, FURNACE_P, BAR_A, BAR_B, onIslet, SPOUT_P, WELL_P, ORCHARD, BANDSTAND_P, MARIMBA_P, POND_R, SHED_P, BARREL_P, BATH_P, BOULDERS, COOP_P, DRUM_P, FENCE_GATES, FENCE_R, FIRE, FOREST, MEADOW_TREES, GARDEN_P, HIVE_P, KILN_P, LODGE_SIZE,
   lodgeLocal, LOOKOUT_P, OVEN_P, RACK_P, SH, SP, SUNDIAL_P, TABLE_P, V, WARREN_P, WOODPILE_P, yawTo, type Pt,
 } from './island';
 import { S } from './state';
@@ -31,6 +31,7 @@ function rebuild() {
   c(FIRE, done('hearth') ? 1.2 : 0.8);
   S.trees.forEach((t, i) => { if (t.state === 'tree' || t.state === 'stump') c(FOREST[i].pos, t.state === 'tree' ? 0.3 : 0.22); });
   S.boulders.forEach((left, i) => { if (left > 0) c(BOULDERS[i].pos, 0.75 * (0.45 + 0.55 * left / 8) + 0.05); });
+  for (const p of MEADOW_TREES) c(p, 0.35);
   c(WOODPILE_P, 0.55); c(SP, POND_R + 0.15); c(WARREN_P, 1.2);
   if (S.items.drum && !S.projects.bandstand.done) c(DRUM_P, 0.25);
   if (S.items.marimba && !S.projects.bandstand.done) c(MARIMBA_P, 0.5);

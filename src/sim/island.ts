@@ -30,7 +30,14 @@ const lobe = (a: number, centre: number, width: number, size: number) => {
   const d = Math.atan2(Math.sin(a - centre), Math.cos(a - centre)); // shortest angle difference
   return size * Math.exp(-(d * d) / (2 * width * width));
 };
+// v2.0: a long, narrow headland grows north past the old pond meadow, and the pond and its hill
+// sit out at its far end, so water in camp (well, pipe, barrel) saves her a real walk
+export const NORTH_A = POND_A - 0.06, NORTH_SIZE = 13;
 export function islandR(a: number) {
+  return baseR(a) + lobe(a, NORTH_A, 0.22, NORTH_SIZE);
+}
+/** The island's shape before the north headland grew (the islet and its sandbar stay fixed to this). */
+function baseR(a: number) {
   // the forest is a big, wide headland of its own (with a rabbit warren deep inside)
   const lobes = lobe(a, FOREST_A, 0.45, 27) + lobe(a, ROCKS_A, 0.36, 11) + lobe(a, POND_A, 0.45, 14);
   // a big smooth bump makes a squarish headland; ragged it up so the coast looks natural
@@ -43,15 +50,22 @@ export function forestness(a: number) {
   const d = Math.atan2(Math.sin(a - FOREST_A), Math.cos(a - FOREST_A));
   return Math.exp(-(d * d) / (2 * 0.45 * 0.45));
 }
+/** 0…1: how much this direction lies on the long north headland (v2.0: its meadow and hill are grass, not beach). */
+export function northness(a: number) {
+  const d = Math.atan2(Math.sin(a - NORTH_A), Math.cos(a - NORTH_A));
+  return Math.exp(-(d * d) / (2 * 0.26 * 0.26));
+}
 export function tAt(x: number, z: number) {
   return Math.hypot(x, z) / islandR(Math.atan2(z, x));
 }
 /* ---------- the land's shape: rolling hills, a rocky ridge, and the pond under its hill ---------- */
 // The pond sits in a basin at the foot of a hill on the pond headland; a
 // stream runs off the hilltop and drops into it as a small waterfall.
-export const POND_C = pointAt(POND_A, 0.4);
+// (at a fixed distance from camp, out at the far end of the headland: about twice as far as before)
+export const POND_D = 26;
+export const POND_C = V(Math.cos(POND_A) * POND_D, Math.sin(POND_A) * POND_D);
 export const POND_R = 2.4, POND_LEVEL = 0.72; // water radius, and the basin floor (the water sits a little above)
-export const HILL_C = pointAt(POND_A, 0.58);
+export const HILL_C = V(Math.cos(POND_A) * (POND_D + 6.2), Math.sin(POND_A) * (POND_D + 6.2));
 const HILL_H = 4.2, HILL_S = 3.0;
 const RIDGE_C = pointAt(ROCKS_A, 0.62);
 const bump = (x: number, z: number, c: Pt, s: number) => Math.exp(-((x - c.x) ** 2 + (z - c.z) ** 2) / (2 * s * s));
@@ -74,13 +88,13 @@ function caveShoulder(x: number, z: number) {
 
 /* ---------- the bamboo islet: a little island in the bay, joined by a sandbar that shows at low tide ---------- */
 export const ISLET_A = -1.72, ISLET_R = 5.5;
-const isletDir = V(Math.cos(ISLET_A), Math.sin(ISLET_A)), isletD = islandR(ISLET_A) * 1.02 + 3.4 + ISLET_R * 1.02;
+const isletDir = V(Math.cos(ISLET_A), Math.sin(ISLET_A)), isletD = baseR(ISLET_A) * 1.02 + 3.4 + ISLET_R * 1.02;
 export const ISLET_C = V(isletDir.x * isletD, isletDir.z * isletD);
 /** Like tAt, but for the islet: 0 at its middle, 1 at its shore. */
 export const isletT = (x: number, z: number) => Math.hypot(x - ISLET_C.x, z - ISLET_C.z) / ISLET_R;
 export const onIslet = (p: { x: number; z: number }) => isletT(p.x, p.z) < 1.1;
 // the sandbar (and later her bridge) runs from her beach to the islet's
-const barA = V(Math.cos(ISLET_A) * islandR(ISLET_A) * 0.98, Math.sin(ISLET_A) * islandR(ISLET_A) * 0.98);
+const barA = V(Math.cos(ISLET_A) * baseR(ISLET_A) * 0.98, Math.sin(ISLET_A) * baseR(ISLET_A) * 0.98);
 const barB = V(ISLET_C.x - isletDir.x * ISLET_R * 0.98, ISLET_C.z - isletDir.z * ISLET_R * 0.98);
 /** How far (x, z) is from the sandbar's line. */
 export function barDist(x: number, z: number) { return barAt(x, z).d; }
@@ -182,10 +196,12 @@ export const SP: Pt = { x: POND_C.x, y: POND_LEVEL, z: POND_C.z };
 export const SPRING: Spot = { spot: standNear(SP, POND_R + 0.35), face: SP };
 reserve(SP, ...[0, 1.5, 3, 4.5].map(a => V(SP.x + Math.cos(a) * POND_R, SP.z + Math.sin(a) * POND_R)));
 
-/* berry bushes around the camp side of the pond (berry counts live in sim state) */
+/* berry bushes: a thicket on the near meadow, about where they stood before the pond moved out
+   (her food stays within reach; it's the water that makes the long walk) (berry counts live in sim state) */
 const toCamp = Math.atan2(-SP.z, -SP.x); // direction from the pond back towards the camp
-export const BUSHES = [-1.45, -0.87, -0.29, 0.29, 0.87, 1.45].map(k => {
-  const pos = ground(V(SP.x + Math.cos(toCamp + k) * (POND_R + 1.5), SP.z + Math.sin(toCamp + k) * (POND_R + 1.5)));
+export const BERRY_C = ground(V(Math.cos(POND_A - 0.15) * 14, Math.sin(POND_A - 0.15) * 14)); // (clear of the pipe's line, the barn and the meadow trees)
+export const BUSHES = [0, 1.05, 2.1, 3.15, 4.2, 5.25].map(k => {
+  const pos = ground(V(BERRY_C.x + Math.cos(toCamp + k) * 2.2, BERRY_C.z + Math.sin(toCamp + k) * 2.2));
   reserve(pos);
   return { pos, stand: standNear(pos, 1.0) };
 });
@@ -403,7 +419,7 @@ reserve(...CHICKEN_HOMES, ...SHEEP_HOMES);
 
 /* ---------- island growth: the islet's bamboo, the bridge, the cave, water at camp ---------- */
 /** Bridge ends: up on dry sand on her beach and on the islet's (also the sandbar's ends). */
-export const BAR_A = ground(V(Math.cos(ISLET_A) * islandR(ISLET_A) * 0.9, Math.sin(ISLET_A) * islandR(ISLET_A) * 0.9));
+export const BAR_A = ground(V(Math.cos(ISLET_A) * baseR(ISLET_A) * 0.9, Math.sin(ISLET_A) * baseR(ISLET_A) * 0.9));
 export const BAR_B = ground(V(ISLET_C.x - isletDir.x * ISLET_R * 0.88, ISLET_C.z - isletDir.z * ISLET_R * 0.88));
 export const BRIDGE_Y = 0.36; // the deck's height above the water
 /** Is (x, z) on the bridge (where it'd be, once built)? */
@@ -463,3 +479,8 @@ export const CLIFFS_P = ground(pointAt(ROCKS_A + 0.12, 0.9)); // the cliff edge 
 export const HILLTOP_P = ground(V(HILL_C.x - dirXZ(HILL_C, POND_C).x * 0.8, HILL_C.z - dirXZ(HILL_C, POND_C).z * 0.8)); // top of the pond's hill
 export const WRECK_P = { ...pointAt(FISH_A - 0.35, 1.16), y: -1.15 }; // on the reef, under the water (just the mast tip breaks the surface)
 export const WRECK_STAND = ground(pointAt(FISH_A - 0.35, 1.06)); // swimming out over it
+/* ---------- v2.0: the north headland's meadow, dotted with a few old shade trees (just scenery, never felled) ---------- */
+// (clear of the long bamboo pipe's line, should she build it)
+reserve(...Array.from({ length: 9 }, (_, i) => ground(V(PIPE_FROM.x + (SPOUT_P.x - PIPE_FROM.x) * i / 8, PIPE_FROM.z + (SPOUT_P.z - PIPE_FROM.z) * i / 8))));
+export const MEADOW_TREES = scatter(29, 9, NORTH_A - 0.32, NORTH_A + 0.32, 0.3, 0.62, 4.0, 2.6).filter(p => Math.hypot(p.x, p.z) > FENCE_R + 3 && Math.hypot(p.x - SP.x, p.z - SP.z) > POND_R + 3);
+reserve(...MEADOW_TREES);
