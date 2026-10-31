@@ -417,7 +417,7 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     unlocked: () => S.stats.rainsSeen >= 1 && dayNum() >= 3,
     want: 'All that rain, and I walk to the pond every time. A barrel would catch it.',
     done: 'A rain barrel! Now we wait for the clouds.',
-    weight: () => 1.2 + (tr('lazy') ? 1 : 0),
+    weight: () => 1.6 + (tr('lazy') ? 1 : 0), // (v2.0: the pond is a long walk now)
     tags: ['practical', 'green'],
   },
   treehouse: {
@@ -557,7 +557,7 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     unlocked: () => S.isletFound && !progressOf('well').started,
     want: 'If I ran bamboo pipes down from the pond, the water would come to me.',
     done: 'Water, pouring right into camp! I’m a genius.',
-    weight: () => 1.2 + 0.8 * S.taste.green + (S.style === 'bamboo' ? 0.8 : 0) + (tr('lazy') ? 0.5 : 0),
+    weight: () => 1.6 + 0.8 * S.taste.green + (S.style === 'bamboo' ? 0.8 : 0) + (tr('lazy') ? 0.5 : 0),
     tags: ['green', 'practical'],
   },
   well: {
@@ -566,7 +566,7 @@ export const PLANS: Record<PlanKey, PlanDef> = {
     unlocked: () => !!S.items.pick && dayNum() >= 7 && !progressOf('pipe').started,
     want: 'If I dug a well right here in camp, I’d never have to walk to the pond again.',
     done: 'A well! Cold, clean water, right on my doorstep.',
-    weight: () => 1.1 + 0.8 * S.taste.practical + (S.style === 'stone' ? 0.8 : 0) + (tr('lazy') ? 0.5 : 0),
+    weight: () => 1.5 + 0.8 * S.taste.practical + (S.style === 'stone' ? 0.8 : 0) + (tr('lazy') ? 0.5 : 0),
     tags: ['practical'],
   },
   flinttools: {

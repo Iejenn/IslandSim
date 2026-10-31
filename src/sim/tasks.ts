@@ -325,21 +325,26 @@ export const T: Record<string, () => Task | null> = {
     })]);
   },
   drink() {
-    // water at camp (her well, or the pipe's spout) when it's nearer than the pond
-    const camp = works('well') ? { stand: WELL_STAND, face: WELL_P, what: 'Drinking from her well' } : works('pipe') ? { stand: SPOUT_STAND, face: SPOUT_P, what: 'Drinking from the pipe' } : null;
-    if (camp && dist(camp.stand, S.pos) < dist(SPRING.spot, S.pos)) {
+    // v2.0: the pond is a long walk out on the headland now, so once she has water in camp she
+    // uses that (the nearer of her well and the pipe), unless she happens to be right by the pond
+    const byPond = dist(SPRING.spot, S.pos) < 8;
+    const camps = [works('well') && { stand: WELL_STAND, face: WELL_P, what: 'Drinking from her well' }, works('pipe') && { stand: SPOUT_STAND, face: SPOUT_P, what: 'Drinking from the pipe' }]
+      .filter(c => !!c).sort((a, b) => dist(a.stand, S.pos) - dist(b.stand, S.pos));
+    const camp = camps[0];
+    if (camp && !byPond) {
       return mk('drink', camp.what, pick(['Ahh. Cold and clean.', 'Best thing I ever built.', 'No more walking to the pond!']), [go(camp.stand, false, urgent(S.needs.water)), act({
         pose: 'gather', face: camp.face, min: 8, done() { feed('water', 55); addXp('survival', 1); },
       })]);
     }
-    // rainwater from the barrel when it's nearer than the pond
-    if (S.barrel >= 1 && works('barrel') && dist(BARREL_STAND, S.pos) < dist(SPRING.spot, S.pos)) {
+    // rainwater from the barrel, unless she's out by the pond anyway
+    if (S.barrel >= 1 && works('barrel') && !byPond) {
       return mk('drink', 'Drinking rainwater from the barrel', pick(['Rainwater. Free delivery.', 'Best idea I ever had, this barrel.']), [go(BARREL_STAND, false, urgent(S.needs.water)), act({
         pose: 'gather', face: BARREL_P, min: 8, done() { S.barrel = Math.max(0, S.barrel - 1); feed('water', 45); addXp('survival', 1); },
       })]);
     }
+    // (it's a long walk out to the pond now, so she drinks her fill while she's there)
     return mk('drink', 'Drinking at the spring', thoughtFor('drink', 'water'), [go(SPRING.spot, false, urgent(S.needs.water)), act({
-      pose: 'gather', face: SPRING.face, min: 12, done() { feed('water', 50); addXp('survival', 2); },
+      pose: 'gather', face: SPRING.face, min: 15, done() { feed('water', 85); addXp('survival', 2); },
     })]);
   },
   wood() {
@@ -491,8 +496,9 @@ export const T: Record<string, () => Task | null> = {
   },
   water() {
     if (!growingPlots().length) return null;
+    // (fetching the water from the nearest of her barrel, well or pipe before the far pond)
     const bucket = has('bucket'), barrel = works('barrel') && S.barrel >= 1;
-    const src = barrel ? { spot: BARREL_STAND, face: BARREL_P } : SPRING;
+    const src = barrel ? { spot: BARREL_STAND, face: BARREL_P } : works('well') ? { spot: WELL_STAND, face: WELL_P } : works('pipe') ? { spot: SPOUT_STAND, face: SPOUT_P } : SPRING;
     return mk('water', 'Watering the garden', pick(TH.water), [go(src.spot), act({ pose: 'gather', face: src.face, min: 5, done() { if (barrel) S.barrel = Math.max(0, S.barrel - 1); } }), go(GARDEN_STAND, true),
       act({
         pose: 'gather', face: GARDEN_P, min: bucket ? 5 : 10, done() {
