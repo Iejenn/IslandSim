@@ -455,3 +455,11 @@ export const BARN_STAND = standNear(BARN_P, 1.7);
 export const DOVECOTE_P = ground(V(1.0, -6.5));
 export const DUCKHOUSE_P = { x: SP.x + (POND_R - 0.7), y: SP.y, z: SP.z }; // floating on the pond
 export const DUCKHOUSE_STAND = ground(V(SP.x + POND_R + 0.6, SP.z));
+/* ---------- v1.9: hidden places she discovers (places.ts) ---------- */
+export const RUIN_P = ground(pointAt(2.39, 0.67)); // a clearing deep in the forest
+export const BLOWHOLE_P = ground(pointAt(ROCKS_A - 0.14, 0.97)); // on the rocky headland's coast
+export const COVE_P = ground(pointAt(ROCKS_A - 0.5, 0.96)); // a little beach past the rocks
+export const CLIFFS_P = ground(pointAt(ROCKS_A + 0.12, 0.9)); // the cliff edge where seabirds nest
+export const HILLTOP_P = ground(V(HILL_C.x - dirXZ(HILL_C, POND_C).x * 0.8, HILL_C.z - dirXZ(HILL_C, POND_C).z * 0.8)); // top of the pond's hill
+export const WRECK_P = { ...pointAt(FISH_A - 0.35, 1.16), y: -1.15 }; // on the reef, under the water (just the mast tip breaks the surface)
+export const WRECK_STAND = ground(pointAt(FISH_A - 0.35, 1.06)); // swimming out over it

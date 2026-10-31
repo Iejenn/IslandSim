@@ -22,6 +22,7 @@ import { lowTide } from './tide';
 import { birthdayToday, drinkTea, ill, isMaster } from './life';
 import { DECOR, nextDecor, placeDecor } from './decor';
 import { catchKind, offerParrot, PARROT_TREE } from './friends';
+import { discover, enjoyPlace, PLACES, placeToFind, visitable, type PlaceKey } from './places';
 import { injured } from './events';
 import { fx, season } from './seasons';
 import { TH, thoughtFor } from './thoughts';
@@ -641,6 +642,7 @@ export const T: Record<string, () => Task | null> = {
         begin() { S.sailing = false; }, // back on the dock
         done() {
           feed('fun', 35); addXp('survival', 5); remember('sail', 0.12); highlight('went paddling');
+          if (!S.places.wreck && Math.random() < 0.35) discover('wreck'); // (spotted from the canoe, down on the reef)
           const r = Math.random();
           if (r < 0.3) { S.stock.wood = Math.min(storageCap('wood'), S.stock.wood + 2); log('She towed some driftwood back from her canoe trip.'); }
           else if (r < 0.45) { say('Dolphins! Actual dolphins!'); log('She saw dolphins while paddling.'); S.mood = Math.min(40, S.mood + 10); highlight('saw dolphins'); }
@@ -830,6 +832,32 @@ export const T: Record<string, () => Task | null> = {
         highlight(oven ? 'baked a birthday cake' : 'had a birthday feast');
       },
     }), go(p), act({ pose: 'idle', face: FIRE, min: 20, done() { S.mood = Math.min(40, S.mood + 8); } })]); // (a birthday dance: see main.ts)
+  },
+  roam() {
+    // an adventurous soul heads off to a part of the island she hasn't explored yet
+    const k = placeToFind();
+    if (!k) return null;
+    const p = PLACES[k].at, a = Math.random() * Math.PI * 2, spot = ground(V(p.x + Math.cos(a) * PLACES[k].near * 0.4, p.z + Math.sin(a) * PLACES[k].near * 0.4));
+    return mk('roam', 'Exploring a far corner of the island', pick(['What’s over there?', 'I’ve never been this way.', 'Let’s see where this leads.']), [go(spot), act({
+      pose: 'idle', face: p, min: 20, done() {
+        feed('fun', 12); addXp('survival', 3);
+        // (the map helps her know where to look)
+        if (Math.random() < (has('map') ? 0.75 : 0.5)) discover(k);
+        else highlight('went exploring');
+      },
+    })]);
+  },
+  visit() {
+    // back to a place she loves
+    const options = visitable();
+    if (!options.length) return null;
+    const k: PlaceKey = pick(options), def = PLACES[k], p = def.at;
+    const spot = k === 'wreck' || k === 'grotto' ? p : standNear(p, k === 'ruin' ? 1.6 : 1.2);
+    return mk('visit', def.visit, pick(def.visitLine), [go(spot), act({
+      pose: k === 'cove' || k === 'wreck' ? 'idle' : 'gather', face: p, min: 40,
+      tick: dm => feed('fun', dm * 18 / 60),
+      done() { enjoyPlace(k); if (k === 'ruin') addXp('writing', 6); remember('visit', 0.05); highlight(`spent time at ${def.name}`); },
+    })]);
   },
   milk() {
     // in spring (and after lambing) her ewes give milk; with something to keep it in she saves some,
@@ -1240,9 +1268,9 @@ export const T: Record<string, () => Task | null> = {
 };
 
 // Tasks that urgent needs (or something new to try) are allowed to cut short.
-export const INTERRUPTIBLE = new Set<TaskId>(['milk', 'cheese', 'ducks', 'parrot', 'decorate', 'tea', 'totem', 'salt', 'smoke', 'ore', 'bamboo', 'flint', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'honey', 'bathe', 'salvage', 'turtles', 'tendgull', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
+export const INTERRUPTIBLE = new Set<TaskId>(['roam', 'visit', 'milk', 'cheese', 'ducks', 'parrot', 'decorate', 'tea', 'totem', 'salt', 'smoke', 'ore', 'bamboo', 'flint', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'honey', 'bathe', 'salvage', 'turtles', 'tendgull', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
 // Outdoor tasks a sudden shower sends her away from.
-export const RAIN_STOPS = new Set<TaskId>(['salt', 'ore', 'bamboo', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'salvage', 'turtles', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
+export const RAIN_STOPS = new Set<TaskId>(['roam', 'visit', 'salt', 'ore', 'bamboo', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'salvage', 'turtles', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
 // Which task "tries out" each newly made thing.
 export const CURIOUS_TASK: Partial<Record<CraftKey, TaskId>> = { rod: 'fish', spear: 'fish', drum: 'drum', flute: 'drum', ukulele: 'drum', marimba: 'drum', journal: 'write', axe: 'chop', pick: 'mine', chair: 'relax', rocker: 'watch' };
 

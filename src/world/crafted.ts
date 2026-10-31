@@ -308,6 +308,14 @@ export function createCrafted(scene: Scene) {
     flinttools: () => new Group(), // (not a thing of its own: her axe and pick get flint heads)
     rework: () => new Group(), // (remakes another piece; see the styled holders)
     irontools: () => new Group(), // (her axe and pick get iron heads)
+    map() {
+      // her bark map, propped beside the journal: a sheet of bark with the island drawn on it
+      const g = new Group();
+      const bark = mesh(new BoxGeometry(0.6, 0.45, 0.03), mat('#B08A5C'), 0, 0.3, 0); bark.rotation.x = -0.25; g.add(bark);
+      const land = mesh(new CylinderGeometry(0.15, 0.17, 0.01, 9), mat('#6E8E4E'), 0, 0.31, 0.02); land.rotation.x = Math.PI / 2 - 0.25; land.scale.set(1.3, 1, 0.9); g.add(land);
+      g.add(mesh(new BoxGeometry(0.04, 0.3, 0.04), M.log, 0, 0.15, -0.12));
+      return place(g, JOURNAL_P.x + 0.9, JOURNAL_P.z - 0.4, yawTo(JOURNAL_P, FIRE));
+    },
     press() {
       // a cheese press by the sheep pen: a frame with a screw, and a round cheese in it
       const g = new Group();

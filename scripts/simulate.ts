@@ -16,8 +16,8 @@ const rows: string[] = [];
 // variety between islands: what each made first, its first three things, and everything it made
 const firsts: Record<string, number> = {}, openings = new Set<string>(), camps: Set<string>[] = [];
 let dreams = 0, dreamsMet = 0, idle = 0;
-const styles: Record<string, number> = {}, masterOf: Record<string, number> = {};
-const totals = { barn: 0, duckhouse: 0, dovecote: 0, press: 0, cheese: 0, careLvl: 0, ducks: 0, parrot: 0, favHen: 0, fishKinds: 0, decor: 0, ill: 0, masters: 0, totems: 0, birthdays: 0, moods: 0, saltpans: 0, firecover: 0, smokehouse: 0, workshop: 0, furnace: 0, irontools: 0, saltMade: 0, reworks: 0, isletFound: 0, bridge: 0, cave: 0, water: 0, flinttools: 0, chimes: 0, styledMade: 0, styledMatch: 0, tidepools: 0, orchard: 0, fruitTrees: 0, bearing: 0, crops: 0, nightwalk: 0, beachstars: 0, moondance: 0, treesNow: 0, bornHens: 0, bornSheep: 0, cairns: 0, carvings: 0, hobbyMin: 0, salvaged: 0, hatched: 0, gullPet: 0, treasure: 0, kiln: 0, clayItems: 0, rareBuilt: 0, rareAllowed: 0, present: 0, spear: 0, snare: 0, hunted: 0, freed: 0, rabbitsLeft: 0, houseboat: 0, lodge: 0, fence: 0, coop: 0, penned: 0, eggs: 0, wool: 0, lodgeFurniture: 0, died: 0, built: 0, crafted: 0, furniture: 0, felled: 0, standing: 0, meals: 0, stews: 0, fireOutHours: 0, dogFriend: 0, storms: 0, repairs: 0, broken: 0, comfort: 0 };
+const styles: Record<string, number> = {}, masterOf: Record<string, number> = {}, placeOf: Record<string, number> = {};
+const totals = { placesFound: 0, explorers: 0, maps: 0, relics: 0, barn: 0, duckhouse: 0, dovecote: 0, press: 0, cheese: 0, careLvl: 0, ducks: 0, parrot: 0, favHen: 0, fishKinds: 0, decor: 0, ill: 0, masters: 0, totems: 0, birthdays: 0, moods: 0, saltpans: 0, firecover: 0, smokehouse: 0, workshop: 0, furnace: 0, irontools: 0, saltMade: 0, reworks: 0, isletFound: 0, bridge: 0, cave: 0, water: 0, flinttools: 0, chimes: 0, styledMade: 0, styledMatch: 0, tidepools: 0, orchard: 0, fruitTrees: 0, bearing: 0, crops: 0, nightwalk: 0, beachstars: 0, moondance: 0, treesNow: 0, bornHens: 0, bornSheep: 0, cairns: 0, carvings: 0, hobbyMin: 0, salvaged: 0, hatched: 0, gullPet: 0, treasure: 0, kiln: 0, clayItems: 0, rareBuilt: 0, rareAllowed: 0, present: 0, spear: 0, snare: 0, hunted: 0, freed: 0, rabbitsLeft: 0, houseboat: 0, lodge: 0, fence: 0, coop: 0, penned: 0, eggs: 0, wool: 0, lodgeFurniture: 0, died: 0, built: 0, crafted: 0, furniture: 0, felled: 0, standing: 0, meals: 0, stews: 0, fireOutHours: 0, dogFriend: 0, storms: 0, repairs: 0, broken: 0, comfort: 0 };
 const FURNITURE = ['chair', 'table', 'bed', 'shelf', 'rocker'], LODGE_FURNITURE = ['realbed', 'sofa', 'kitchen'], WOOL_ITEMS = ['blanket', 'sweater'];
 for (let r = 0; r < runs; r++) {
   const S = initState();
@@ -93,6 +93,8 @@ for (let r = 0; r < runs; r++) {
   totals.fireOutHours += fireOutMin / 60;
   totals.orchard += S.projects.orchard.done ? 1 : 0;
   totals.reworks += S.stats.reworks ?? 0;
+  totals.placesFound += Object.keys(S.places).length; totals.explorers += S.explorer ? 1 : 0; totals.maps += S.items.map ? 1 : 0; totals.relics += S.relics.length;
+  for (const k of Object.keys(S.places)) placeOf[k] = (placeOf[k] ?? 0) + 1;
   totals.barn += S.projects.barn.done ? 1 : 0; totals.duckhouse += S.projects.duckhouse.done ? 1 : 0; totals.dovecote += S.projects.dovecote.done ? 1 : 0; totals.press += S.items.press ? 1 : 0; totals.cheese += S.feelingsNoted.includes('cheese') ? 1 : 0; totals.careLvl += S.skills.animals.lvl;
   totals.ducks += S.ducks >= 2 ? 1 : 0; totals.parrot += S.parrot.state === 'friend' ? 1 : 0; totals.favHen += S.favHen >= 0 ? 1 : 0; totals.fishKinds += S.caughtKinds.length;
   totals.masters += Object.keys(S.mastery).length; totals.totems += S.totems; totals.decor += S.decor.length;
@@ -122,7 +124,8 @@ console.log(`\n${runs} islands × ${days} days: ${totals.died} died · avg ${avg
   `v1.5: salt pans ${totals.saltpans}, fire hood ${totals.firecover}, smokehouse ${totals.smokehouse}, workshop ${totals.workshop}, furnace ${totals.furnace}, iron tools ${totals.irontools} (of ${runs})\n` +
   `v1.6: ${avg(totals.masters)} masteries per island (${Object.entries(masterOf).map(([k, v]) => `${k} ${v}`).join(', ')}) · ${avg(totals.totems)} totems · ${avg(totals.decor)} decorations · ${avg(totals.ill)} illnesses\n` +
   `v1.7: ducks on ${totals.ducks}/${runs}, parrot friend on ${totals.parrot}/${runs}, favourite hen on ${totals.favHen}/${runs}, ${avg(totals.fishKinds)} kinds of fish\n` +
-  `v1.8: barn ${totals.barn}, duck house ${totals.duckhouse}, dovecote ${totals.dovecote}, cheese press ${totals.press}, made cheese ${totals.cheese} (of ${runs}) · animal care lvl ${avg(totals.careLvl)}`);
+  `v1.8: barn ${totals.barn}, duck house ${totals.duckhouse}, dovecote ${totals.dovecote}, cheese press ${totals.press}, made cheese ${totals.cheese} (of ${runs}) · animal care lvl ${avg(totals.careLvl)}\n` +
+  `v1.9: ${avg(totals.placesFound)}/7 places found (${Object.entries(placeOf).map(([k, v]) => `${k} ${v}`).join(', ')}) · map on ${totals.maps}, explorer on ${totals.explorers} (of ${runs}) · ${avg(totals.relics)} relics`);
 // how different two finished camps are: 0 = made exactly the same things, 1 = nothing in common
 let diff = 0, pairs = 0;
 for (let i = 0; i < camps.length; i++) for (let j = i + 1; j < camps.length; j++) {
