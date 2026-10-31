@@ -122,7 +122,8 @@ export function decide() {
   if (ill() && S.stock.herbs >= 1 && S.fire > 0) add('tea', 0.9);
   if (partyTime()) add('party', 1.1);
   // exploring: roaming to find the island's hidden places, and going back to the ones she loves (places.ts)
-  if (!night && placeToFind()) add('roam', 0.3 + 0.45 * S.taste.adventure + (tr('curious') ? 0.15 : 0) + (S.dayMood === 'restless' ? 0.3 : 0) - wet);
+  // (by day; the glow-worms in the cave can only be found in the evening)
+  if ((!night || (S.projects.cave.done && !S.places.grotto && h < 23)) && placeToFind()) add('roam', 0.3 + 0.45 * S.taste.adventure + (tr('curious') ? 0.15 : 0) + (S.dayMood === 'restless' ? 0.3 : 0) - wet);
   if (visitable().length) add('visit', 0.28 + 0.3 * S.taste.adventure + 0.25 * u(n.fun) + (S.dayMood === 'restless' ? 0.2 : 0) - wet - (night && !visitable().includes('grotto') ? 0.5 : 0));
   // milking the ewes after lambing, and turning the milk into cheese
   if (S.min < S.milkUntil && S.stock.milk < 6) add('milk', 0.68 + 0.3 * S.taste.animals - dark - wet);

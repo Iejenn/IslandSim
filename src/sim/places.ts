@@ -44,7 +44,9 @@ export function discover(k: PlaceKey) {
   say(pick(['I had no idea this was here!', 'Oh! Look at this!', 'What a place.']));
   highlight(`discovered ${PLACES[k].name}`);
   S.mood = Math.min(40, S.mood + 15);
-  if (!S.explorer && foundPlaces().length === PLACE_KEYS.length) {
+  // (the wreck only counts for someone with a canoe to find it from)
+  const needed = PLACE_KEYS.filter(p => p !== 'wreck' || S.projects.canoe?.done);
+  if (!S.explorer && needed.every(p => S.places[p])) {
     S.explorer = dayNum();
     log('She has found every hidden corner of the island. She knows it now like the back of her hand.', 'big');
     say('I’ve seen it all. Every rock, every cove. This island is mine.');
