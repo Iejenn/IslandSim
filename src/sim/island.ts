@@ -55,6 +55,29 @@ export function northness(a: number) {
   const d = Math.atan2(Math.sin(a - NORTH_A), Math.cos(a - NORTH_A));
   return Math.exp(-(d * d) / (2 * 0.26 * 0.26));
 }
+/** The terrain colours' "t": 0 at the centre, grass up to ~0.6, then sand. Pulled inwards on the forest and north headlands, so they're grassy further out. */
+export function grassT(x: number, z: number) {
+  const a = Math.atan2(z, x);
+  return tAt(x, z) * (1 - 0.2 * forestness(a) - 0.28 * northness(a));
+}
+/** v2.0.1: tree spots that landed on the beach move to the nearest open bit of grass (clear of the other
+ *  trees and the key spots), so no tree stands in the sand and the beach keeps its full width. */
+function onGrass(pts: Pt[], others: Pt[] = []) {
+  const out: Pt[] = [];
+  pts.forEach((p, i) => {
+    const taken = [...others, ...out, ...pts.slice(i + 1)];
+    const ok = (q: Pt) => grassT(q.x, q.z) <= 0.6 && clearOf(q, 1.6) && taken.every(o => Math.hypot(o.x - q.x, o.z - q.z) > 2.0);
+    let best = p;
+    if (grassT(p.x, p.z) > 0.6) {
+      search: for (let r = 0.5; r <= 12; r += 0.5) for (let k = 0; k < 24; k++) {
+        const a = k / 24 * Math.PI * 2, q = V(p.x + Math.cos(a) * r, p.z + Math.sin(a) * r);
+        if (ok(q)) { best = q; break search; }
+      }
+    }
+    out.push(ground(best));
+  });
+  return out;
+}
 export function tAt(x: number, z: number) {
   return Math.hypot(x, z) / islandR(Math.atan2(z, x));
 }
@@ -387,9 +410,9 @@ reserve(WARREN_P, ...BURROWS, ...[0.7, 2.8, 4.9].map(a => V(WARREN_P.x + Math.co
 // The first FOREST_START spots start as trees; the rest are open ground at the
 // forest's edge (towards camp) where trees can seed themselves over time.
 export const FOREST_START = 46;
-const deep = scatter(7, FOREST_START, FOREST_A - 0.62, FOREST_A + 0.62, 0.32, 0.86, 2.6, 1.9);
+const deep = onGrass(scatter(7, FOREST_START, FOREST_A - 0.62, FOREST_A + 0.62, 0.32, 0.86, 2.6, 1.9));
 reserve(...deep);
-const edge = scatter(23, 24, FOREST_A - 0.75, FOREST_A + 0.75, 0.2, 0.36, 2.6, 2.2);
+const edge = onGrass(scatter(23, 24, FOREST_A - 0.75, FOREST_A + 0.75, 0.2, 0.36, 2.6, 2.2), deep);
 export const FOREST = [...deep, ...edge].map(pos => ({ pos, stand: standNear(pos, 0.95) }));
 reserve(...edge);
 // the forest tree closest to camp: the one she'd build a treehouse in (so she never fells it)
@@ -482,5 +505,5 @@ export const WRECK_STAND = ground(pointAt(FISH_A - 0.35, 1.06)); // swimming out
 /* ---------- v2.0: the north headland's meadow, dotted with a few old shade trees (just scenery, never felled) ---------- */
 // (clear of the long bamboo pipe's line, should she build it)
 reserve(...Array.from({ length: 9 }, (_, i) => ground(V(PIPE_FROM.x + (SPOUT_P.x - PIPE_FROM.x) * i / 8, PIPE_FROM.z + (SPOUT_P.z - PIPE_FROM.z) * i / 8))));
-export const MEADOW_TREES = scatter(29, 9, NORTH_A - 0.32, NORTH_A + 0.32, 0.3, 0.62, 4.0, 2.6).filter(p => Math.hypot(p.x, p.z) > FENCE_R + 3 && Math.hypot(p.x - SP.x, p.z - SP.z) > POND_R + 3);
+export const MEADOW_TREES = onGrass(scatter(29, 9, NORTH_A - 0.32, NORTH_A + 0.32, 0.3, 0.62, 4.0, 2.6)).filter(p => Math.hypot(p.x, p.z) > FENCE_R + 3 && Math.hypot(p.x - SP.x, p.z - SP.z) > POND_R + 3);
 reserve(...MEADOW_TREES);
