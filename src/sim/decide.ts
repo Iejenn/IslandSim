@@ -11,6 +11,7 @@ import { dayNum, hour, isNight, S, tr, type TaskId } from './state';
 import { activityBias } from './taste';
 import { injured } from './events';
 import { ill, isMaster, moodBias, partyTime } from './life';
+import { SP } from './island';
 import { decorating } from './decor';
 import { placeToFind, visitable } from './places';
 import { fullMoon, glowingSea } from './night';
@@ -129,7 +130,9 @@ export function decide() {
   if (S.min < S.milkUntil && S.stock.milk < 6) add('milk', 0.68 + 0.3 * S.taste.animals - dark - wet);
   if (S.items.press && S.stock.milk >= 2 && S.stock.cheese < 6) add('cheese', 0.5 + 0.2 * S.taste.animals - dark);
   // her animal friends: feeding the ducks, winning over the parrot (friends.ts)
-  if (S.ducks >= 2 && !night) add('ducks', 0.25 + 0.3 * S.taste.animals + 0.4 * u(n.company) - wet);
+  // (v2.0.2: the pond is a long walk now, so she's much keener while she's out there anyway)
+  const byPond = Math.hypot(S.pos.x - SP.x, S.pos.z - SP.z) < 9;
+  if (S.ducks >= 2 && !night) add('ducks', 0.25 + 0.3 * S.taste.animals + 0.4 * u(n.company) + (byPond ? 0.45 : 0) - wet);
   if (S.parrot.state === 'wild' && !night && n.food > 30) add('parrot', 0.45 + 0.35 * S.taste.animals + 0.2 * S.taste.adventure - wet);
   // making her camp pretty, once it's established (decor.ts)
   if (decorating() && !night && n.food > 40 && n.energy > 30) add('decorate', 0.45 + 0.3 * S.taste.creative + 0.2 * S.taste.comfort - wet);
