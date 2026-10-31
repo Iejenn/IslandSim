@@ -13,6 +13,7 @@ const duckBody = mat('#8A6A48'), drake = mat('#2F6B4A'), white = mat('#F2EDE0'),
 const red = mat('#D2382E'), blue = mat('#2F6DB5'), yellow = mat('#F2C230');
 
 export function createFriends(scene: Scene) {
+  let gather = 0, lastT = 0; // 0…1: how far the ducks have come over to her while she feeds them
   /* ducks: two grown-ups and up to four ducklings */
   const ducks = Array.from({ length: 6 }, (_, i) => {
     const g = new Group(), s = i < 2 ? 1 : 0.55;
@@ -52,12 +53,24 @@ export function createFriends(scene: Scene) {
   return function updateFriends(S: SimState, her: Object3D, t: number) {
     // ducks: the grown-ups paddle slow circles, the ducklings follow their mother in a line
     const n = S.ducks ?? 0;
+    // while she's feeding them they paddle over and crowd in front of her, bobbing for the bits she throws
+    const st = S.task?.steps[S.task.i], feeding = S.task?.id === 'ducks' && st?.type === 'do' && S.task.started;
+    const dt = Math.min(0.1, Math.max(0, t - lastT)); lastT = t;
+    gather = Math.max(0, Math.min(1, gather + (feeding ? dt / 3 : -dt / 5)));
+    const toHer = Math.atan2(her.position.z - SP.z, her.position.x - SP.x), k = gather * gather * (3 - 2 * gather);
     ducks.forEach((d, i) => {
       d.visible = i < n;
       if (!d.visible) return;
       const lead = i < 2 ? i : 1, a = t * 0.12 * (lead ? -1 : 1) + lead * 2.5 - (i >= 2 ? (i - 1) * 0.18 : 0), r = POND_R * (lead ? 0.55 : 0.75);
-      d.position.set(SP.x + Math.cos(a) * r, SP.y + 0.14 + 0.01 * Math.sin(t * 3 + i), SP.z + Math.sin(a) * r);
-      d.rotation.y = -a + (lead ? Math.PI : 0);
+      // where it'd be paddling round the pond, and where it waits in front of her (a little loose crowd)
+      const ax = SP.x + Math.cos(a) * r, az = SP.z + Math.sin(a) * r;
+      const fa = toHer + (i - (n - 1) / 2) * 0.22 + 0.05 * Math.sin(t * 1.3 + i), fr = POND_R - 0.55 - (i % 2) * 0.35;
+      const fx = SP.x + Math.cos(fa) * fr, fz = SP.z + Math.sin(fa) * fr;
+      const peck = k > 0.9 ? Math.max(0, Math.sin(t * 4 + i * 1.7)) * 0.05 : 0; // ducking for the food
+      d.position.set(ax + (fx - ax) * k, SP.y + 0.14 + 0.01 * Math.sin(t * 3 + i) - peck, az + (fz - az) * k);
+      const paddleYaw = -a + (lead ? Math.PI : 0), faceYaw = Math.atan2(her.position.x - fx, her.position.z - fz);
+      d.rotation.y = k > 0.5 ? faceYaw : paddleYaw;
+      d.rotation.x = peck * 6;
     });
     // the parrot
     const p = S.parrot;

@@ -638,7 +638,7 @@ export function createBuildings(scene: Scene) {
     }
     scene.add(g);
     pickable(g, S => S.projects.cave.done
-      ? { title: 'The cave', lines: [onDay(S.madeAt.cave, 'Opened'), 'Cool and dark, with flint in its walls', 'Fish keeps longer in here'] }
+      ? { title: 'The cave', lines: [onDay(S.madeAt.cave, 'Opened'), 'Cool and dark, with flint in its walls', 'Fish keeps longer in here', S.places?.grotto ? `Glow-worms light it up at night (found on day ${S.places.grotto})` : 'Something glimmers deep inside after dark…'] }
       : { title: 'A cave in the hillside', lines: [S.projects.cave.started ? `She’s clearing the way in · ${Math.round(S.projects.cave.progress * 100)}%` : 'Choked with rubble'] });
   })();
   const cave = staged([

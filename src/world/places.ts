@@ -3,7 +3,7 @@
 // weather), a rock arch by the hidden cove, a flat rock and cairn on the
 // hilltop, seabirds on the cliffs in spring and summer, the wreck on the reef
 // under the water, and glow-worms twinkling in the cave at night once found.
-import { BoxGeometry, ConeGeometry, CylinderGeometry, DodecahedronGeometry, Group, Points, PointsMaterial, BufferGeometry, Float32BufferAttribute, type Scene } from 'three';
+import { BoxGeometry, ConeGeometry, Mesh, MeshBasicMaterial, SphereGeometry, CylinderGeometry, DodecahedronGeometry, Group, Points, PointsMaterial, BufferGeometry, Float32BufferAttribute, type Scene } from 'three';
 import { BLOWHOLE_P, CAVE_FACE, CAVE_P, CLIFFS_P, COVE_P, HILLTOP_P, RUIN_P, WRECK_P } from '../sim/island';
 import { PLACES, type PlaceKey } from '../sim/places';
 import { season } from '../sim/seasons';
@@ -11,10 +11,30 @@ import type { SimState } from '../sim/state';
 import { pickable } from './inspect';
 import { M, mat, mesh } from './materials';
 
+const CARDS: Record<PlaceKey, { unfound: string; hint: string; about: string }> = {
+  ruin: { unfound: 'Mossy stones', hint: 'Deep in the forest. Someone was here once…', about: 'A ring of toppled stones, carved with spirals' },
+  blowhole: { unfound: 'A hole in the rocks', hint: 'Something roars here when the waves come in', about: 'The sea bursts up through the rock, higher in rough weather' },
+  cove: { unfound: 'A rock arch', hint: 'Only reachable round the rocks at low tide', about: 'A tiny hidden beach, calm as a bath' },
+  hilltop: { unfound: 'The top of the hill', hint: 'A long climb above the waterfall', about: 'The whole island lies below, and the sea all around' },
+  cliffs: { unfound: 'The cliffs', hint: 'Busy with birds in spring and summer', about: 'Hundreds of seabirds nest here in spring and summer' },
+  wreck: { unfound: 'A dark shape on the reef', hint: 'Best seen from a canoe on a calm day', about: 'An old ship on the bottom, all covered in coral' },
+  grotto: { unfound: 'The glow-worm grotto', hint: 'Deep in the cave, at night', about: 'Tiny blue-green lights on the cave ceiling at night' },
+};
 const moss = mat('#6E8463'), spray = mat('#EAF6F8', { transparent: true, opacity: 0.7 }), bird = mat('#F4F2EC'), hull = mat('#4A3626');
 
 export function createPlaces(scene: Scene) {
-  const card = (k: PlaceKey) => (S: SimState) => S.places?.[k] ? { title: PLACES[k].name.replace(/^the /, '').replace(/^./, c => c.toUpperCase()), lines: [`She found it on day ${S.places[k]}`] } : null;
+  // tap to look: a hint of something before she's found it, and the place's own card once she has
+  const card = (k: PlaceKey) => (S: SimState) => {
+    const c = CARDS[k];
+    if (!S.places?.[k]) return { title: c.unfound, lines: ['She hasn’t found this place yet', c.hint] };
+    const extra = k === 'wreck' && S.relics?.length ? [`She brought up ${S.relics.length} old thing${S.relics.length > 1 ? 's' : ''} from it`] : [];
+    return { title: PLACES[k].name.replace(/^the /, '').replace(/^./, ch => ch.toUpperCase()), lines: [`She found it on day ${S.places[k]}`, c.about, ...extra] };
+  };
+  // (an invisible, easy-to-tap target for places that are hard to tap: a few small birds, the gap under the arch)
+  const target = (p: { x: number; y: number; z: number }, r: number, k: PlaceKey) => {
+    const m = new Mesh(new SphereGeometry(r, 8, 6), new MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+    m.position.set(p.x, p.y + r * 0.6, p.z); scene.add(m); pickable(m, card(k));
+  };
   const at = (g: Group, p: { x: number; y: number; z: number }) => { g.position.set(p.x, p.y, p.z); scene.add(g); return g; };
 
   /* the ruin: a ring of toppled, mossy stone pillars round a carved slab */
@@ -40,6 +60,7 @@ export function createPlaces(scene: Scene) {
   const top = mesh(new BoxGeometry(3.0, 0.6, 0.9), M.rock, 0, 2.2, 0); top.rotation.z = 0.06; arch.add(top);
   arch.rotation.y = Math.atan2(COVE_P.x, COVE_P.z);
   pickable(arch, card('cove'));
+  target(COVE_P, 1.6, 'cove'); // (so tapping the gap under the arch works too)
 
   /* the hilltop: a flat rock to sit on, and a little cairn */
   const hill = at(new Group(), HILLTOP_P);
@@ -48,6 +69,7 @@ export function createPlaces(scene: Scene) {
   pickable(hill, card('hilltop'));
 
   /* seabirds on the cliffs, in spring and summer */
+  target(CLIFFS_P, 2.2, 'cliffs');
   const birds = Array.from({ length: 8 }, (_, i) => { const b = mesh(new BoxGeometry(0.22, 0.04, 0.1), bird, 0, 0, 0, false); b.userData.i = i; scene.add(b); return b; });
 
   /* the wreck on the reef: a broken hull and a leaning mast, under the water */
