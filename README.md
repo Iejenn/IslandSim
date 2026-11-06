@@ -158,6 +158,16 @@ glow-worms in the cave at night. She draws a bark map of what she's found,
 keeps going back to her favourite spots, and finding them all makes her the
 island explorer.
 
+She has hobbies that leave something behind, too. A creative castaway lashes
+together an easel and paints: the sea, a sunset, the ducks, her dog, her camp,
+or home from memory on a homesick day. Her latest paintings hang in a little
+gallery in camp. Anyone can go birdwatching: twelve island birds live in their
+own places and seasons (a heron at the pond, sandpipers at low tide, an owl at
+dusk, an albatross in winter), so filling her bird log takes a year or so. And
+on a hand loom she weaves wool or fibre into a rug, cushions for the log seats
+and a wall hanging in her own colours (they make home cosier), then little
+things.
+
 The nights have their own life. The moon waxes and wanes over eight days,
 shooting stars streak low over the sea, and two island constellations (the
 turtle and the canoe) hang over the horizon; tilt the camera up to see them.

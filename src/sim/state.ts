@@ -1,6 +1,7 @@
 // The whole simulation state lives in one plain object (S) so it's easy to
 // inspect and could later be saved/loaded. No Three.js or DOM in here: the
 // sim talks to the outside world only through `hooks`, which main.ts wires up.
+import type { PaintSubject, PaintWhere, WeaveKey } from './hobbies';
 import type { AnimKey } from '../config/animations';
 import { BAMBOO, ORCHARD, BOULDERS, BUSHES, CHICKEN_HOMES, copy, FOREST, FOREST_START, PLOTS, SHEEP_HOMES, START, type Pt } from './island';
 import { rollEvents } from './events';
@@ -51,6 +52,7 @@ export type TaskId =
   | 'clay' | 'salvage' | 'turtles' | 'tendgull' | 'dig' | 'honey' | 'bathe'
   | 'cairn' | 'sandcastle' | 'clouds' | 'bouquet' | 'whittle' | 'dance'
   | 'plantfruit' | 'pickfruit' | 'nightwalk' | 'beachstars' | 'tidepools' | 'bamboo' | 'flint' | 'salt' | 'smoke' | 'ore' | 'smelt' | 'tea' | 'party' | 'totem' | 'decorate' | 'ducks' | 'parrot' | 'milk' | 'cheese' | 'roam' | 'visit'
+  | 'paint' | 'birds' | 'weave' // v2.1: hobbies (hobbies.ts)
   | 'celebrate' | 'stand';
 
 /* ---------- task steps ---------- */
@@ -284,6 +286,11 @@ function createState() {
     // a stray dog that may wash ashore; she has to win its trust
     dog: { state: 'none' as 'none' | 'wild' | 'friend', trust: 0, name: '', home: copy(START), since: 0 },
     sailing: false, // in the boat
+    // v2.1 hobbies (hobbies.ts): her paintings, her bird log, what she's woven
+    paintings: [] as { subject: PaintSubject; where: PaintWhere; day: number; seed: number }[], paintCount: 0, easel: false,
+    easelSubject: null as PaintSubject | null, // what's on the easel right now
+    birds: {} as Record<string, number>, birdwatcher: 0, watching: '', birdDay: 0, // birdDay: the day she last went birdwatching // the bird in view right now
+    woven: [] as { key: WeaveKey; day: number; colour: number; yarn: string }[], weaving: 0, // progress on the piece on the loom
 
     // her body, as far as the sim is concerned
     pos: copy(START),

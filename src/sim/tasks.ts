@@ -3,7 +3,7 @@
 import { ONE_SHOT_SECONDS } from '../config/animations';
 import { chooseCrop, CROP_YIELD, freePlots, growingPlots, ripePlots } from './garden';
 import {
-  BARN_P, BARN_STAND, DOVECOTE_P, DUCKHOUSE_P, DUCKHOUSE_STAND, POND_R, DECOR_SPOTS, TOTEM_SPOTS, SALT_P, SALT_STAND, SMOKE_P, SMOKE_STAND, WORKSHOP_P, WORKSHOP_STAND, FURNACE_P, FURNACE_STAND, ORE_P, ORE_STAND, FIRECOVER_POSTS, BAMBOO, BAR_A, BAR_B, CAVE_P, CAVE_STAND, PIPE_FROM, SPOUT_P, SPOUT_STAND, WELL_P, WELL_STAND, ORCHARD, ORCHARD_P, BANDSTAND_FLOOR, BANDSTAND_P, BAND_SPOTS, bandLocal, MARIMBA_P, type Instrument, SHED_P, TABLE_P, addScaled, dirXZ, SP, BATH_P, CLAY_P, CLAY_STAND, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SUNDIAL_P, BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
+  BARN_P, BARN_STAND, MEADOW_TREES, CLIFFS_P, ROCKS_A, FISH_A, FOREST_START, DOVECOTE_P, DUCKHOUSE_P, DUCKHOUSE_STAND, POND_R, DECOR_SPOTS, TOTEM_SPOTS, SALT_P, SALT_STAND, SMOKE_P, SMOKE_STAND, WORKSHOP_P, WORKSHOP_STAND, FURNACE_P, FURNACE_STAND, ORE_P, ORE_STAND, FIRECOVER_POSTS, BAMBOO, BAR_A, BAR_B, CAVE_P, CAVE_STAND, PIPE_FROM, SPOUT_P, SPOUT_STAND, WELL_P, WELL_STAND, ORCHARD, ORCHARD_P, BANDSTAND_FLOOR, BANDSTAND_P, BAND_SPOTS, bandLocal, MARIMBA_P, type Instrument, SHED_P, TABLE_P, addScaled, dirXZ, SP, BATH_P, CLAY_P, CLAY_STAND, HIVE_P, KILN_P, MOSAIC_P, OVEN_P, SUNDIAL_P, BURROWS, HOUSEBOAT_BED, HOUSEBOAT_P, WARREN_P, WARREN_STAND, BARREL_P, BOAT_DOCK, BOULDERS, SPEAR_SPOT, TRAP_P, TRAP_STAND, TREEHOUSE_BED, TREEHOUSE_P, TREEHOUSE_TREE, BUSHES, CHAIR_P, COOP_P, FENCE_R, LODGE_BED, LODGE_DOOR, LODGE_P, LODGE_KITCHEN, LODGE_SOFA, SHEEP_PEN_P, clearOf, copy, dist, DOCK_END, DOCK_FACE, DRUM_P, FIRE, FISH, FOREST, GARDEN_P, GARDEN_STAND, ground,
   HAMMOCK_BED, SHELTER_BED, LOOKOUT_DECK, LOOKOUT_P, pointAt, RACK_P, SAIL_ROUTE, SCREE_P, SCREE_STAND, SEATS, SH, SHELTER, SPRING, standNear,
   V, WOODPILE_P, type Pt,
 } from './island';
@@ -26,6 +26,7 @@ import { discover, enjoyPlace, PLACES, placeToFind, visitable, type PlaceKey } f
 import { injured } from './events';
 import { fx, season } from './seasons';
 import { TH, thoughtFor } from './thoughts';
+import { canWeave, chooseHabitat, chooseSubject, finishPainting, logBird, spotBird, useYarn, weaveSession, type Habitat, type PaintWhere } from './hobbies';
 import { clamp, pick, rand } from './util';
 
 /** Odds a fishing trip lands something, for the gear she'd use right now. */
@@ -1006,6 +1007,62 @@ export const T: Record<string, () => Task | null> = {
     }));
   },
 
+  /* ----- v2.1 hobbies (hobbies.ts) ----- */
+  paint() {
+    // at an easel on the beach, by the pond (if she's out there anyway) or looking back at her camp
+    if (!S.easel && S.stock.wood < 2) return null;
+    const nearPond = Math.hypot(S.pos.x - SP.x, S.pos.z - SP.z) < 12, r = Math.random();
+    const where: PaintWhere = nearPond && r < 0.7 ? 'pond' : r < 0.55 ? 'beach' : 'camp';
+    const subject = chooseSubject(where);
+    let spot: Pt, face: Pt;
+    if (where === 'beach') { const a = FISH_A + rand(-0.7, 0.7); spot = ground(pointAt(a, 0.84)); face = pointAt(a, 1.5); }
+    else if (where === 'pond') { const a = Math.atan2(-SP.z, -SP.x) + rand(-0.6, 0.6); spot = ground(V(SP.x + Math.cos(a) * (POND_R + 2.2), SP.z + Math.sin(a) * (POND_R + 2.2))); face = copy(SP); }
+    else {
+      // just inside the fence, looking back across camp at the fire
+      spot = ground(V(0, 6));
+      for (let i = 0; i < 20; i++) { const a = rand(0, 6.3), p = ground(V(Math.cos(a) * rand(5.5, 7), Math.sin(a) * rand(5.5, 7))); if (clearOf(p, 1.4)) { spot = p; break; } }
+      face = copy(FIRE);
+    }
+    return mk('paint', where === 'beach' ? 'Painting on the beach' : where === 'pond' ? 'Painting by the pond' : 'Painting her camp', pick(['A little more blue…', 'Hold still, world.', 'Berry red, clay brown, charcoal black.']), [go(spot), act({
+      pose: 'sit', face, min: 70,
+      begin() {
+        if (!S.easel && S.stock.wood >= 2) { S.easel = true; S.stock.wood -= 2; log('She lashed three sticks together into an easel.'); }
+        S.easelSubject = subject;
+      },
+      tick: dm => feed('fun', dm * 14 / 60),
+      done() { finishPainting(subject, where); S.easelSubject = null; addXp('crafting', 3); remember('paint', 0.06); S.mood = Math.min(40, S.mood + 6); },
+    }), standUp()]);
+  },
+  birds() {
+    // sitting very still somewhere and waiting to see who comes by (her bird log is in hobbies.ts)
+    const w: Habitat = chooseHabitat();
+    let spot: Pt, face: Pt;
+    if (w === 'forest') { const t = FOREST[FOREST_START + Math.floor(rand(0, FOREST.length - FOREST_START))]; spot = standNear(t.pos, 2.2); face = t.pos; }
+    else if (w === 'meadow') { const m = pick(MEADOW_TREES); spot = standNear(m, 2.4); face = m; }
+    else if (w === 'pond') { spot = standNear(SP, POND_R + 1.8); face = copy(SP); }
+    else if (w === 'cliffs') { spot = standNear(CLIFFS_P, 1.5); face = pointAt(ROCKS_A + 0.12, 1.3); }
+    else { const a = FISH_A + rand(-0.9, 0.9); spot = ground(pointAt(a, 0.86)); face = pointAt(a, 1.5); } // (the beach nearest camp)
+    const where = { forest: 'at the forest’s edge', meadow: 'under a shade tree', pond: 'by the pond', beach: 'on the beach', cliffs: 'on the cliffs' }[w];
+    let seen = '';
+    return mk('birds', `Birdwatching ${where}`, pick(['Shh… sit still.', 'Who’s singing up there?', 'Patience. They’ll come.']), [go(spot), act({
+      pose: 'sit', face, min: 40,
+      begin() { seen = spotBird(w); S.watching = ''; S.birdDay = dayNum(); },
+      tick: dm => { feed('fun', dm * 10 / 60); if (!S.watching && seen && S.task && S.task.el > 12) S.watching = seen; }, // (after a while, it shows up)
+      done() { S.watching = ''; if (seen) logBird(seen); else say('Nobody came by today. Still, lovely and quiet.'); addXp('animals', 3); remember('birds', 0.05); },
+    }), standUp()]);
+  },
+  weave() {
+    // on her hand loom, by the fire (indoors in the rain), from wool or fibre
+    if (!canWeave()) return null;
+    const where = S.weather.raining ? (works('lodge') ? LODGE_SOFA : SHELTER) : { spot: SEATS[1].p, face: FIRE };
+    return mk('weave', S.weather.raining ? 'Weaving indoors, out of the rain' : 'Weaving by the fire', pick(['Over, under, over, under…', 'This pattern is all my own.', 'Just one more row.']), sitAt(where.spot, where.face, 60, dm => feed('fun', dm * 11 / 60), () => {
+      if (!canWeave()) return;
+      weaveSession(useYarn());
+      addXp('crafting', 3);
+      remember('weave', 0.05);
+    }));
+  },
+
   /* ----- the orchard ----- */
   plantfruit() {
     const i = S.orchard.findIndex(t => !t.kind);
@@ -1274,9 +1331,9 @@ export const T: Record<string, () => Task | null> = {
 };
 
 // Tasks that urgent needs (or something new to try) are allowed to cut short.
-export const INTERRUPTIBLE = new Set<TaskId>(['roam', 'visit', 'milk', 'cheese', 'ducks', 'parrot', 'decorate', 'tea', 'totem', 'salt', 'smoke', 'ore', 'bamboo', 'flint', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'honey', 'bathe', 'salvage', 'turtles', 'tendgull', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
+export const INTERRUPTIBLE = new Set<TaskId>(['paint', 'birds', 'weave', 'roam', 'visit', 'milk', 'cheese', 'ducks', 'parrot', 'decorate', 'tea', 'totem', 'salt', 'smoke', 'ore', 'bamboo', 'flint', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'honey', 'bathe', 'salvage', 'turtles', 'tendgull', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sleep', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'shelter', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear', 'collect']);
 // Outdoor tasks a sudden shower sends her away from.
-export const RAIN_STOPS = new Set<TaskId>(['roam', 'visit', 'salt', 'ore', 'bamboo', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'salvage', 'turtles', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
+export const RAIN_STOPS = new Set<TaskId>(['paint', 'birds', 'roam', 'visit', 'salt', 'ore', 'bamboo', 'tidepools', 'plantfruit', 'pickfruit', 'nightwalk', 'beachstars', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'clay', 'salvage', 'turtles', 'dig', 'mushrooms', 'hunt', 'checksnares', 'checktrap', 'relax', 'explore', 'talk', 'drum', 'write', 'sticks', 'chop', 'fibre', 'stones', 'mine', 'replant', 'craft', 'build', 'plant', 'stargaze', 'watch', 'befriend', 'play', 'repair', 'swim', 'herd', 'shear']);
 // Which task "tries out" each newly made thing.
 export const CURIOUS_TASK: Partial<Record<CraftKey, TaskId>> = { rod: 'fish', spear: 'fish', drum: 'drum', flute: 'drum', ukulele: 'drum', marimba: 'drum', journal: 'write', axe: 'chop', pick: 'mine', chair: 'relax', rocker: 'watch' };
 

@@ -507,3 +507,7 @@ export const WRECK_STAND = ground(pointAt(FISH_A - 0.35, 1.06)); // swimming out
 reserve(...Array.from({ length: 9 }, (_, i) => ground(V(PIPE_FROM.x + (SPOUT_P.x - PIPE_FROM.x) * i / 8, PIPE_FROM.z + (SPOUT_P.z - PIPE_FROM.z) * i / 8))));
 export const MEADOW_TREES = onGrass(scatter(29, 9, NORTH_A - 0.32, NORTH_A + 0.32, 0.3, 0.62, 4.0, 2.6)).filter(p => Math.hypot(p.x, p.z) > FENCE_R + 3 && Math.hypot(p.x - SP.x, p.z - SP.z) > POND_R + 3);
 reserve(...MEADOW_TREES);
+/* ---------- v2.1: her little gallery (paintings, her bird log, a woven hanging), on the east side of camp by the rack ---------- */
+export const GALLERY_P = ground(V(5.6, 1.0));
+export const GALLERY_YAW = yawTo(GALLERY_P, FIRE);
+reserve(GALLERY_P); // (after the scatters above, so the forest and the rest stay exactly where they were)
