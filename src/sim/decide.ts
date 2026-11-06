@@ -29,6 +29,18 @@ const REPEATABLE = new Set<TaskId>(['drink', 'forage', 'sleep', 'fish', 'build',
 
 const dark0 = (night: boolean) => night ? 0.6 : 0;
 
+// v2.1 safety net. Health only recovers while she's well fed (food and water above 35), so a castaway
+// living hand to mouth (a handful of berries, then back to her hobbies) could slowly waste away.
+// When she's run down, or very hungry, getting fed comes first, and she keeps at it until she's full.
+const FEEDS = new Set<TaskId>(['forage', 'fish', 'eat', 'cook', 'harvest', 'pickfruit', 'checktrap', 'checksnares', 'honey', 'mushrooms', 'hunt']);
+function safetyNet(id: TaskId) {
+  const n = S.needs, runDown = S.health < 60;
+  const hungry = n.food < 20 || (runDown && n.food < 60), thirsty = runDown && n.water < 60;
+  if (!hungry && !thirsty) return 0;
+  if ((hungry && FEEDS.has(id)) || (thirsty && id === 'drink')) return 0.7;
+  return HOBBIES.has(id) ? -0.5 : 0; // (the fun can wait)
+}
+
 export function decide() {
   const n = S.needs, night = isNight(), h = hour();
   // her body clock: an early riser gets sleepy earlier, a night owl later
@@ -48,7 +60,8 @@ export function decide() {
       - (injured() && STRENUOUS.has(id) ? 0.6 : 0) // resting a sprained ankle
       // Never start something a critical need would cancel at once. (Before this,
       // a starving castaway at night could loop: pick a hobby → interrupted → pick it again…)
-      - (wouldBeCutShort(id) ? 5 : 0),
+      - (wouldBeCutShort(id) ? 5 : 0)
+      + safetyNet(id),
   });
   const fireLit = S.fire > 0, fishUseful = fireLit || S.stock.wood > 0 || works('rack');
   // Berries keep her alive, but when she isn't starving she craves a hot meal
