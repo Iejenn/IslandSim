@@ -28,9 +28,9 @@ const MOOD_BIAS: Record<DayMood, Partial<Record<TaskId, number>>> = {
   ordinary: {},
   cheerful: { dance: 0.35, drum: 0.25, play: 0.2, swim: 0.15, sandcastle: 0.15, talk: 0.15 },
   restless: { explore: 0.35, sail: 0.25, hunt: 0.15, salvage: 0.2, tidepools: 0.2, nightwalk: 0.2, relax: -0.2 },
-  thoughtful: { write: 0.35, stargaze: 0.25, beachstars: 0.2, clouds: 0.2, watch: 0.2, whittle: 0.15 },
+  thoughtful: { paint: 0.25, birds: 0.2, write: 0.35, stargaze: 0.25, beachstars: 0.2, clouds: 0.2, watch: 0.2, whittle: 0.15 },
   lazy: { relax: 0.35, clouds: 0.25, bathe: 0.2, sleep: 0.1, chop: -0.1, mine: -0.1, build: -0.08 },
-  homesick: { write: 0.3, watch: 0.3, talk: 0.25, relax: 0.15, dance: -0.3, drum: -0.1 },
+  homesick: { paint: 0.15, write: 0.3, watch: 0.3, talk: 0.25, relax: 0.15, dance: -0.3, drum: -0.1 },
 };
 export const moodBias = (id: TaskId) => MOOD_BIAS[S.dayMood ?? 'ordinary'][id] ?? 0;
 
@@ -141,7 +141,7 @@ export function checkMastery(k: SkillKey) {
   say(pick([`They’d call me the ${m.title.toLowerCase()} back home.`, 'I’m actually really good at this now.', 'Look how far I’ve come.']));
 }
 export const isMaster = (k: SkillKey) => !!S.mastery[k];
-export const titles = () => [...(Object.keys(S.mastery) as SkillKey[]).map(k => MASTERY[k]!.title), ...(S.explorer ? ['Island explorer'] : [])];
+export const titles = () => [...(Object.keys(S.mastery) as SkillKey[]).map(k => MASTERY[k]!.title), ...(S.explorer ? ['Island explorer'] : []), ...(S.birdwatcher ? ['Island birdwatcher'] : [])];
 /** Is she in a fit state for the evening? (birthday parties start around six) */
 export const partyTime = () => birthdayToday() && hour() >= 17 && hour() < 22 && !S.partied;
 export { SKILLS };

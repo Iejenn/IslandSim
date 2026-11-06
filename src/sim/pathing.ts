@@ -4,7 +4,7 @@
 // gates). Most walks are a straight line; only when that's blocked does she
 // search a small grid around the obstacle (A*) and smooth the result.
 import {
-  BARN_P, DOVECOTE_P, DECOR_SPOTS, TOTEM_SPOTS, FIRECOVER_POSTS, SMOKE_P, WORKSHOP_P, FURNACE_P, BAR_A, BAR_B, onIslet, SPOUT_P, WELL_P, ORCHARD, BANDSTAND_P, MARIMBA_P, POND_R, SHED_P, BARREL_P, BATH_P, BOULDERS, BUSHES, COOP_P, DRUM_P, FENCE_GATES, FENCE_R, FIRE, FOREST, MEADOW_TREES, GARDEN_P, HIVE_P, KILN_P, LODGE_SIZE,
+  BARN_P, DOVECOTE_P, DECOR_SPOTS, TOTEM_SPOTS, FIRECOVER_POSTS, SMOKE_P, WORKSHOP_P, FURNACE_P, BAR_A, BAR_B, onIslet, SPOUT_P, WELL_P, ORCHARD, BANDSTAND_P, MARIMBA_P, POND_R, SHED_P, BARREL_P, BATH_P, BOULDERS, BUSHES, COOP_P, GALLERY_P, GALLERY_YAW, DRUM_P, FENCE_GATES, FENCE_R, FIRE, FOREST, MEADOW_TREES, GARDEN_P, HIVE_P, KILN_P, LODGE_SIZE,
   lodgeLocal, LOOKOUT_P, OVEN_P, RACK_P, SH, SP, SUNDIAL_P, TABLE_P, V, WARREN_P, WOODPILE_P, yawTo, type Pt,
 } from './island';
 import { S } from './state';
@@ -33,6 +33,7 @@ function rebuild() {
   S.boulders.forEach((left, i) => { if (left > 0) c(BOULDERS[i].pos, 0.75 * (0.45 + 0.55 * left / 8) + 0.05); });
   for (const p of MEADOW_TREES) c(p, 0.35);
   for (const b of BUSHES) c(b.pos, 0.55); // (round the berry bushes, not through them)
+  if (S.paintings.length || Object.keys(S.birds).length || S.woven.some(w => w.key === 'hanging')) wall(local(GALLERY_P, GALLERY_YAW, -1.35, 0), local(GALLERY_P, GALLERY_YAW, 1.35, 0)); // her gallery (v2.1)
   c(WOODPILE_P, 0.55); c(SP, POND_R + 0.15); c(WARREN_P, 1.2);
   if (S.items.drum && !S.projects.bandstand.done) c(DRUM_P, 0.25);
   if (S.items.marimba && !S.projects.bandstand.done) c(MARIMBA_P, 0.5);
@@ -85,7 +86,7 @@ function rebuild() {
   }
 }
 function refresh() {
-  const key = `${S.decor?.length ?? 0}:${S.totems ?? 0}:` + Object.values(S.projects).map(p => p.done ? 1 : 0).join('') + S.orchard.map(t => t.kind && t.growth > 0.3 ? 1 : 0).join('') + S.trees.map(t => t.state[1]).join('') + S.boulders.map(b => b > 0 ? 1 : 0).join('')
+  const key = `${S.decor?.length ?? 0}:${S.totems ?? 0}:${S.paintings.length || Object.keys(S.birds).length || S.woven.length ? 'g' : ''}:` + Object.values(S.projects).map(p => p.done ? 1 : 0).join('') + S.orchard.map(t => t.kind && t.growth > 0.3 ? 1 : 0).join('') + S.trees.map(t => t.state[1]).join('') + S.boulders.map(b => b > 0 ? 1 : 0).join('')
     + (S.items.drum ? 'd' : '') + (S.items.table ? 't' : '');
   if (key !== cacheKey) { cacheKey = key; rebuild(); }
 }

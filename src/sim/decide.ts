@@ -12,6 +12,7 @@ import { activityBias } from './taste';
 import { injured } from './events';
 import { ill, isMaster, moodBias, partyTime } from './life';
 import { SP } from './island';
+import { canWeave } from './hobbies';
 import { decorating } from './decor';
 import { placeToFind, visitable } from './places';
 import { fullMoon, glowingSea } from './night';
@@ -20,7 +21,7 @@ import { fx, season } from './seasons';
 import { catchChance as gearCatch, CURIOUS_TASK, sleepShift, startTask, T } from './tasks';
 
 // Hobbies her memories can make more (or less) appealing.
-const HOBBIES = new Set<TaskId>(['tidepools', 'nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'bathe', 'turtles', 'mushrooms', 'hunt', 'checktrap', 'fish', 'explore', 'talk', 'relax', 'drum', 'write', 'chop', 'mine', 'build', 'craft', 'cook', 'sail', 'stargaze', 'watch', 'plant', 'harvest', 'play', 'swim']);
+const HOBBIES = new Set<TaskId>(['paint', 'birds', 'weave', 'tidepools', 'nightwalk', 'beachstars', 'dance', 'cairn', 'sandcastle', 'clouds', 'bouquet', 'whittle', 'bathe', 'turtles', 'mushrooms', 'hunt', 'checktrap', 'fish', 'explore', 'talk', 'relax', 'drum', 'write', 'chop', 'mine', 'build', 'craft', 'cook', 'sail', 'stargaze', 'watch', 'plant', 'harvest', 'play', 'swim']);
 // What a sprained ankle keeps her from (mostly).
 const STRENUOUS = new Set<TaskId>(['chop', 'mine', 'build', 'hunt', 'swim', 'play', 'explore', 'sail', 'dig', 'salvage', 'herd', 'stones', 'repair', 'clay']);
 // Chores she doesn't mind doing twice in a row.
@@ -132,7 +133,7 @@ export function decide() {
   // her animal friends: feeding the ducks, winning over the parrot (friends.ts)
   // (v2.0.2: the pond is a long walk now, so she's much keener while she's out there anyway)
   const byPond = Math.hypot(S.pos.x - SP.x, S.pos.z - SP.z) < 9;
-  if (S.ducks >= 2 && !night) add('ducks', 0.25 + 0.3 * S.taste.animals + 0.4 * u(n.company) + (byPond ? 0.45 : 0) - wet);
+  if (S.ducks >= 2 && !night) add('ducks', 0.25 + 0.3 * S.taste.animals + 0.4 * u(n.company) + (byPond ? 0.3 : 0) - (S.lastAction === 'ducks' ? 0.4 : 0) - wet); // (2.1: not every single trip to the pond)
   if (S.parrot.state === 'wild' && !night && n.food > 30) add('parrot', 0.45 + 0.35 * S.taste.animals + 0.2 * S.taste.adventure - wet);
   // making her camp pretty, once it's established (decor.ts)
   if (decorating() && !night && n.food > 40 && n.energy > 30) add('decorate', 0.45 + 0.3 * S.taste.creative + 0.2 * S.taste.comfort - wet);
@@ -201,6 +202,12 @@ export function decide() {
   if (!night && !S.sandcastle) add('sandcastle', 0.75 * u(n.fun) + 0.3 + (season() === 'summer' ? 0.1 : 0) - 0.3 * fx().cold - wet);
   if (!night && !rain) add('clouds', 0.75 * u(n.fun) + 0.3 * u(n.energy) + 0.3 - 0.3 * fx().cold);
   if (bloom && dayNum() >= 3 && S.min - S.bouquetAt > 2 * 1440 && !night) add('bouquet', 0.55 * u(n.fun) + 0.45 - wet);
+  const paintedToday = S.paintings.length > 0 && S.paintings[S.paintings.length - 1].day === dayNum();
+  // v2.1 hobbies (hobbies.ts): painting by day, birdwatching (best at dawn), weaving (fine in the rain)
+  if (dayNum() >= 5 && !night && h < 19.5 && (S.easel || S.stock.wood >= 2) && (S.taste.creative >= 0.3 || S.skills.crafting.lvl >= 1))
+    add('paint', 0.25 + 0.5 * S.taste.creative + 0.4 * u(n.fun) - wet * 1.5 - (paintedToday ? 0.6 : 0)); // (one painting a day is plenty)
+  if (dayNum() >= 3 && !night) add('birds', 0.24 + 0.3 * S.taste.animals + 0.15 * S.taste.adventure + 0.45 * u(n.fun) + (h >= 5 && h < 9 ? 0.25 : 0) - wet * 1.5 - (S.birdDay === dayNum() ? 0.5 : 0)); // (mostly once a day, best at dawn)
+  if (canWeave() && S.skills.crafting.lvl >= 1 && (!night || S.fire > 0)) add('weave', 0.25 + 0.3 * S.taste.comfort + 0.25 * S.taste.creative + 0.4 * u(n.fun) + (S.stock.wool >= 1 ? 0.1 : 0));
   if (S.items.axe || S.washedUp === 'knife') add('whittle', 0.85 * u(n.fun) + 0.2 - (night && !fireLit ? 0.6 : 0) - wet * 0.5);
   if (S.dog.state === 'wild') add('befriend', 0.45 + 0.7 * u(n.company) + (tr('social') ? 0.2 : 0) - dark - wet);
   if (S.dog.state === 'friend') add('play', 0.9 * u(n.fun) + 0.6 * u(n.company) + 0.2 - dark - wet);

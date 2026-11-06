@@ -68,7 +68,7 @@ const TASK_LEANING: Partial<Record<TaskId, Leaning>> = {
   plant: 'green', water: 'green', harvest: 'green', replant: 'green',
   drum: 'creative', write: 'creative',
   roam: 'adventure', visit: 'adventure', milk: 'animals', cheese: 'animals', ducks: 'animals', parrot: 'animals', decorate: 'creative', totem: 'creative', salt: 'sea', smoke: 'sea', ore: 'practical', smelt: 'practical', bamboo: 'adventure', flint: 'practical', tidepools: 'sea', nightwalk: 'adventure', beachstars: 'adventure', plantfruit: 'green', pickfruit: 'green', dance: 'creative', cairn: 'adventure', sandcastle: 'sea', clouds: 'comfort', bouquet: 'green', whittle: 'creative', mushrooms: 'green', turtles: 'animals', tendgull: 'animals', honey: 'green', bathe: 'comfort', dig: 'adventure', salvage: 'adventure', explore: 'adventure', hunt: 'adventure', checksnares: 'practical', watch: 'adventure', stargaze: 'adventure',
-  relax: 'comfort',
+  relax: 'comfort', paint: 'creative', birds: 'animals', weave: 'comfort',
 };
 /** −0.05 … +0.1 extra score for activities that match her taste. */
 export function activityBias(id: TaskId) {

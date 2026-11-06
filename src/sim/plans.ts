@@ -2,6 +2,7 @@
 // and projects (built on site over several sessions, e.g. the dock). She sets
 // one as her goal once it fits her life (see `unlocked`), gathers the
 // resources, then makes it. Nothing is listed for the player in advance.
+import { homeWeaves } from './hobbies';
 import { BRIDGE_Y, DOCK, height, onBridgeLine, type Pt } from './island';
 import { remember } from './memory';
 import { addXp } from './skills';
@@ -856,7 +857,8 @@ const COMFORT_ITEMS: CraftKey[] = ['flute', 'ukulele', 'marimba', 'jug', 'chair'
 /** 0…25: furniture and comforts she has made, plus a sound roof (or a whole lodge) and hearth. */
 export function comfort() {
   return COMFORT_ITEMS.filter(k => S.items[k]).length + (works('lodge') ? 4 : works('hut') ? 2 : 0) + (works('treehouse') ? 2 : 0) + (works('houseboat') ? 2 : 0)
-    + (['sundial', 'mosaic', 'bathhouse', 'oven', 'bandstand'] as ProjectKey[]).filter(works).length + (S.projects.hearth.done ? 1 : 0);
+    + (['sundial', 'mosaic', 'bathhouse', 'oven', 'bandstand'] as ProjectKey[]).filter(works).length + (S.projects.hearth.done ? 1 : 0)
+    + homeWeaves(); // v2.1: her rug, cushions and wall hanging
 }
 /** Somewhere dry and solid to sleep and shelter: the lodge, or the shelter with stone walls. */
 export const indoors = () => works('lodge') || works('hut');
