@@ -9,7 +9,7 @@ import { PLACES, type PlaceKey } from '../sim/places';
 import { season } from '../sim/seasons';
 import type { SimState } from '../sim/state';
 import { pickable } from './inspect';
-import { M, mat, mesh } from './materials';
+import { M, mat, mesh, softDot } from './materials';
 
 const CARDS: Record<PlaceKey, { unfound: string; hint: string; about: string }> = {
   ruin: { unfound: 'Mossy stones', hint: 'Deep in the forest. Someone was here once…', about: 'A ring of toppled stones, carved with spirals' },
@@ -88,7 +88,7 @@ export function createPlaces(scene: Scene) {
     pts.push(nx * 0.95, ny * 1.25 - 0.1, nz * 0.6 - 0.15 + 0.03);
   }
   const g = new BufferGeometry(); g.setAttribute('position', new Float32BufferAttribute(pts, 3));
-  const glow = new Points(g, new PointsMaterial({ color: '#7CFFE0', size: 0.11, transparent: true, opacity: 0.9, depthWrite: false }));
+  const glow = new Points(g, new PointsMaterial({ color: '#7CFFE0', size: 0.18, map: softDot(), transparent: true, opacity: 0.9, depthWrite: false }));
   glow.position.set(CAVE_P.x, CAVE_P.y + 0.1, CAVE_P.z); glow.rotation.y = Math.atan2(CAVE_FACE.x, CAVE_FACE.z);
   glow.visible = false; scene.add(glow);
 

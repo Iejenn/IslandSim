@@ -11,6 +11,7 @@ import { tideOffset } from '../sim/tide';
 import type { Crop, FruitKind, ProjectKey, SimState, Style } from '../sim/state';
 import { cap, onDay, pickable } from './inspect';
 import { M, mat, mesh } from './materials';
+import { fuse } from './fuse';
 
 const soil = mat('#6B4A33'), withered = mat('#8A7A4E'), fruitRed = mat('#D9452B', { roughness: 0.5 }), hull = mat('#8A5A34');
 const WATER_Y = 0.12;
@@ -664,6 +665,11 @@ export function createBuildings(scene: Scene) {
       seg.rotation.set(Math.PI / 2 + Math.atan2(yAt(k0) - yAt(k1), L / n), yaw, 0, 'YXZ');
       parts.push(seg);
     }
+    // (v2.2) the intake: a short length dipping from the first post down into the pond
+    { const sx = PIPE_FROM.x - dx / L * 1.0, sz = PIPE_FROM.z - dz / L * 1.0, y0 = yAt(0) + 0.07, y1 = SP.y + 0.02, len = Math.hypot(1.0, y0 - y1);
+      const intake = mesh(new CylinderGeometry(0.07, 0.07, len, 7), bambooMat, (PIPE_FROM.x + sx) / 2, (y0 + y1) / 2, (PIPE_FROM.z + sz) / 2);
+      intake.rotation.set(Math.PI / 2 + Math.atan2(y1 - y0, 1.0), yaw, 0, 'YXZ');
+      parts.push(intake); }
     // the basin, and the water falling into it
     parts.push(mesh(new CylinderGeometry(0.45, 0.38, 0.4, 10), M.rock, SPOUT_P.x, SPOUT_P.y + 0.2, SPOUT_P.z));
     const pool = mesh(new CylinderGeometry(0.38, 0.38, 0.04, 10), wellWater, SPOUT_P.x, SPOUT_P.y + 0.36, SPOUT_P.z, false);
@@ -890,6 +896,7 @@ export function createBuildings(scene: Scene) {
     lodge: S => (['realbed', 'sofa', 'kitchen'] as const).filter(k => S.items[k]).length + ' of 3 rooms furnished',
     hut: S => S.items.tiles ? 'Under a tiled roof' : null,
   };
+  const describeOf: Partial<Record<ProjectKey, (S: SimState) => { title: string; lines: string[] }>> = {};
   for (const k of Object.keys(PARTS) as ProjectKey[]) {
     const describe = (S: SimState) => {
       const p = S.projects[k];
@@ -902,6 +909,42 @@ export function createBuildings(scene: Scene) {
       return { title: cap(PLANS[k].name), lines };
     };
     for (const part of PARTS[k]) pickable(part, describe);
+    describeOf[k] = describe;
+  }
+
+  /* ---------- v2.2: a finished building is drawn as a few merged meshes instead of one per plank ---------- */
+  // (the fence alone was ~90 draw calls, twice that with shadows). Only buildings whose parts never
+  // move; while one is being built or is storm-damaged, its separate parts are shown as before.
+  const SOLID = new Set<ProjectKey>(['fence', 'bridge', 'bathhouse', 'pipe', 'dock', 'garden', 'firecover', 'bandstand', 'hearth', 'sundial', 'furnace', 'treehouse', 'shed', 'well', 'orchard', 'duckhouse', 'dovecote', 'smokehouse', 'workshop', 'barn', 'lookout', 'coop', 'kiln', 'oven']);
+  const solids = new Map<string, { group: Group; merged: Object3D[] }>();
+  const plain = (o: Object3D) => { const m = o as Mesh, mt = m.material as MeshStandardMaterial; return !m.isMesh || (!Array.isArray(m.material) && mt.isMeshStandardMaterial && !mt.transparent && !mt.map && mt.flatShading && mt.emissive.getHex() === 0); };
+  function solidify(k: ProjectKey, style: string, parts: Object3D[], on: boolean) {
+    const key = `${k}:${style}`;
+    let e = solids.get(key);
+    if (on && !e) {
+      // merge the parts made only of plain meshes (water, glows and the like stay separate)
+      const group = new Group(), merged: Object3D[] = [];
+      for (const part of parts) {
+        let ok = true, any = false;
+        part.traverse(o => { if ((o as Mesh).isMesh) any = true; if (!plain(o)) ok = false; });
+        if (!ok || !any) continue;
+        merged.push(part);
+        part.updateMatrixWorld(true);
+        const copy = part.clone(true); // (shares geometries and materials, so it keeps weathering)
+        part.matrixWorld.decompose(copy.position, copy.quaternion, copy.scale); // (where it really stands, even if it's inside a positioned group)
+        copy.visible = true;
+        copy.traverse(o => { o.visible = true; });
+        group.add(copy);
+      }
+      fuse(group, false);
+      scene.add(group);
+      pickable(group, S => describeOf[k]?.(S) ?? null);
+      e = { group, merged };
+      solids.set(key, e);
+    }
+    if (!e) return;
+    e.group.visible = on;
+    if (on) for (const part of e.merged) part.visible = false;
   }
 
   /** Is this world point inside the lodge's walls? */
@@ -919,10 +962,11 @@ export function createBuildings(scene: Scene) {
     weather(S);
     for (const k of Object.keys(PARTS) as ProjectKey[]) {
       const styles = STYLED_PARTS[k];
-      if (!styles) { showParts(PARTS[k], S.projects[k].started, S.projects[k].progress, S.projects[k].damaged); continue; }
+      const pr = S.projects[k], whole = SOLID.has(k) && pr.done && !pr.damaged;
+      if (!styles) { showParts(PARTS[k], pr.started, pr.progress, pr.damaged); solidify(k, '', PARTS[k], whole); continue; }
       // styled projects: only the parts in the style she built it in
       const st = S.madeStyle[k] ?? 'wood';
-      for (const s of ['wood', 'bamboo', 'stone'] as Style[]) showParts(styles[s], s === st && S.projects[k].started, S.projects[k].progress, S.projects[k].damaged);
+      for (const s of ['wood', 'bamboo', 'stone'] as Style[]) { showParts(styles[s], s === st && pr.started, pr.progress, pr.damaged); solidify(k, s, styles[s], whole && s === st); }
     }
     caveRubble.forEach((r, i) => { r.visible = !S.projects.cave.done && i >= Math.floor(S.projects.cave.progress * caveRubble.length); });
     for (const o of pipeWater) o.visible = S.projects.pipe.done;

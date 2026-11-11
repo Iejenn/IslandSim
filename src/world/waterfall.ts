@@ -4,10 +4,10 @@
 // on simple ribbons, so it costs next to nothing.
 import {
   AdditiveBlending, BufferGeometry, CanvasTexture, CylinderGeometry, DoubleSide, Float32BufferAttribute, Mesh, MeshBasicMaterial,
-  Points, PointsMaterial, RepeatWrapping, type Scene,
+  Points, PointsMaterial, RepeatWrapping, type Scene, Color, RingGeometry,
 } from 'three';
-import { dirXZ, height, SP, WATERFALL, type Pt } from '../sim/island';
-import { M, mesh } from './materials';
+import { dirXZ, height, POND_R, SP, WATERFALL, type Pt } from '../sim/island';
+import { M, mesh, softDot } from './materials';
 
 /** Streaky white-on-blue texture; scrolling it along the ribbon makes the water flow. */
 function waterTexture() {
@@ -43,6 +43,8 @@ function ribbon(points: Pt[], width: (i: number) => number) {
   return g;
 }
 
+const moonTint = new Color('#3A4A78');
+
 export function createWaterfall(scene: Scene) {
   const tex = waterTexture(), fallTex = tex.clone();
   fallTex.needsUpdate = true;
@@ -73,12 +75,31 @@ export function createWaterfall(scene: Scene) {
   scene.add(foam);
   const N = 40, spray = new BufferGeometry(), seeds = Array.from({ length: N }, () => [Math.random() * 6.3, Math.random(), Math.random()]);
   spray.setAttribute('position', new Float32BufferAttribute(new Float32Array(N * 3), 3));
-  const drops = new Points(spray, new PointsMaterial({ color: '#FFFFFF', size: 0.09, transparent: true, opacity: 0.8, blending: AdditiveBlending, depthWrite: false }));
+  const drops = new Points(spray, new PointsMaterial({ color: '#FFFFFF', size: 0.15, map: softDot(), transparent: true, opacity: 0.8, blending: AdditiveBlending, depthWrite: false }));
   drops.frustumCulled = false;
   scene.add(drops);
 
-  /** @param t real seconds  @param dry 0…1 how much a drought has dried it up */
-  return function updateWaterfall(t: number, dry: number) {
+  // v2.2: ripples spreading across the pond from where the fall lands, and a paler rim of shallow
+  // water that softens the pond's hard edge
+  const rippleMat = () => new MeshBasicMaterial({ color: '#E8F7F9', transparent: true, opacity: 0, depthWrite: false, side: DoubleSide });
+  const ripples = [0, 1, 2].map(() => { const r = new Mesh(new RingGeometry(0.92, 1, 28), rippleMat()); r.rotation.x = -Math.PI / 2; r.position.set(bottom.x, SP.y + 0.115, bottom.z); scene.add(r); return r; });
+  const rim = new Mesh(new RingGeometry(POND_R - 0.5, POND_R + 0.04, 36), new MeshBasicMaterial({ color: '#CDEFF0', transparent: true, opacity: 0.32, depthWrite: false }));
+  rim.rotation.x = -Math.PI / 2; rim.position.set(SP.x, SP.y + 0.105, SP.z); scene.add(rim);
+  const lit = [streamMat, fallMat, foam.material as MeshBasicMaterial, rim.material, ...ripples.map(r => r.material)];
+  const base = lit.map(m => m.color.clone());
+
+  /** @param t real seconds  @param dry 0…1 how much a drought has dried it up  @param light 0…1 daylight */
+  return function updateWaterfall(t: number, dry: number, light = 1) {
+    // (these are unlit, so they'd glow white all night: dim them with the daylight, a touch blue by moonlight)
+    const k = 0.22 + 0.78 * light;
+    lit.forEach((m, i) => m.color.copy(base[i]).multiplyScalar(k).lerp(moonTint, 0.25 * (1 - light)));
+    (drops.material as PointsMaterial).opacity = 0.8 * (0.3 + 0.7 * light);
+    rim.scale.setScalar(dry ? 0.75 : 1); // (the pond shrinks in a drought)
+    ripples.forEach((r, i) => {
+      const ph = (t * 0.35 + i / 3) % 1;
+      r.scale.setScalar(0.7 + ph * 1.5);
+      r.material.opacity = 0.4 * (1 - ph) * (1 - 0.8 * dry);
+    });
     tex.offset.y = -t * 0.6; // the stream runs gently…
     fallTex.offset.y = -t * 1.8; // …the fall rushes
     streamMat.opacity = 0.85 * (1 - 0.7 * dry);

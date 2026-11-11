@@ -4,7 +4,8 @@ import { barT, BOULDERS, FOREST, FOREST_START, grassT, height, isletT, tAt } fro
 import { smooth } from '../sim/util';
 
 export function createTerrain(scene: Scene) {
-  const g = new PlaneGeometry(200, 200, 300, 300); // big enough for the island (lobes included) plus its shallow shelf
+  const SEG = 340; // (v2.2: finer than the old 300, so the coast and the grass edge aren't stair-stepped)
+  const g = new PlaneGeometry(200, 200, SEG, SEG); // big enough for the island (lobes included) plus its shallow shelf
   g.rotateX(-Math.PI / 2);
   const pa = g.attributes.position, cols: number[] = [];
   const g1 = new Color('#62A65A'), g2 = new Color('#4B8D4D'), sand = new Color('#EAD7A4'), wet = new Color('#C8AD78'), deep = new Color('#2C7E86');
@@ -41,5 +42,5 @@ export function createTerrain(scene: Scene) {
   scene.add(terrain);
   // (the material's colour tints the whole island per season, see world/seasons.ts;
   // the geometry's vertex colours get trodden paths painted in, see world/paths.ts)
-  return { material: terrain.material, geometry: g, baseColors: Float32Array.from(cols), size: 200, segments: 300 };
+  return { material: terrain.material, geometry: g, baseColors: Float32Array.from(cols), size: 200, segments: SEG };
 }

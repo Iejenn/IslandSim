@@ -5,6 +5,7 @@ import { BAMBOO, ground, ISLET_C, ISLET_R, V } from '../sim/island';
 import type { SimState } from '../sim/state';
 import { pickable } from './inspect';
 import { M, mat, mesh } from './materials';
+import { fuse } from './fuse';
 
 const caneMat = mat('#A9B85A'), nodeMat = mat('#7D8A3A'), bambooLeaf = mat('#6FA34A');
 
@@ -25,6 +26,7 @@ export function createIslet(scene: Scene) {
         cane.add(leaf);
       }
       g.add(cane);
+      fuse(cane); // (one mesh per cane instead of ten)
       canes.push(cane);
     }
     scene.add(g);
@@ -34,9 +36,11 @@ export function createIslet(scene: Scene) {
   // a couple of palms on the islet's beach (the same shape as the main island's)
   for (const a of [0.8, 3.9]) {
     const p = ground(V(ISLET_C.x + Math.cos(a) * ISLET_R * 0.75, ISLET_C.z + Math.sin(a) * ISLET_R * 0.75));
+    const palm = new Group();
+    scene.add(palm);
     const trunk = mesh(new CylinderGeometry(0.1, 0.14, 3, 6), M.trunk, p.x, p.y + 1.5, p.z);
     trunk.rotation.z = 0.15;
-    scene.add(trunk);
+    palm.add(trunk);
     for (let k = 0; k < 6; k++) {
       const leaf = mesh(new ConeGeometry(0.3, 2, 4), k % 2 ? M.leaf : M.leaf2, 0, 0, 0);
       leaf.scale.set(0.35, 1, 1);
@@ -45,8 +49,9 @@ export function createIslet(scene: Scene) {
       arm.rotation.set(0, k * 1.05, -1.9);
       leaf.position.y = 1;
       arm.add(leaf);
-      scene.add(arm);
+      palm.add(arm);
     }
+    fuse(palm);
   }
 
   /** @param t real seconds (sway) */

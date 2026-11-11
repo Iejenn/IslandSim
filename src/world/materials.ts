@@ -1,5 +1,5 @@
 // Shared low-poly materials and a mesh helper used by every world builder.
-import { DoubleSide, Mesh, MeshBasicMaterial, MeshStandardMaterial, type BufferGeometry, type Material, type MeshStandardMaterialParameters } from 'three';
+import { DoubleSide, Mesh, MeshBasicMaterial, MeshStandardMaterial, type BufferGeometry, type Material, type MeshStandardMaterialParameters, CanvasTexture } from 'three';
 
 export const mat = (c: string, o?: MeshStandardMaterialParameters) =>
   new MeshStandardMaterial({ color: c, flatShading: true, roughness: 0.9, metalness: 0, ...o });
@@ -48,6 +48,17 @@ export function applyLook(look: Record<string, number>) {
 
 export const flameMat = new MeshBasicMaterial({ color: '#FF9F3A' });
 export const flameMat2 = new MeshBasicMaterial({ color: '#FFE07A' });
+
+let dot: CanvasTexture | null = null;
+/** A soft round dot (shared), so stars, fireflies, spray and glow-worms aren't little squares. */
+export function softDot() {
+  if (dot) return dot;
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const g = c.getContext('2d')!, grad = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+  grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(0.45, 'rgba(255,255,255,0.6)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, 32, 32);
+  return (dot = new CanvasTexture(c));
+}
 
 export function mesh(geo: BufferGeometry, m: Material, x = 0, y = 0, z = 0, cast = true) {
   const o = new Mesh(geo, m);

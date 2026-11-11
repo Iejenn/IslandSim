@@ -126,10 +126,19 @@ export function createDog(scene: Scene) {
    * @param dt real seconds  @param t real seconds since start
    * @param her her body (position + facing)
    */
+  let placed = false;
   return function updateDog(S: SimState, her: Object3D, dt: number, t: number) {
     const d = S.dog;
     dog.visible = d.state !== 'none';
     if (!dog.visible) { crab.visible = false; return; }
+    // v2.2: the first time it's shown (a loaded game, or the day it washes up) it starts where it belongs:
+    // at its own spot while wild, beside her as her friend. (It used to start at the island's centre,
+    // which is the campfire, and sat in the flames until the game was unpaused.)
+    if (!placed) {
+      placed = true;
+      const at = d.state === 'wild' ? d.home : outsideObstacles({ x: her.position.x - Math.sin(her.rotation.y) * 1.3 + 0.6, z: her.position.z - Math.cos(her.rotation.y) * 1.3 });
+      dog.position.set(at.x, surfaceY(at.x, at.z), at.z);
+    }
     const gdt = dt * (S.speed > 0 ? Math.min(S.speed, 6) : 0); // (it lives at the island's pace, and stops when paused)
     const h = (S.min / 60) % 24;
     let lying = false, speed = 1.6, playing = false, curled = false;

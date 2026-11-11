@@ -465,7 +465,7 @@ export const WELL_P = ground(V(7.27, 1.86));
 export const WELL_STAND = standNear(WELL_P, 0.9);
 export const SPOUT_P = ground(V(-2.85, -7.69));
 export const SPOUT_STAND = standNear(SPOUT_P, 0.9);
-export const PIPE_FROM = ground(addScaled(SP, dirXZ(SP, SPOUT_P), POND_R + 0.3));
+export const PIPE_FROM = ground(addScaled(SP, dirXZ(SP, SPOUT_P), POND_R + 1.0)); // (on the bank, clear of the water: an intake dips in from here)
 
 /* ---------- v1.5: salt, smoke, the workshop, and metal ---------- */
 // salt pans on the rocky headland's shore, where the sea washes in and the sun dries it

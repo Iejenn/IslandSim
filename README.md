@@ -26,7 +26,8 @@ across an open meadow with old shade trees and a berry thicket, so water in
 camp (a rain barrel, a well or a long bamboo pipe) saves her many trips: once
 she has it, she only drinks at the pond when she's out there anyway.
 
-Every castaway is different. Besides her two traits she has her own taste
+Every castaway is different, down to her looks: her own skin tone, hair colour
+and clothes. Besides her two traits she has her own taste
 (cosy comforts, practical things, animals, gardening, the sea, making things,
 adventure) and one dream she's set on. Taste only tilts the odds: an animal
 lover will probably fence in the chickens early, but may still build a lodge
