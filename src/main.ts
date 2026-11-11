@@ -6,7 +6,7 @@ import { Raycaster, Vector2, Vector3, type Fog } from 'three';
 import { createSound } from './audio/sound';
 import { createAnimator } from './character/animation';
 import { createPerformer, type Playing } from './character/perform';
-import { loadCharacter } from './character/model';
+import { loadCharacter, applyCastawayLook } from './character/model';
 import { createHeldTools, type HeldTool } from './character/heldTools';
 import { createBody } from './character/movement';
 import { updateNeeds } from './sim/needs';
@@ -35,6 +35,7 @@ import { createIslet } from './world/islet';
 import { createLifeProps } from './world/life';
 import { createDecor } from './world/decor';
 import { createHobbies } from './world/hobbies';
+import { trimShadows } from './world/fuse';
 import { createFriends } from './world/friends';
 import { createPlaces } from './world/places';
 import { createSmoke } from './world/smoke';
@@ -102,6 +103,11 @@ if (import.meta.env.DEV) {
     __startTask: (id: string) => { const t = T[id](); if (t) startTask(t); },
   });
 }
+// v2.2: lighter shadows. Tiny things (berries, pebbles, flower heads) no longer cast one, and the
+// shadow map is redrawn every other frame instead of every frame (nothing moves fast enough to tell).
+trimShadows(scene);
+renderer.shadowMap.autoUpdate = false;
+let frameNo = 0;
 const body = createBody(scene);
 if (import.meta.env.DEV) Object.defineProperty(window, '__her', { get: () => body.her }); // (dev) her body, for poking at bones
 const heldTools = createHeldTools(scene);
@@ -218,6 +224,7 @@ renderer.domElement.addEventListener('pointerup', e => {
 function loadModel() {
   const loading = document.getElementById('loading')!;
   loadCharacter().then(gltf => {
+    applyCastawayLook(gltf.scene, S.look); // her own skin, hair and clothes
     body.attach(gltf.scene);
     heldTools.attach(gltf.scene);
     animator = createAnimator(gltf.scene, gltf.animations);
@@ -298,10 +305,10 @@ function frame(now: number) {
   updateJoys(S);
   updateCritters(S, lifeDt, lifeT);
   // the sky and the shore: clouds, surf and footprints, smoke from the fire
-  const sunUp = Math.sin((hour() - 6) / 12 * Math.PI), light = Math.min(1, Math.max(0, (sunUp + 0.1) / 0.4));
+  const sunUp = Math.sin((hour() - 6) / 12 * Math.PI), light = Math.min(1, Math.max(0, (sunUp + 0.22) / 0.52)); // (the same longer dusk as the sky, see sky.ts)
   const dry = drought() ? 0.75 : 1; // the pond shrinks in a drought (and the waterfall dwindles)
   props.pond.scale.set(dry, 1, dry);
-  updateWaterfall(clockT, drought() ? 1 : 0);
+  updateWaterfall(clockT, drought() ? 1 : 0, light);
   props.shelter.visible = !S.projects.lodge.done; // the lodge replaces the old shelter
   updateAnimals(lifeDt, lifeT, isNight());
   const storm = S.weather.storm;
@@ -328,6 +335,7 @@ function frame(now: number) {
     camera.position.add(d);
   }
   controls.update();
+  renderer.shadowMap.needsUpdate = frameNo++ % 2 === 0;
   renderer.render(scene, camera);
   if (photoWanted) takePhoto(); // (right after rendering, while the picture is still in the canvas)
   bubble.update(now, ready);

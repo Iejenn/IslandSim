@@ -5,7 +5,7 @@ import type { Object3D, Raycaster } from 'three';
 import type { SimState } from '../sim/state';
 
 export interface Info { title: string; lines: string[] }
-type Describe = (S: SimState) => Info | null;
+type Describe = (S: SimState, instance?: number) => Info | null; // (instance: which one of an InstancedMesh was tapped)
 
 const things = new Map<Object3D, Describe>();
 /** Make an object (and everything under it) tappable. */
@@ -23,7 +23,7 @@ export function inspect(ray: Raycaster, S: SimState): Info | null {
     if (!shown(h.object)) continue;
     let o: Object3D | null = h.object;
     while (o && !things.has(o)) o = o.parent;
-    const info = o && things.get(o)!(S);
+    const info = o && things.get(o)!(S, h.instanceId);
     if (info) return info;
   }
   return null;

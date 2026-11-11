@@ -11,6 +11,7 @@ import { pickable } from './inspect';
 import { flameMat, flameMat2, M, mesh } from './materials';
 import { FIRE_LIGHT_SCALE, type Campfire } from './sky';
 import { v3 } from './stage';
+import { fuse } from './fuse';
 
 export function createProps(scene: Scene) {
   const palms: Group[] = []; // their tops sway in the wind
@@ -21,8 +22,8 @@ export function createProps(scene: Scene) {
     const top = new Group();
     top.position.set(lean, 3.3, 0);
     for (let i = 0; i < 7; i++) {
-      const lg = new ConeGeometry(0.32, 2.4, 4);
-      lg.translate(0, 1.2, 0);
+      const lg = new ConeGeometry(0.27, 2.1, 4); // (v2.2: a little shorter and narrower: they used to slice right across the view)
+      lg.translate(0, 1.05, 0);
       lg.scale(0.35, 1, 1);
       const leaf = mesh(lg, i % 2 ? M.leaf : M.leaf2);
       leaf.rotation.z = -(Math.PI / 2 + rand(0.15, 0.45));
@@ -37,15 +38,18 @@ export function createProps(scene: Scene) {
     g.rotation.y = rand(0, Math.PI * 2);
     g.scale.setScalar(s);
     scene.add(g);
+    fuse(g); // (one mesh per palm instead of eleven)
     palms.push(g);
   }
+  const rocks = new Group(); // (all the little scattered rocks, merged into one mesh below)
+  scene.add(rocks);
   function rock(p: Pt, r: number) {
     const o = mesh(new DodecahedronGeometry(r, 0), M.rock);
     o.scale.set(1, rand(0.6, 0.9), rand(0.8, 1.2));
     o.rotation.set(rand(0, 1), rand(0, 6), rand(0, 1));
     o.position.copy(v3(ground({ ...p })));
     o.position.y += r * 0.25;
-    scene.add(o);
+    rocks.add(o);
   }
 
   /* campfire at the centre */
@@ -63,6 +67,8 @@ export function createProps(scene: Scene) {
     fireG.add(l);
   }
   const flame = mesh(new ConeGeometry(0.28, 0.85, 6), flameMat, 0, 0.5, 0, false), flame2 = mesh(new ConeGeometry(0.15, 0.5, 6), flameMat2, 0, 0.36, 0, false);
+  // (v2.2: two smaller tongues beside the main flame, so it reads as a fire and not one cone)
+  flame.add(mesh(new ConeGeometry(0.13, 0.5, 5), flameMat, 0.13, -0.12, 0.05, false), mesh(new ConeGeometry(0.11, 0.42, 5), flameMat2, -0.11, -0.16, -0.08, false));
   fireG.add(flame, flame2);
   // r147 used distance 11 / decay 2 with a linear-to-cutoff falloff; modern
   // physical falloff with distance 8.8 / decay 0.42 traces the same curve.
@@ -156,8 +162,11 @@ export function createProps(scene: Scene) {
     g.rotation.y = i * 2.3;
     g.position.copy(v3(p));
     scene.add(g);
+    fuse(g, false); // (one mesh per leaf green, so the seasons still recolour it)
     pickable(g, () => ({ title: 'A shade tree', lines: ['An old tree out on the meadow', 'Too fine to cut down'] }));
   });
+
+  fuse(rocks, false);
 
   return {
     campfire,

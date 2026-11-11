@@ -9,7 +9,7 @@ import {
 import { FOREST, pointAt } from '../sim/island';
 import { season } from '../sim/seasons';
 import { hour, type SimState } from '../sim/state';
-import { mat } from './materials';
+import { mat, softDot } from './materials';
 
 /** A stable 0…1 number for a given integer (so a given day is always misty, or not). */
 const hash = (n: number) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
@@ -29,7 +29,7 @@ export function createAtmosphere(scene: Scene) {
     const n = 25, g = new BufferGeometry(), base: number[] = [];
     for (let i = 0; i < n; i++) { const p = pointAt(Math.random() * 6.3, 0.25 + Math.random() * 0.35); base.push(p.x, 0.6 + Math.random() * 1.2, p.z); }
     g.setAttribute('position', new Float32BufferAttribute(base.slice(), 3));
-    const pts = new Points(g, new PointsMaterial({ color: '#D8FF7A', size: 0.22, transparent: true, opacity: 0, blending: AdditiveBlending, depthWrite: false }));
+    const pts = new Points(g, new PointsMaterial({ color: '#D8FF7A', size: 0.34, map: softDot(), transparent: true, opacity: 0, blending: AdditiveBlending, depthWrite: false }));
     scene.add(pts);
     return { pts, base, k };
   });

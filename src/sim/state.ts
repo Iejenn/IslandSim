@@ -124,7 +124,7 @@ export const DISHES = ['fish', 'rabbit', 'eggs', 'veg', 'stew', 'berries'] as co
 // what washed ashore with her (or nothing)
 export const WASHED_UP = ['knife', 'line', 'pot', 'tarp'] as const;
 
-export const LOOK_KEYS = ['tarp', 'bedding', 'hammock', 'cushion', 'blanket', 'roof', 'wood'] as const;
+export const LOOK_KEYS = ['tarp', 'bedding', 'hammock', 'cushion', 'blanket', 'roof', 'wood', 'skin', 'hair', 'shirt', 'pants'] as const; // (v2.2: the last four are her own looks)
 
 function createState() {
   const taste = rollTaste();

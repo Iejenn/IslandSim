@@ -82,7 +82,7 @@ export function createNight(scene: Scene, moonLightSrc: DirectionalLight, camera
     for (const [a, b] of c.lines) cLines.push(pts[a].x, pts[a].y, pts[a].z, pts[b].x, pts[b].y, pts[b].z);
   }
   const geo = (arr: number[]) => { const g = new BufferGeometry(); g.setAttribute('position', new Float32BufferAttribute(arr, 3)); return g; };
-  const conStars = new Points(geo(cStars), new PointsMaterial({ color: '#FFF6DD', size: 1.8, transparent: true, opacity: 0, fog: false, depthWrite: false }));
+  const conStars = new Points(geo(cStars), new PointsMaterial({ color: '#FFF6DD', size: 2.6, map: softDot(), transparent: true, opacity: 0, fog: false, depthWrite: false }));
   const conLines = new LineSegments(geo(cLines), new LineBasicMaterial({ color: '#9FB6FF', transparent: true, opacity: 0, fog: false, depthWrite: false }));
   sky.add(conStars, conLines);
 

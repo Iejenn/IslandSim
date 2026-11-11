@@ -4,6 +4,7 @@
 import { AdditiveBlending, BackSide, Group, Mesh, PlaneGeometry, ShaderMaterial, SphereGeometry, Vector3, type Camera, BufferGeometry, Color, DirectionalLight, Float32BufferAttribute, HemisphereLight, Points, PointsMaterial, type Fog, type PointLight, type Scene } from 'three';
 import { clamp, smooth } from '../sim/util';
 import { arc, createNight } from './night';
+import { softDot } from './materials';
 import { season } from '../sim/seasons';
 import { S } from '../sim/state';
 
@@ -40,7 +41,7 @@ export function createSky(scene: Scene, camera: Camera) {
     }
     const g = new BufferGeometry();
     g.setAttribute('position', new Float32BufferAttribute(p, 3));
-    const s = new Points(g, new PointsMaterial({ color: '#FFFFFF', size: 0.9, transparent: true, opacity: 0, fog: false, depthWrite: false }));
+    const s = new Points(g, new PointsMaterial({ color: '#FFFFFF', size: 1.4, map: softDot(), transparent: true, opacity: 0, fog: false, depthWrite: false }));
     scene.add(s);
     return s;
   })();
@@ -107,12 +108,13 @@ export function createSky(scene: Scene, camera: Camera) {
     sun.position.set(Math.cos(ang) * 35, Math.max(e, 0.05) * 35, 6 + 10 * Math.sin(ang));
     sun.intensity = clamp((e + 0.04) / 0.12, 0, 1) * (0.45 + 1.15 * Math.max(0, e)) * LEGACY * (1 - 0.7 * gloom);
     sun.color.copy(sunWarm).lerp(sunWhite, clamp(e / 0.3, 0, 1));
-    const day = smooth((e + 0.1) / 0.4);
+    // v2.2: a longer, softer dusk and dawn (it used to be nearly dark half an hour after sunset, the sky still red)
+    const day = smooth((e + 0.22) / 0.52);
     if (e > 0.25) sky.copy(cDay);
     else if (e > 0) sky.copy(cDusk).lerp(cDay, e / 0.25);
     // (overhead goes rose → violet twilight → night; the orange stays low, on the horizon)
-    else if (e > -0.08) sky.copy(cTwilight).lerp(cDusk, (e + 0.08) / 0.08);
-    else if (e > -0.18) sky.copy(cNight).lerp(cTwilight, (e + 0.18) / 0.1);
+    else if (e > -0.14) sky.copy(cTwilight).lerp(cDusk, (e + 0.14) / 0.14);
+    else if (e > -0.3) sky.copy(cNight).lerp(cTwilight, (e + 0.3) / 0.16);
     else sky.copy(cNight);
     if (gloom > 0) sky.lerp(grey.copy(cRain).multiplyScalar((storm ? 0.1 : 0.2) + (storm ? 0.55 : 0.8) * day), gloom * (storm || angry ? 0.9 : 0.75));
     // lightning: a brief white flash every few seconds during a storm
@@ -124,7 +126,7 @@ export function createSky(scene: Scene, camera: Camera) {
     // the horizon: pale by day, glowing peach at sunrise and sunset, deep blue at night
     if (e > 0.25) horizon.copy(hDay);
     else if (e > 0) horizon.copy(hDusk).lerp(hDay, e / 0.25);
-    else if (e > -0.18) horizon.copy(hNight).lerp(hDusk, (e + 0.18) / 0.18);
+    else if (e > -0.3) horizon.copy(hNight).lerp(hDusk, (e + 0.3) / 0.3);
     else horizon.copy(hNight);
     if (gloom > 0) horizon.lerp(grey.copy(cRain).multiplyScalar((storm ? 0.12 : 0.25) + (storm ? 0.55 : 0.8) * day), gloom * (storm ? 0.9 : 0.75));
     // a scorching day: a pale, hazy horizon; a clear winter day: crisp and blue
@@ -156,7 +158,7 @@ export function createSky(scene: Scene, camera: Camera) {
     moon.intensity = 0.35 * (1 - day) * LEGACY;
     updateNight(t, h, rain, dt); // (scales the moonlight by the phase)
     stars.position.copy(camera.position);
-    (stars.material as PointsMaterial).opacity = clamp(-e * 3, 0, 1) * 0.9 * (1 - rain); // clouds hide the stars
+    (stars.material as PointsMaterial).opacity = clamp((-e - 0.1) * 4, 0, 1) * 0.9 * (1 - rain); // clouds hide the stars
 
     const { flame, flame2, light } = campfire;
     const lit = fire > 0;
@@ -164,6 +166,9 @@ export function createSky(scene: Scene, camera: Camera) {
     const f = 0.85 + 0.15 * Math.sin(t * 13) * Math.sin(t * 7.3), size = 0.6 + 0.4 * clamp(fire / 60, 0, 1);
     flame.scale.set(size, size * f, size);
     flame2.scale.set(size, size * (2 - f), size);
+    // (v2.2: the flames lean and lick about instead of standing straight up)
+    flame.rotation.set(0.1 * Math.sin(t * 5.3), t * 0.9, 0.12 * Math.sin(t * 4.1 + 1));
+    flame2.rotation.set(0.14 * Math.sin(t * 6.7 + 2), -t * 1.3, 0.14 * Math.sin(t * 5.9));
     light.intensity = lit ? (0.6 + 2.2 * (1 - day)) * f * size * FIRE_LIGHT_SCALE : 0;
   };
 }
